@@ -116,11 +116,11 @@ func TestReplayZlibAndBzip2(t *testing.T) {
 			if r.Map != "Dragon Shire" || len(r.Players) != 2 {
 				t.Fatalf("unexpected replay %+v", r)
 			}
-			p, e := findOutcome(r, "Проверка", "")
+			p, e := findOutcome(r, "Проверка", "", langRu)
 			if e != nil || p.Result != "win" {
 				t.Fatalf("wrong winner: %+v, %v", p, e)
 			}
-			p, e = findOutcome(r, "", "2-Hero-1-10006")
+			p, e = findOutcome(r, "", "2-Hero-1-10006", langEn)
 			if e != nil || p.Result != "loss" {
 				t.Fatalf("wrong loser: %+v, %v", p, e)
 			}

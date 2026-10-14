@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,15 +53,15 @@ func main() {
 	}
 	cfg, err := readConfig(p)
 	if err != nil {
-		showError("Ошибка чтения настроек: " + err.Error())
+		showError(tr(langEn, "error.read_config", err.Error()))
 		return
 	}
 	d, err := newDashboard(p, cfg)
 	if err != nil {
-		showError("Ошибка запуска: " + err.Error())
+		showError(tr(cfg.lang(), "error.startup", err.Error()))
 		return
 	}
 	if err = d.runDesktop(launchDesktop); err != nil {
-		showError(fmt.Sprintf("Не удалось открыть интерфейс: %v", err))
+		showError(tr(cfg.lang(), "error.open_ui", err.Error()))
 	}
 }

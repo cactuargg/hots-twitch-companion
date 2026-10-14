@@ -52,6 +52,64 @@ func TestLoopbackDashboardAuthorization(t *testing.T) {
 	}
 }
 
+func TestConfigLanguageAndPredictionWindow(t *testing.T) {
+	dir := t.TempDir()
+	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
+	d, err := newDashboard(p, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := d.routes("127.0.0.1:12345", "secret")
+	post := func(body map[string]any) int {
+		payload, _ := json.Marshal(body)
+		r := httptest.NewRequest("POST", "http://127.0.0.1:12345/secret/api/config", bytes.NewReader(payload))
+		r.Host = "127.0.0.1:12345"
+		r.Header.Set("X-Companion", "1")
+		r.Header.Set("Origin", "http://127.0.0.1:12345")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+	base := map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false}
+	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "lang": "ru", "predictionWindowMin": 5}); got != 200 {
+		t.Fatalf("save with lang/window returned %d", got)
+	}
+	c := d.config()
+	if c.Lang != "ru" || c.PredictionWindowMin != 5 || c.predictionWindowMinutes() != 5 {
+		t.Fatalf("lang/window not saved: %+v", c)
+	}
+	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "lang": "fr", "predictionWindowMin": 5}); got != 400 {
+		t.Fatalf("invalid lang returned %d", got)
+	}
+	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "lang": "ru", "predictionWindowMin": 45}); got != 400 {
+		t.Fatalf("oversize window returned %d", got)
+	}
+	// Default window and normalized empty language.
+	if got := post(base); got != 200 {
+		t.Fatalf("minimal save returned %d", got)
+	}
+	if c = d.config(); c.lang() != "en" || c.predictionWindowMinutes() != 2 {
+		t.Fatalf("defaults wrong: %+v", c)
+	}
+	// Start monitoring, then verify only the language may change while running.
+	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "confirmedRealMode": false}); got != 200 {
+		t.Fatalf("prepare config returned %d", got)
+	}
+	if err := d.engine.start(); err != nil {
+		t.Fatal(err)
+	}
+	defer d.engine.stopWatch()
+	if got := post(map[string]any{"clientId": "123", "playerName": "Other", "realMode": false, "lang": "ru"}); got != 400 {
+		t.Fatalf("field change while running returned %d", got)
+	}
+	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "lang": "ru"}); got != 200 {
+		t.Fatalf("lang-only change while running returned %d", got)
+	}
+	if c = d.config(); c.lang() != "ru" || c.PlayerName != "Demo" {
+		t.Fatalf("lang-only change not applied: %+v", c)
+	}
+}
+
 func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
