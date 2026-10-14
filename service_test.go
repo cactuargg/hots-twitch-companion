@@ -108,6 +108,13 @@ func TestConfigLanguageAndPredictionWindow(t *testing.T) {
 	if c = d.config(); c.lang() != "ru" || c.PlayerName != "Demo" {
 		t.Fatalf("lang-only change not applied: %+v", c)
 	}
+	// Finishing the setup wizard is a live-safe change too.
+	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "lang": "ru", "wizardDone": true}); got != 200 {
+		t.Fatalf("wizardDone change while running returned %d", got)
+	}
+	if c = d.config(); !c.WizardDone {
+		t.Fatal("wizardDone not saved")
+	}
 }
 
 func TestDashboardReplayAndAssetDelivery(t *testing.T) {
@@ -166,6 +173,9 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	}
 	if len(x.Replays) != 1 || x.Replays[0].Result != "win" {
 		t.Fatalf("replay not parsed: %+v", x.Replays)
+	}
+	if len(x.Replays[0].Players) != 2 || x.Replays[0].Selected != "Проверка" {
+		t.Fatalf("game data not exposed: %+v", x.Replays[0])
 	}
 	before, err := os.ReadFile(name)
 	if err != nil {

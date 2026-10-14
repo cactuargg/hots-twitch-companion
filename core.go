@@ -29,6 +29,7 @@ type Config struct {
 	RealMode            bool   `json:"realMode"`
 	Lang                string `json:"lang"`
 	PredictionWindowMin int    `json:"predictionWindowMin"`
+	WizardDone          bool   `json:"wizardDone"`
 }
 
 const defaultPredictionWindow = 2
@@ -526,11 +527,14 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 	return &Engine{p: p, cfg: cfg, state: s, twitch: t, log: log}, nil
 }
 
-// langOnlyChange reports whether cfg differs from the stored config only by language.
-// A language switch stays allowed while monitoring runs so the UI can be switched live.
-func (e *Engine) langOnlyChange(cfg Config) bool {
-	return cfg.lang() != e.cfg.lang() &&
-		cfg.ClientID == e.cfg.ClientID &&
+// safeLiveChange reports whether cfg differs from the stored config only by
+// language or wizard completion. Such changes stay allowed while monitoring
+// runs so the UI can switch language or finish setup live.
+func (e *Engine) safeLiveChange(cfg Config) bool {
+	if cfg.lang() == e.cfg.lang() && cfg.WizardDone == e.cfg.WizardDone {
+		return false
+	}
+	return cfg.ClientID == e.cfg.ClientID &&
 		cfg.PlayerName == e.cfg.PlayerName &&
 		cfg.PlayerToonHandle == e.cfg.PlayerToonHandle &&
 		cfg.ReplayRoot == e.cfg.ReplayRoot &&
@@ -540,7 +544,7 @@ func (e *Engine) langOnlyChange(cfg Config) bool {
 func (e *Engine) updateConfig(cfg Config) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.running && !e.langOnlyChange(cfg) {
+	if e.running && !e.safeLiveChange(cfg) {
 		return errors.New(tr(e.cfg.lang(), "config.stop_watch_first"))
 	}
 	if e.state.Active != nil && e.state.Active.DryRun != !cfg.RealMode {

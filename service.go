@@ -26,11 +26,13 @@ type event struct {
 	Message string `json:"message"`
 }
 type replaySummary struct {
-	File     string `json:"file"`
-	Map      string `json:"map"`
-	Result   string `json:"result"`
-	Modified string `json:"modified"`
-	Error    string `json:"error,omitempty"`
+	File     string          `json:"file"`
+	Map      string          `json:"map"`
+	Result   string          `json:"result"`
+	Modified string          `json:"modified"`
+	Players  []playerSummary `json:"players,omitempty"`
+	Selected string          `json:"selected,omitempty"`
+	Error    string          `json:"error,omitempty"`
 }
 type playerSummary struct {
 	Name       string `json:"name"`
@@ -135,9 +137,11 @@ func (d *dashboard) currentReplays() []replaySummary {
 			s.Result = "unknown"
 		} else {
 			s.Map = r.Map
+			s.Players = playersFromReplay(r)
 			p, er := findOutcome(r, config.PlayerName, config.PlayerToonHandle, config.lang())
 			if er == nil {
 				s.Result = p.Result
+				s.Selected = p.Name
 			} else {
 				s.Result = "unknown"
 			}
@@ -155,6 +159,13 @@ func (d *dashboard) invalidateReplays() {
 	d.replays = nil
 	d.replaysAt = time.Time{}
 	d.mu.Unlock()
+}
+func playersFromReplay(r Replay) []playerSummary {
+	out := make([]playerSummary, 0, len(r.Players))
+	for _, p := range r.Players {
+		out = append(out, playerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Result: p.Result})
+	}
+	return out
 }
 func (d *dashboard) doAuth() (map[string]any, error) {
 	d.mu.Lock()
@@ -248,10 +259,7 @@ func (d *dashboard) checkReplay() (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s", d.tr("replay.read_error", filepath.Base(list[0].Path), err.Error()))
 	}
-	players := make([]playerSummary, 0, len(r.Players))
-	for _, p := range r.Players {
-		players = append(players, playerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Result: p.Result})
-	}
+	players := playersFromReplay(r)
 	res := map[string]any{"file": filepath.Base(list[0].Path), "map": r.Map, "players": players}
 	selected, err := findOutcome(r, cfg.PlayerName, cfg.PlayerToonHandle, cfg.lang())
 	if err != nil {
@@ -387,6 +395,7 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				ConfirmedRealMode   bool   `json:"confirmedRealMode"`
 				Lang                string `json:"lang"`
 				PredictionWindowMin int    `json:"predictionWindowMin"`
+				WizardDone          bool   `json:"wizardDone"`
 			}
 			if err := readJSONRequest(r, &body); err != nil {
 				requestError(w, err)
@@ -408,7 +417,7 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				requestError(w, errors.New(d.tr("config.too_long")))
 				return
 			}
-			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin}
+			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin, WizardDone: body.WizardDone}
 			if err := d.engine.updateConfig(cfg); err != nil {
 				requestError(w, err)
 				return
