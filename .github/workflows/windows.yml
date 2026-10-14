@@ -38,6 +38,11 @@ jobs:
           "$hash  HotS-Twitch-Companion.exe" | Set-Content dist/SHA256SUMS.txt -Encoding utf8
           Copy-Item dist/SHA256SUMS.txt SHA256SUMS.txt
           Copy-Item dist/HotS-Twitch-Companion.exe HotS-Twitch-Companion.exe
+          # Fill the release description: tag and exe hash are injected automatically.
+          $tag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { 'dev' }
+          $notes = (Get-Content .github/RELEASE_NOTES_TEMPLATE.md -Raw) -replace '__TAG__', $tag -replace '__HASH__', $hash
+          $notes | Set-Content dist/RELEASE_NOTES.md -Encoding utf8
+          Copy-Item dist/RELEASE_NOTES.md RELEASE_NOTES.md
           Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.md,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
 
       - name: Upload compiled package
@@ -48,6 +53,7 @@ jobs:
             HotS-Twitch-Companion-windows-x64.zip
             SHA256SUMS.txt
             HotS-Twitch-Companion.exe
+            RELEASE_NOTES.md
           if-no-files-found: error
           retention-days: 30
 
@@ -73,4 +79,4 @@ jobs:
             package/HotS-Twitch-Companion.exe \
             package/HotS-Twitch-Companion-windows-x64.zip \
             package/SHA256SUMS.txt \
-            --verify-tag --generate-notes
+            --verify-tag --generate-notes --notes-file package/RELEASE_NOTES.md
