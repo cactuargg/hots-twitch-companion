@@ -37,6 +37,7 @@ jobs:
           $hash = (Get-FileHash dist/HotS-Twitch-Companion.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  HotS-Twitch-Companion.exe" | Set-Content dist/SHA256SUMS.txt -Encoding utf8
           Copy-Item dist/SHA256SUMS.txt SHA256SUMS.txt
+          Copy-Item dist/HotS-Twitch-Companion.exe HotS-Twitch-Companion.exe
           Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.md,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
 
       - name: Upload compiled package
@@ -46,6 +47,7 @@ jobs:
           path: |
             HotS-Twitch-Companion-windows-x64.zip
             SHA256SUMS.txt
+            HotS-Twitch-Companion.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -68,6 +70,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
+            package/HotS-Twitch-Companion.exe \
             package/HotS-Twitch-Companion-windows-x64.zip \
             package/SHA256SUMS.txt \
             --verify-tag --generate-notes
