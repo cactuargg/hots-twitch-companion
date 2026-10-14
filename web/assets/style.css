@@ -34,6 +34,7 @@
 .player-row small{color:#6f8bbd;font-size:10px;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .player-row .outcome-pill{min-width:50px;font-size:10px;padding:3px 6px}
 .wizard-backdrop{position:fixed;inset:0;z-index:50;background:#02061488;backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
+.wizard-backdrop[hidden]{display:none}
 .wizard{width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column;background:linear-gradient(150deg,#0a1631,#0a1226);border:1px solid #4a6fbb;box-shadow:0 0 0 3px #0a0f26,0 0 60px #2e63c966;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0 calc(100% - 14px),0 14px)}
 .wizard-head{display:flex;align-items:center;gap:16px;padding:20px 24px 14px;border-bottom:1px solid #2c4d8c}
 .wizard-head h2{margin:2px 0 0;font-size:20px}
