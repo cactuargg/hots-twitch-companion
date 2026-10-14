@@ -1,4 +1,4 @@
-# HotS Twitch Companion v0.2
+# HotS Twitch Companion v0.3
 
 Портативный Windows x64 EXE с новым тёмным интерфейсом, стилизованным под Heroes of the Storm. Реальный GUI создаётся локальными HTML/CSS/JS, встроенными в исполняемый файл средствами `go:embed`. Для отображения отдельного desktop-окна используется установленный в Windows Microsoft Edge в режиме `--app`; без Edge откроется браузер по умолчанию. **[Read in English](README.md)**
 
@@ -60,10 +60,10 @@ Go 1.23, только стандартная библиотека, без зав
 
 ```bash
 git add .
-git commit -m "Publish HotS Twitch Companion v0.2"
+git commit -m "Publish HotS Twitch Companion v0.3"
 git push origin main
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 Перед публикацией проверь `git status` и список отслеживаемых файлов: **не коммить Client Secret, access/refresh tokens или личные файлы HotS**. Конфигурация пользователя и DPAPI-токены в штатной работе находятся в `%LOCALAPPDATA%\HotSTwitchCompanion`, а не в репозитории. Файлы artwork/UI следует публиковать только если есть права на распространение. Название HotS является товарным знаком Blizzard; добавь disclaimer, что проект неофициальный.
