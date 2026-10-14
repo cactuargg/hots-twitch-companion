@@ -4,10 +4,12 @@ Portable Windows x64 app that automatically runs Twitch Predictions based on you
 
 ## What's new
 
-- **English and Russian interface** — switch any time via the `EN / RU` control in the top bar or in Settings; backend messages follow the selected language.
-- **Configurable Prediction duration** — betting window of 1–30 minutes selected in Settings, like the duration picker in the Twitch Predictions interface (default: 2 minutes).
-- English `README.md` added.
-- CI: releases are now published correctly and include a direct `.exe` download.
+- **Setup wizard** on first launch: language, HotS player name (with a safe replay test), Twitch connection and automation — each step explains what is expected; re-run it from Settings.
+- **Simplified navigation**: horizontal tabs — Overview, Match History, Settings, Logs. The old Automation and Twitch tabs were merged into Overview and Settings.
+- **Match History**: click any match to expand full game data — map, date and all players with results, your entry highlighted.
+- **English and Russian interface** with live switching; language is configured in Settings and the wizard.
+- **Configurable Prediction duration** — betting window of 1–30 minutes, like the duration picker in the Twitch Predictions interface (default: 2 minutes).
+- CI: releases are published correctly and include a direct `.exe` download.
 
 ## Downloads
 

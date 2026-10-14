@@ -1,4 +1,4 @@
-# HotS Twitch Companion v0.3
+# HotS Twitch Companion v0.4
 
 Portable Windows x64 EXE with a dark interface styled after Heroes of the Storm. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. A separate desktop window is opened through the installed Microsoft Edge in `--app` mode; without Edge, your default browser is used. **[Читать на русском](README.ru.md)**
 
@@ -13,14 +13,18 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 
 ## Getting started
 
+A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
+
 1. Stop any previous `watch` process and old `.exe`.
 2. Run `HotS-Twitch-Companion.exe` from the release ZIP. Node.js, Go and Python are not required.
-3. In **Settings** set your HotS player name, save; **Matches → Check latest replay** is a safe test without the Twitch API.
-4. In **Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
+3. Follow the wizard — or configure manually: in **Settings** set your HotS player name and save; **Match History → Check latest replay** is a safe test without the Twitch API.
+4. In **Settings → Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
 5. Optionally set the **Prediction duration** in **Settings → Operation mode**.
-6. In **Automation** start monitoring. Simulation is used by default.
+6. Start monitoring from **Overview** (or the wizard). Simulation is used by default.
 7. For real points, separately enable real mode with confirmation in **Settings**.
 8. The **Exit** button at the bottom stops the process immediately. Closing the window also stops the app after a few minutes of lost contact.
+
+**Match History** shows your recent games; click any match to expand full game data — map, date and every player with their result, your entry highlighted.
 
 ## Built-in safety
 
