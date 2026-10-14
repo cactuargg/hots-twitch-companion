@@ -1,0 +1,71 @@
+# HotS Twitch Companion v0.2
+
+Портативный Windows x64 EXE с новым тёмным интерфейсом, стилизованным под Heroes of the Storm. Реальный GUI создаётся локальными HTML/CSS/JS, встроенными в исполняемый файл средствами `go:embed`. Для отображения отдельного desktop-окна используется установленный в Windows Microsoft Edge в режиме `--app`; без Edge откроется браузер по умолчанию.
+
+## Запуск
+
+1. Останови предыдущий `watch` и старый `.exe`.
+2. Запусти `HotS-Twitch-Companion.exe` из release ZIP. Node.js, Go и Python устанавливать не нужно.
+3. В **Настройки** укажи свой ник в HotS, сохрани; **Матчи → Проверить последний реплей** — безопасный тест без Twitch API.
+4. В **Twitch** укажи `Client ID` Public приложения, сохрани настройки и подключи OAuth Device Code Flow (токен шифруется через DPAPI).
+5. В **Автоматизация** запусти наблюдение. Симуляция используется по умолчанию.
+6. Для настоящих баллов отдельно включи реальный режим с подтверждением в **Настройки**.
+7. Кнопка **Выход** внизу завершает процесс сразу. Закрытое окно также приводит к остановке после нескольких минут отсутствия связи.
+
+## Встроенные защитные механизмы
+
+Локальный интерфейс слушает только `127.0.0.1` на случайном порту, адрес защищён случайным 192-битным сегментом, вызовы API требуют специальный заголовок, POST проверяет Origin/Sec-Fetch-Site, включён CSP, запрещены cross-origin запросы. Токены Twitch не передаются в интерфейс и хранятся через Windows DPAPI; файлы HotS открываются только на чтение, без DLL-инъекций, хуков, драйверов и чтения памяти игры. Ни один из механизмов не гарантирует одобрение со стороны Blizzard.
+
+Логика из старой Go-версии (корректировка MPQ zlib/BZip2, Twitch OAuth, Predictions, наблюдение за `replay.server.battlelobby`/`.StormReplay`) сохранена. Состояние в `%LOCALAPPDATA%\HotSTwitchCompanion` переиспользуется — **не запускай две версии одновременно**. Старый Node.js прототип не совместим по формату state/tokens.
+
+## Сборка из исходников
+
+```powershell
+go test ./...
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .
+```
+
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .`
+
+Go 1.23, только стандартная библиотека, без зависимостей. `service.go` — HTTP/UI-обвязка, `main_windows.go` — окно Edge, `core.go` — логика Twitch/HotS, `replay.go` — MPQ декодер, `web/` — интерфейс.
+
+## Проверки
+
+Автотесты MPQ, BZip2/zlib, чтения результата, сохранности файла и локальных API проходят в Linux; `.exe` кросс-компилирован и проверен как Windows x64 GUI PE. **Живой Twitch API и отображение на Windows с реальным HotS пока не протестированы**. Сначала проверь реплеи и симуляцию; не включай реальные Predictions до подтверждения корректности.
+
+
+## GitHub и CI/CD
+
+Для публикации исходного кода используй архив `HotS-Twitch-Companion-v0.2-GitHub-ready.zip` (без `.exe` внутри). Создай новый GitHub-репозиторий и загрузи **содержимое** архива в корень. Workflow `.github/workflows/windows.yml`:
+
+- на push в `main` / Pull Request / ручной запуск: прогоняет `go test ./...`, собирает Windows x64 `.exe` и сохраняет ZIP в **Actions → Artifacts**;
+- на push тега `v*`: дополнительно создаёт **GitHub Release** и прикладывает ZIP + SHA256.
+
+Локальная сборка в PowerShell:
+
+```powershell
+.\build.ps1
+```
+
+Результат: `dist/HotS-Twitch-Companion.exe` и `HotS-Twitch-Companion-windows-x64.zip`.
+
+Первый релиз (в Git Bash или другом терминале с Git):
+
+```bash
+git add .
+git commit -m "Publish HotS Twitch Companion v0.2"
+git push origin main
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Перед публикацией проверь `git status` и список отслеживаемых файлов: **не коммить Client Secret, access/refresh tokens или личные файлы HotS**. Конфигурация пользователя и DPAPI-токены в штатной работе находятся в `%LOCALAPPDATA%\HotSTwitchCompanion`, а не в репозитории. Файлы artwork/UI следует публиковать только если есть права на распространение. Название HotS является товарным знаком Blizzard; добавь disclaimer, что проект неофициальный.
+
+## Лицензия
+
+Исходный код проекта распространяется на условиях **MIT License** — см. файл [LICENSE](LICENSE). Это разрешает использование, модификацию и распространение исходного кода, включая коммерческое, при сохранении текста лицензии и уведомления об авторских правах. В `LICENSE` указан коллективный правообладатель `HotS Twitch Companion contributors`; перед публикацией при желании замени его своим именем или названием организации.
+
+Лицензия MIT **не даёт прав на торговые марки, логотипы или сторонние графические материалы** Blizzard и Twitch. Проверь происхождение файлов в `web/assets/` и свои права на их публикацию. Приложение неофициальное и не связано с Blizzard Entertainment или Twitch.
+
+
+GitHub Actions и Windows GUI требуют проверки реального запуска на Windows. `.exe` не подписан Authenticode; SHA256 фиксирует содержимое, но не доказывает отсутствие вредоносного кода.

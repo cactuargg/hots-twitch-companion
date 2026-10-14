@@ -1,0 +1,506 @@
+package main
+
+import (
+	"context"
+	"crypto/rand"
+	"embed"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
+	"net"
+	"net/http"
+	"net/url"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+)
+
+//go:embed web/* web/assets/*
+var interfaceFiles embed.FS
+
+type event struct {
+	Time    string `json:"time"`
+	Message string `json:"message"`
+}
+type replaySummary struct {
+	File     string `json:"file"`
+	Map      string `json:"map"`
+	Result   string `json:"result"`
+	Modified string `json:"modified"`
+	Error    string `json:"error,omitempty"`
+}
+type playerSummary struct {
+	Name       string `json:"name"`
+	ToonHandle string `json:"toonHandle"`
+	Result     string `json:"result"`
+}
+
+type dashboard struct {
+	mu                                    sync.Mutex
+	engine                                *Engine
+	p                                     paths
+	logs                                  []event
+	authCode, authStatus, verificationURI string
+	authPending                           bool
+	replays                               []replaySummary
+	replaysAt                             time.Time
+	shutdown                              chan struct{}
+	shutdownOnce                          sync.Once
+	lastActivity                          time.Time
+}
+
+func newDashboard(p paths, c Config) (*dashboard, error) {
+	d := &dashboard{p: p, shutdown: make(chan struct{})}
+	e, err := newEngine(p, c, d.log)
+	if err != nil {
+		return nil, err
+	}
+	d.engine = e
+	// Verify restored tokens in the background; do not block the dashboard on network.
+	if e.twitch.token.AccessToken != "" {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+			defer cancel()
+			if who, err := e.twitch.identity(ctx); err == nil {
+				d.log("Twitch подключён: @" + who.Login)
+			} else {
+				d.log("Проверка сохранённого Twitch токена: " + err.Error())
+			}
+		}()
+	}
+	d.log("Приложение запущено. Режим симуляции защищает реальные баллы Twitch.")
+	d.log("Файлы HotS открываются только для чтения.")
+	return d, nil
+}
+func (d *dashboard) log(s string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.logs = append(d.logs, event{Time: time.Now().Format("15:04:05"), Message: s})
+	if len(d.logs) > 150 {
+		d.logs = d.logs[len(d.logs)-150:]
+	}
+}
+func (d *dashboard) status() map[string]any {
+	e := d.engine
+	e.mu.Lock()
+	running, config, s := e.running, e.cfg, e.state
+	tw := e.twitch
+	e.mu.Unlock()
+	tw.mu.Lock()
+	// The encrypted DPAPI file is never sent to the UI.
+	connected := tw.token.AccessToken != ""
+	channel := tw.login
+	tw.mu.Unlock()
+	d.mu.Lock()
+	logs := append([]event{}, d.logs...)
+	authCode, authStatus, authPending := d.authCode, d.authStatus, d.authPending
+	d.mu.Unlock()
+	active := s.Active != nil
+	activeDry := false
+	if active {
+		activeDry = s.Active.DryRun
+	}
+	return map[string]any{"running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
+		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
+		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
+		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
+}
+func (d *dashboard) config() Config {
+	d.engine.mu.Lock()
+	defer d.engine.mu.Unlock()
+	return d.engine.cfg
+}
+func (d *dashboard) currentReplays() []replaySummary {
+	d.mu.Lock()
+	if time.Since(d.replaysAt) < 25*time.Second && d.replays != nil {
+		res := append([]replaySummary{}, d.replays...)
+		d.mu.Unlock()
+		return res
+	}
+	d.mu.Unlock()
+	config := d.config()
+	files := replaysAfter(config, time.Time{}, 6)
+	res := make([]replaySummary, 0, len(files))
+	for _, file := range files {
+		s := replaySummary{File: filepath.Base(file.Path), Modified: file.Modified.Format(time.RFC3339)}
+		r, err := parseReplay(file.Path)
+		if err != nil {
+			s.Error = err.Error()
+			s.Result = "unknown"
+		} else {
+			s.Map = r.Map
+			p, er := findOutcome(r, config.PlayerName, config.PlayerToonHandle)
+			if er == nil {
+				s.Result = p.Result
+			} else {
+				s.Result = "unknown"
+			}
+		}
+		res = append(res, s)
+	}
+	d.mu.Lock()
+	d.replays = res
+	d.replaysAt = time.Now()
+	d.mu.Unlock()
+	return res
+}
+func (d *dashboard) invalidateReplays() {
+	d.mu.Lock()
+	d.replays = nil
+	d.replaysAt = time.Time{}
+	d.mu.Unlock()
+}
+func (d *dashboard) doAuth() (map[string]any, error) {
+	d.mu.Lock()
+	if d.authPending {
+		code := d.authCode
+		u := d.verificationURI
+		d.mu.Unlock()
+		return map[string]any{"code": code, "verificationUri": u}, nil
+	}
+	d.authPending = true
+	d.authCode = ""
+	d.authStatus = "Запрашиваем код Twitch…"
+	d.mu.Unlock()
+	config := d.config()
+	if config.ClientID == "" {
+		d.mu.Lock()
+		d.authPending = false
+		d.mu.Unlock()
+		return nil, errors.New("Сначала укажи Twitch Client ID в разделе Twitch и сохрани настройки")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
+	code, err := startDevice(ctx, config.ClientID)
+	if err != nil {
+		cancel()
+		d.mu.Lock()
+		d.authPending = false
+		d.authStatus = "Ошибка запроса кода"
+		d.mu.Unlock()
+		return nil, err
+	}
+	uri := "https://www.twitch.tv/activate"
+	if strings.HasPrefix(code.VerificationURI, "https://") {
+		parsed, e := url.Parse(code.VerificationURI)
+		if e == nil && (strings.EqualFold(parsed.Hostname(), "twitch.tv") || strings.EqualFold(parsed.Hostname(), "www.twitch.tv")) {
+			uri = code.VerificationURI
+		}
+	}
+	d.mu.Lock()
+	d.authCode = code.UserCode
+	d.authStatus = "Введи код и подтверди доступ к Predictions"
+	d.verificationURI = uri
+	d.mu.Unlock()
+	d.log("Twitch: код авторизации получен. Продолжи в браузере Twitch.")
+	go func() {
+		defer cancel()
+		tok, err := pollDevice(ctx, config.ClientID, code, d.log)
+		if err != nil {
+			d.log("Ошибка авторизации Twitch: " + err.Error())
+			d.mu.Lock()
+			d.authPending = false
+			d.authCode = ""
+			d.authStatus = ""
+			d.mu.Unlock()
+			return
+		}
+		d.engine.mu.Lock()
+		t := d.engine.twitch
+		d.engine.mu.Unlock()
+		t.mu.Lock()
+		err = t.saveToken(tok)
+		t.mu.Unlock()
+		if err != nil {
+			d.log("Не удалось защитить токен: " + err.Error())
+			d.mu.Lock()
+			d.authPending = false
+			d.authCode = ""
+			d.mu.Unlock()
+			return
+		}
+		me, err := t.identity(ctx)
+		if err != nil {
+			d.log("Токен получен, но Twitch не прошёл проверку: " + err.Error())
+		} else {
+			d.log("Twitch подключён: @" + me.Login)
+		}
+		d.mu.Lock()
+		d.authPending = false
+		d.authCode = ""
+		d.authStatus = ""
+		d.mu.Unlock()
+	}()
+	return map[string]any{"code": code.UserCode, "verificationUri": uri}, nil
+}
+func (d *dashboard) checkReplay() (map[string]any, error) {
+	cfg := d.config()
+	list := replaysAfter(cfg, time.Time{}, 1)
+	if len(list) == 0 {
+		return nil, errors.New("Реплей не найден. Проверь путь в настройках.")
+	}
+	r, err := parseReplay(list[0].Path)
+	if err != nil {
+		return nil, fmt.Errorf("Не удалось прочитать %s: %w", filepath.Base(list[0].Path), err)
+	}
+	players := make([]playerSummary, 0, len(r.Players))
+	for _, p := range r.Players {
+		players = append(players, playerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Result: p.Result})
+	}
+	res := map[string]any{"file": filepath.Base(list[0].Path), "map": r.Map, "players": players}
+	selected, err := findOutcome(r, cfg.PlayerName, cfg.PlayerToonHandle)
+	if err != nil {
+		d.log("Реплей прочитан, но игрок не определён: " + err.Error())
+	} else {
+		res["selected"] = playerSummary{Name: selected.Name, ToonHandle: selected.ToonHandle, Result: selected.Result}
+		d.log("Реплей: " + r.Map + " · " + selected.Name + " → " + selected.Result)
+	}
+	d.invalidateReplays()
+	return res, nil
+}
+func readJSONRequest(r *http.Request, v any) error {
+	if r.ContentLength > 16384 {
+		return errors.New("Слишком большой запрос")
+	}
+	r.Body = http.MaxBytesReader(nil, r.Body, 16384)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return err
+	}
+	return nil
+}
+func jsonOutput(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(v)
+}
+func requestError(w http.ResponseWriter, err error) {
+	jsonOutput(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+}
+func randomSegment() (string, error) {
+	b := make([]byte, 24)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+func (d *dashboard) routes(addr, secret string) http.Handler {
+	prefix := "/" + secret + "/"
+	web, err := fs.Sub(interfaceFiles, "web")
+	if err != nil {
+		panic(err)
+	}
+	files := http.FileServer(http.FS(web))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// URL capability and strict loopback binding prevent ordinary cross-site requests.
+		if r.Host != addr {
+			http.Error(w, "Unknown Host", http.StatusForbidden)
+			return
+		}
+		if !strings.HasPrefix(r.URL.Path, prefix) {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+		// Used to exit the helper process after the dashboard window has been closed.
+		if strings.HasPrefix(r.URL.Path, prefix+"api/") {
+			d.mu.Lock()
+			d.lastActivity = time.Now()
+			d.mu.Unlock()
+		}
+		sub := strings.TrimPrefix(r.URL.Path, prefix)
+		if !strings.HasPrefix(sub, "api/") {
+			if sub == "" {
+				page, err := interfaceFiles.ReadFile("web/index.html")
+				if err != nil {
+					http.Error(w, "UI unavailable", 500)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Header().Set("Cache-Control", "no-store")
+				_, _ = w.Write(page)
+				return
+			}
+			r.URL.Path = "/" + sub
+			files.ServeHTTP(w, r)
+			return
+		}
+		if r.Header.Get("X-Companion") != "1" {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if r.Method == "POST" {
+			origin := r.Header.Get("Origin")
+			if origin != "" && origin != "http://"+addr {
+				http.Error(w, "Origin refused", http.StatusForbidden)
+				return
+			}
+			if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" {
+				http.Error(w, "Cross-site requests denied", http.StatusForbidden)
+				return
+			}
+		}
+		route := strings.TrimPrefix(sub, "api/")
+		if r.Method == "GET" {
+			switch route {
+			case "bootstrap":
+				jsonOutput(w, 200, map[string]any{"config": d.config(), "status": d.status(), "replays": d.currentReplays()})
+				return
+			case "status":
+				jsonOutput(w, 200, d.status())
+				return
+			case "replays":
+				jsonOutput(w, 200, map[string]any{"replays": d.currentReplays()})
+				return
+			}
+		}
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		switch route {
+		case "config":
+			d.mu.Lock()
+			pending := d.authPending
+			d.mu.Unlock()
+			if pending {
+				requestError(w, errors.New("Заверши авторизацию Twitch перед изменением настроек"))
+				return
+			}
+			var body struct {
+				ClientID          string `json:"clientId"`
+				PlayerName        string `json:"playerName"`
+				PlayerToonHandle  string `json:"playerToonHandle"`
+				ReplayRoot        string `json:"replayRoot"`
+				RealMode          bool   `json:"realMode"`
+				ConfirmedRealMode bool   `json:"confirmedRealMode"`
+			}
+			if err := readJSONRequest(r, &body); err != nil {
+				requestError(w, err)
+				return
+			}
+			if body.RealMode && !body.ConfirmedRealMode {
+				requestError(w, errors.New("Подтверди включение реальных Predictions"))
+				return
+			}
+			if len(body.ClientID) > 160 || len(body.PlayerName) > 160 || len(body.PlayerToonHandle) > 240 || len(body.ReplayRoot) > 1000 {
+				requestError(w, errors.New("Значение настройки слишком длинное"))
+				return
+			}
+			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode}
+			if err := d.engine.updateConfig(cfg); err != nil {
+				requestError(w, err)
+				return
+			}
+			d.invalidateReplays()
+			d.log("Настройки сохранены")
+			jsonOutput(w, 200, map[string]any{"config": cfg})
+			return
+		case "auth":
+			v, err := d.doAuth()
+			if err != nil {
+				requestError(w, err)
+				return
+			}
+			jsonOutput(w, 200, v)
+			return
+		case "replay/check":
+			v, err := d.checkReplay()
+			if err != nil {
+				d.log("Ошибка чтения реплея: " + err.Error())
+				requestError(w, err)
+				return
+			}
+			jsonOutput(w, 200, v)
+			return
+		case "automation/start":
+			if err := d.engine.start(); err != nil {
+				requestError(w, err)
+				return
+			}
+			d.log("Автоматизация запущена")
+			jsonOutput(w, 200, map[string]bool{"ok": true})
+			return
+		case "automation/stop":
+			d.engine.stopWatch()
+			d.log("Мониторинг останавливается")
+			jsonOutput(w, 200, map[string]bool{"ok": true})
+			return
+		case "quit":
+			d.engine.stopWatch()
+			d.shutdownOnce.Do(func() { close(d.shutdown) })
+			jsonOutput(w, 200, map[string]bool{"ok": true})
+			return
+		default:
+			http.NotFound(w, r)
+			return
+		}
+	})
+}
+func (d *dashboard) launch() (string, *http.Server, error) {
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		return "", nil, err
+	}
+	addr := ln.Addr().String()
+	key, err := randomSegment()
+	if err != nil {
+		ln.Close()
+		return "", nil, err
+	}
+	srv := &http.Server{Handler: d.routes(addr, key), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10}
+	go func() {
+		e := srv.Serve(ln)
+		if e != nil && !errors.Is(e, http.ErrServerClosed) {
+			d.log("Локальный сервер: " + e.Error())
+		}
+	}()
+	return "http://" + addr + "/" + key + "/", srv, nil
+}
+func (d *dashboard) stop(srv *http.Server) {
+	d.engine.stopWatch()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(ctx)
+}
+func (d *dashboard) runDesktop(open func(string) error) error {
+	url, srv, err := d.launch()
+	if err != nil {
+		return err
+	}
+	defer d.stop(srv)
+	if err = open(url); err != nil {
+		return err
+	}
+	// A minimized window continues polling; a closed window stops for several minutes.
+	// Explicit Exit terminates immediately.
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-d.shutdown:
+				return
+			case <-ticker.C:
+				d.mu.Lock()
+				last := d.lastActivity
+				d.mu.Unlock()
+				if !last.IsZero() && time.Since(last) > 4*time.Minute {
+					d.log("Окно закрыто или соединение потеряно: остановка приложения")
+					d.shutdownOnce.Do(func() { close(d.shutdown) })
+					return
+				}
+			}
+		}
+	}()
+	<-d.shutdown
+	return nil
+}

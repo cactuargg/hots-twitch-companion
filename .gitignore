@@ -1,0 +1,22 @@
+# Built executables and local artifacts
+*.exe
+*.zip
+/dist/
+/release/
+/coverage.out
+*.test
+
+# Local application data and sensitive Twitch tokens
+config.json
+state.json
+tokens.dpapi
+.twitch-tokens.json
+.env
+.env.*
+*.log
+
+# Editor and OS metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

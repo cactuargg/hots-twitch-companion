@@ -1,0 +1,71 @@
+name: Windows build
+
+'on':
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build Windows x64 GUI executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          go build -trimpath '-ldflags=-H=windowsgui -s -w' -o dist/HotS-Twitch-Companion.exe .
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+          Copy-Item README.ru.md dist/README.ru.md
+          Copy-Item LICENSE dist/LICENSE
+          $hash = (Get-FileHash dist/HotS-Twitch-Companion.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  HotS-Twitch-Companion.exe" | Set-Content dist/SHA256SUMS.txt -Encoding utf8
+          Copy-Item dist/SHA256SUMS.txt SHA256SUMS.txt
+          Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
+
+      - name: Upload compiled package
+        uses: actions/upload-artifact@v4
+        with:
+          name: HotS-Twitch-Companion-Windows-x64
+          path: |
+            HotS-Twitch-Companion-windows-x64.zip
+            SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tested Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: HotS-Twitch-Companion-Windows-x64
+          path: package
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            package/HotS-Twitch-Companion-windows-x64.zip \
+            package/SHA256SUMS.txt \
+            --verify-tag --generate-notes
