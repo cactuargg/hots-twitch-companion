@@ -22,11 +22,29 @@ const authURL = "https://id.twitch.tv/oauth2"
 const apiURL = "https://api.twitch.tv/helix"
 
 type Config struct {
-	ClientID         string `json:"clientId"`
-	PlayerName       string `json:"playerName"`
-	PlayerToonHandle string `json:"playerToonHandle"`
-	ReplayRoot       string `json:"replayRoot"`
-	RealMode         bool   `json:"realMode"`
+	ClientID            string `json:"clientId"`
+	PlayerName          string `json:"playerName"`
+	PlayerToonHandle    string `json:"playerToonHandle"`
+	ReplayRoot          string `json:"replayRoot"`
+	RealMode            bool   `json:"realMode"`
+	Lang                string `json:"lang"`
+	PredictionWindowMin int    `json:"predictionWindowMin"`
+}
+
+const defaultPredictionWindow = 2
+const maxPredictionWindow = 30
+
+func (c Config) lang() string { return normalizeLang(c.Lang) }
+
+// Duration of the betting window in whole minutes, like the Twitch predictions UI.
+func (c Config) predictionWindowMinutes() int {
+	if c.PredictionWindowMin < 1 {
+		return defaultPredictionWindow
+	}
+	if c.PredictionWindowMin > maxPredictionWindow {
+		return maxPredictionWindow
+	}
+	return c.PredictionWindowMin
 }
 type Token struct {
 	AccessToken  string `json:"access_token"`
@@ -180,7 +198,7 @@ func startDevice(ctx context.Context, clientID string) (DeviceResponse, error) {
 	e := requestJSON(ctx, "POST", authURL+"/device", url.Values{"client_id": {clientID}, "scopes": {scope}}, nil, "", "", &d)
 	return d, e
 }
-func pollDevice(ctx context.Context, clientID string, d DeviceResponse, log func(string)) (Token, error) {
+func pollDevice(ctx context.Context, clientID, lang string, d DeviceResponse, log func(string)) (Token, error) {
 	if d.Interval < 5 {
 		d.Interval = 5
 	}
@@ -193,14 +211,14 @@ func pollDevice(ctx context.Context, clientID string, d DeviceResponse, log func
 		case <-ctx.Done():
 			return Token{}, ctx.Err()
 		case <-deadline.C:
-			return Token{}, errors.New("Код авторизации Twitch истёк")
+			return Token{}, errors.New(tr(lang, "auth.code_expired"))
 		case <-ticker.C:
 			var t Token
 			form := url.Values{"client_id": {clientID}, "scopes": {scope}, "device_code": {d.DeviceCode}, "grant_type": {"urn:ietf:params:oauth:grant-type:device_code"}}
 			e := requestJSON(ctx, "POST", authURL+"/token", form, nil, "", "", &t)
 			if e == nil {
 				if t.AccessToken == "" || t.RefreshToken == "" {
-					return Token{}, errors.New("Twitch не прислал токены")
+					return Token{}, errors.New(tr(lang, "auth.no_tokens"))
 				}
 				t.SavedAt = time.Now().Unix()
 				return t, nil
@@ -216,13 +234,14 @@ func pollDevice(ctx context.Context, clientID string, d DeviceResponse, log func
 type Twitch struct {
 	mu                   sync.Mutex
 	clientID             string
+	lang                 string
 	p                    paths
 	token                Token
 	broadcasterID, login string
 }
 
-func newTwitch(p paths, clientID string) (*Twitch, error) {
-	t := &Twitch{clientID: clientID, p: p}
+func newTwitch(p paths, clientID, lang string) (*Twitch, error) {
+	t := &Twitch{clientID: clientID, lang: normalizeLang(lang), p: p}
 	b, e := os.ReadFile(p.secret)
 	if errors.Is(e, os.ErrNotExist) {
 		return t, nil
@@ -261,21 +280,21 @@ func (t *Twitch) tokenFor(ctx context.Context) (string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.token.AccessToken == "" {
-		return "", errors.New("Сначала подключи Twitch")
+		return "", errors.New(tr(t.lang, "twitch.connect_first"))
 	}
 	if time.Since(time.Unix(t.token.SavedAt, 0)) < time.Duration(t.token.ExpiresIn-300)*time.Second {
 		return t.token.AccessToken, nil
 	}
 	if t.token.RefreshToken == "" {
-		return "", errors.New("Токен истёк. Подключи Twitch заново")
+		return "", errors.New(tr(t.lang, "twitch.token_expired"))
 	}
 	form := url.Values{"client_id": {t.clientID}, "grant_type": {"refresh_token"}, "refresh_token": {t.token.RefreshToken}}
 	var token Token
 	if e := requestJSON(ctx, "POST", authURL+"/token", form, nil, "", "", &token); e != nil {
-		return "", fmt.Errorf("Ошибка обновления токена: %w", e)
+		return "", errors.New(tr(t.lang, "twitch.refresh_error", e.Error()))
 	}
 	if token.AccessToken == "" || token.RefreshToken == "" {
-		return "", errors.New("Twitch вернул неполную пару токенов")
+		return "", errors.New(tr(t.lang, "twitch.incomplete_tokens"))
 	}
 	token.SavedAt = time.Now().Unix()
 	if e := t.saveToken(token); e != nil {
@@ -294,7 +313,7 @@ func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
 		return me, e
 	}
 	if me.ClientID != t.clientID {
-		return me, errors.New("Токен выдан другому Client ID")
+		return me, errors.New(tr(t.lang, "twitch.wrong_client"))
 	}
 	valid := false
 	for _, v := range me.Scopes {
@@ -303,7 +322,7 @@ func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
 		}
 	}
 	if !valid {
-		return me, errors.New("Нет разрешения channel:manage:predictions")
+		return me, errors.New(tr(t.lang, "twitch.no_scope"))
 	}
 	t.mu.Lock()
 	t.broadcasterID = me.UserID
@@ -338,7 +357,7 @@ func (t *Twitch) prediction(ctx context.Context, broadcaster, id string) (*apiRe
 	e := t.req(ctx, "GET", route, nil, &d)
 	return &d, e
 }
-func (t *Twitch) create(ctx context.Context) (*Prediction, error) {
+func (t *Twitch) create(ctx context.Context, windowMinutes int) (*Prediction, error) {
 	me, e := t.identity(ctx)
 	if e != nil {
 		return nil, e
@@ -349,28 +368,29 @@ func (t *Twitch) create(ctx context.Context) (*Prediction, error) {
 	}
 	for _, v := range previous.Data {
 		if v.Status == "ACTIVE" || v.Status == "LOCKED" {
-			return nil, errors.New("На Twitch уже есть незавершённый Prediction")
+			return nil, errors.New(tr(t.lang, "twitch.prediction_exists"))
 		}
 	}
+	title, winTitle, lossTitle := tr(t.lang, "prediction.title"), tr(t.lang, "prediction.win"), tr(t.lang, "prediction.loss")
 	var d apiResponse
-	e = t.req(ctx, "POST", "/predictions", map[string]any{"broadcaster_id": me.UserID, "title": "Победа в HotS?", "outcomes": []map[string]string{{"title": "Победа"}, {"title": "Поражение"}}, "prediction_window": 120}, &d)
+	e = t.req(ctx, "POST", "/predictions", map[string]any{"broadcaster_id": me.UserID, "title": title, "outcomes": []map[string]string{{"title": winTitle}, {"title": lossTitle}}, "prediction_window": windowMinutes * 60}, &d)
 	if e != nil {
 		return nil, e
 	}
 	if len(d.Data) != 1 || len(d.Data[0].Outcomes) != 2 {
-		return nil, errors.New("Непредвиденный ответ Twitch при создании Prediction")
+		return nil, errors.New(tr(t.lang, "twitch.create_bad_response"))
 	}
 	p := &Prediction{ID: d.Data[0].ID, BroadcasterID: me.UserID, StartedAt: time.Now().UnixMilli()}
 	for _, o := range d.Data[0].Outcomes {
-		if o.Title == "Победа" {
+		if o.Title == winTitle {
 			p.WinID = o.ID
 		}
-		if o.Title == "Поражение" {
+		if o.Title == lossTitle {
 			p.LossID = o.ID
 		}
 	}
 	if p.ID == "" || p.WinID == "" || p.LossID == "" || p.WinID == p.LossID {
-		return nil, errors.New("Не удалось проверить исходы Twitch")
+		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
 	}
 	return p, nil
 }
@@ -477,7 +497,7 @@ func findLobby() (string, string, time.Time, error) {
 		return nil
 	})
 	if st == nil {
-		return "", "", time.Time{}, errors.New("battlelobby пока не найден")
+		return "", "", time.Time{}, errors.New(tr(langEn, "lobby.not_found"))
 	}
 	key := fmt.Sprintf("%s|%d|%d", newest, st.ModTime().UnixNano(), st.Size())
 	return newest, key, st.ModTime(), nil
@@ -499,25 +519,37 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 	if e != nil {
 		return nil, e
 	}
-	t, e := newTwitch(p, cfg.ClientID)
+	t, e := newTwitch(p, cfg.ClientID, cfg.lang())
 	if e != nil {
 		return nil, e
 	}
 	return &Engine{p: p, cfg: cfg, state: s, twitch: t, log: log}, nil
 }
+
+// langOnlyChange reports whether cfg differs from the stored config only by language.
+// A language switch stays allowed while monitoring runs so the UI can be switched live.
+func (e *Engine) langOnlyChange(cfg Config) bool {
+	return cfg.lang() != e.cfg.lang() &&
+		cfg.ClientID == e.cfg.ClientID &&
+		cfg.PlayerName == e.cfg.PlayerName &&
+		cfg.PlayerToonHandle == e.cfg.PlayerToonHandle &&
+		cfg.ReplayRoot == e.cfg.ReplayRoot &&
+		cfg.RealMode == e.cfg.RealMode &&
+		cfg.PredictionWindowMin == e.cfg.PredictionWindowMin
+}
 func (e *Engine) updateConfig(cfg Config) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.running {
-		return errors.New("Останови наблюдение перед изменением настроек")
+	if e.running && !e.langOnlyChange(cfg) {
+		return errors.New(tr(e.cfg.lang(), "config.stop_watch_first"))
 	}
 	if e.state.Active != nil && e.state.Active.DryRun != !cfg.RealMode {
-		return errors.New("Есть незавершённый прогноз из другого режима. Сначала заверши его в прежнем режиме")
+		return errors.New(tr(e.cfg.lang(), "config.mode_conflict_active"))
 	}
 	if er := writeConfig(e.p, cfg); er != nil {
 		return er
 	}
-	t, er := newTwitch(e.p, cfg.ClientID)
+	t, er := newTwitch(e.p, cfg.ClientID, cfg.lang())
 	if er != nil {
 		return er
 	}
@@ -539,23 +571,23 @@ func (e *Engine) doCreate(ctx context.Context, s *State) error {
 	var er error
 	if !e.cfg.RealMode {
 		p = &Prediction{ID: "SIMULATION", DryRun: true, StartedAt: time.Now().UnixMilli()}
-		e.log("[ТЕСТ] Prediction создан без обращения к Twitch API")
+		e.log(tr(e.cfg.lang(), "log.sim_created"))
 	} else {
-		p, er = e.twitch.create(ctx)
+		p, er = e.twitch.create(ctx, e.cfg.predictionWindowMinutes())
 		if er != nil {
 			return er
 		}
-		e.log("Twitch: создан Prediction " + p.ID)
+		e.log(tr(e.cfg.lang(), "log.prediction_created", p.ID))
 	}
 	s.Active = p
 	return e.updateAndSave(*s)
 }
 func (e *Engine) doSettle(ctx context.Context, s *State, outcome string, source string) error {
 	if s.Active == nil {
-		return errors.New("Нет активного прогноза")
+		return errors.New(tr(e.cfg.lang(), "settle.none_active"))
 	}
 	if s.Active.DryRun {
-		e.log("[ТЕСТ] Исход: " + outcome + " (без Twitch API)")
+		e.log(tr(e.cfg.lang(), "log.sim_outcome", outcome))
 	} else if er := e.twitch.end(ctx, s.Active, outcome); er != nil {
 		return er
 	}
@@ -568,19 +600,19 @@ func (e *Engine) start() error {
 	e.mu.Lock()
 	if e.running {
 		e.mu.Unlock()
-		return errors.New("Уже запущено")
+		return errors.New(tr(e.cfg.lang(), "automation.already_running"))
 	}
 	if e.cfg.PlayerName == "" && e.cfg.PlayerToonHandle == "" {
 		e.mu.Unlock()
-		return errors.New("Укажи ник игрока HotS")
+		return errors.New(tr(e.cfg.lang(), "automation.need_player"))
 	}
 	if e.cfg.ClientID == "" && e.cfg.RealMode {
 		e.mu.Unlock()
-		return errors.New("Укажи Twitch Client ID")
+		return errors.New(tr(e.cfg.lang(), "automation.need_client_id"))
 	}
 	if e.state.Active != nil && e.state.Active.DryRun == e.cfg.RealMode {
 		e.mu.Unlock()
-		return errors.New("Прогноз из другого режима. Переключи режим обратно")
+		return errors.New(tr(e.cfg.lang(), "automation.mode_conflict"))
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	e.running = true
@@ -601,9 +633,10 @@ func (e *Engine) watch(ctx context.Context) {
 		e.mu.Lock()
 		e.running = false
 		e.mu.Unlock()
-		e.log("Наблюдение остановлено")
+		e.log(tr(e.cfg.lang(), "log.watch_stopped"))
 	}()
-	e.log("Мониторинг HotS: " + map[bool]string{true: "РЕАЛЬНЫЕ Predictions", false: "симуляция"}[e.cfg.RealMode])
+	lang := e.cfg.lang()
+	e.log(tr(lang, "log.watch_started", tr(lang, map[bool]string{true: "mode.real", false: "mode.simulation"}[e.cfg.RealMode])))
 	if e.cfg.RealMode {
 		if _, err := e.twitch.identity(ctx); err != nil {
 			e.log("Twitch: " + err.Error())
@@ -631,12 +664,12 @@ func (e *Engine) watch(ctx context.Context) {
 			if !modified.Before(started.Add(-2 * time.Second)) {
 				if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
 					if er := e.doCreate(ctx, &s); er != nil {
-						e.log("Создание: " + er.Error())
+						e.log(tr(e.cfg.lang(), "log.create_error", er.Error()))
 						continue
 					}
-					e.log("Новая игра: " + filepath.Base(filepath.Dir(path)))
+					e.log(tr(e.cfg.lang(), "log.new_game", filepath.Base(filepath.Dir(path))))
 				} else {
-					e.log("Пропуск lobby: прогноз уже идёт либо cooldown")
+					e.log(tr(e.cfg.lang(), "log.skip_lobby"))
 				}
 			}
 			s.LastLobbyKey = key
@@ -647,9 +680,9 @@ func (e *Engine) watch(ctx context.Context) {
 		}
 		age := now.Sub(time.UnixMilli(s.Active.StartedAt))
 		if age > 100*time.Minute {
-			e.log("Результат неизвестен: возврат баллов через отмену")
+			e.log(tr(e.cfg.lang(), "log.timeout_cancel"))
 			if er := e.doSettle(ctx, &s, "cancel", "timeout"); er != nil {
-				e.log("Ошибка отмены: " + er.Error())
+				e.log(tr(e.cfg.lang(), "log.cancel_error", er.Error()))
 			}
 			continue
 		}
@@ -663,17 +696,17 @@ func (e *Engine) watch(ctx context.Context) {
 			replay, er := parseReplay(f.Path)
 			if er == nil {
 				var p Player
-				p, er = findOutcome(replay, e.cfg.PlayerName, e.cfg.PlayerToonHandle)
+				p, er = findOutcome(replay, e.cfg.PlayerName, e.cfg.PlayerToonHandle, e.cfg.lang())
 				if er == nil {
-					e.log("Результат: " + p.Name + " = " + p.Result + ", " + replay.Map)
+					e.log(tr(e.cfg.lang(), "log.result", p.Name, p.Result, replay.Map))
 					if er = e.doSettle(ctx, &s, p.Result, f.Path); er == nil {
-						e.log("Prediction рассчитан: " + p.Result)
+						e.log(tr(e.cfg.lang(), "log.settled", p.Result))
 						break
 					}
 				}
 			}
 			if er != nil && (er.Error() != lastError || time.Since(lastLog) > time.Minute) {
-				e.log("Не удалось обработать " + filepath.Base(f.Path) + ": " + er.Error())
+				e.log(tr(e.cfg.lang(), "log.process_error", filepath.Base(f.Path), er.Error()))
 				lastError = er.Error()
 				lastLog = time.Now()
 			}

@@ -420,7 +420,7 @@ func parseReplay(path string) (Replay, error) {
 	}
 	return result, nil
 }
-func findOutcome(r Replay, playerName, toon string) (Player, error) {
+func findOutcome(r Replay, playerName, toon, lang string) (Player, error) {
 	var matches []Player
 	for _, p := range r.Players {
 		if toon != "" && strings.EqualFold(p.ToonHandle, toon) || toon == "" && strings.EqualFold(p.Name, strings.TrimSpace(playerName)) {
@@ -428,10 +428,10 @@ func findOutcome(r Replay, playerName, toon string) (Player, error) {
 		}
 	}
 	if len(matches) != 1 {
-		return Player{}, fmt.Errorf("Игрок найден %d раз — проверь имя или Toon Handle", len(matches))
+		return Player{}, fmt.Errorf(tr(lang, "replay.player_matches", len(matches)))
 	}
 	if matches[0].Result == "unknown" {
-		return Player{}, errors.New("Неизвестный исход матча")
+		return Player{}, errors.New(tr(lang, "replay.unknown_outcome"))
 	}
 	return matches[0], nil
 }

@@ -65,15 +65,18 @@ func newDashboard(p paths, c Config) (*dashboard, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
 			if who, err := e.twitch.identity(ctx); err == nil {
-				d.log("Twitch подключён: @" + who.Login)
+				d.log(tr(c.lang(), "log.twitch_connected", who.Login))
 			} else {
-				d.log("Проверка сохранённого Twitch токена: " + err.Error())
+				d.log(tr(c.lang(), "log.token_check", err.Error()))
 			}
 		}()
 	}
-	d.log("Приложение запущено. Режим симуляции защищает реальные баллы Twitch.")
-	d.log("Файлы HotS открываются только для чтения.")
+	d.log(tr(c.lang(), "log.app_started"))
+	d.log(tr(c.lang(), "log.read_only"))
 	return d, nil
+}
+func (d *dashboard) tr(key string, args ...any) string {
+	return tr(d.config().Lang, key, args...)
 }
 func (d *dashboard) log(s string) {
 	d.mu.Lock()
@@ -132,7 +135,7 @@ func (d *dashboard) currentReplays() []replaySummary {
 			s.Result = "unknown"
 		} else {
 			s.Map = r.Map
-			p, er := findOutcome(r, config.PlayerName, config.PlayerToonHandle)
+			p, er := findOutcome(r, config.PlayerName, config.PlayerToonHandle, config.lang())
 			if er == nil {
 				s.Result = p.Result
 			} else {
@@ -163,14 +166,14 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 	}
 	d.authPending = true
 	d.authCode = ""
-	d.authStatus = "Запрашиваем код Twitch…"
+	d.authStatus = d.tr("auth.requesting")
 	d.mu.Unlock()
 	config := d.config()
 	if config.ClientID == "" {
 		d.mu.Lock()
 		d.authPending = false
 		d.mu.Unlock()
-		return nil, errors.New("Сначала укажи Twitch Client ID в разделе Twitch и сохрани настройки")
+		return nil, errors.New(d.tr("auth.need_client_id"))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
 	code, err := startDevice(ctx, config.ClientID)
@@ -178,7 +181,7 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 		cancel()
 		d.mu.Lock()
 		d.authPending = false
-		d.authStatus = "Ошибка запроса кода"
+		d.authStatus = d.tr("auth.request_failed")
 		d.mu.Unlock()
 		return nil, err
 	}
@@ -191,15 +194,15 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 	}
 	d.mu.Lock()
 	d.authCode = code.UserCode
-	d.authStatus = "Введи код и подтверди доступ к Predictions"
+	d.authStatus = d.tr("auth.enter_code")
 	d.verificationURI = uri
 	d.mu.Unlock()
-	d.log("Twitch: код авторизации получен. Продолжи в браузере Twitch.")
+	d.log(d.tr("log.auth_code_received"))
 	go func() {
 		defer cancel()
-		tok, err := pollDevice(ctx, config.ClientID, code, d.log)
+		tok, err := pollDevice(ctx, config.ClientID, config.lang(), code, d.log)
 		if err != nil {
-			d.log("Ошибка авторизации Twitch: " + err.Error())
+			d.log(d.tr("log.auth_error", err.Error()))
 			d.mu.Lock()
 			d.authPending = false
 			d.authCode = ""
@@ -214,7 +217,7 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 		err = t.saveToken(tok)
 		t.mu.Unlock()
 		if err != nil {
-			d.log("Не удалось защитить токен: " + err.Error())
+			d.log(d.tr("log.token_protect_error", err.Error()))
 			d.mu.Lock()
 			d.authPending = false
 			d.authCode = ""
@@ -223,9 +226,9 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 		}
 		me, err := t.identity(ctx)
 		if err != nil {
-			d.log("Токен получен, но Twitch не прошёл проверку: " + err.Error())
+			d.log(d.tr("log.identity_failed", err.Error()))
 		} else {
-			d.log("Twitch подключён: @" + me.Login)
+			d.log(d.tr("log.twitch_connected", me.Login))
 		}
 		d.mu.Lock()
 		d.authPending = false
@@ -239,30 +242,30 @@ func (d *dashboard) checkReplay() (map[string]any, error) {
 	cfg := d.config()
 	list := replaysAfter(cfg, time.Time{}, 1)
 	if len(list) == 0 {
-		return nil, errors.New("Реплей не найден. Проверь путь в настройках.")
+		return nil, errors.New(d.tr("replay.not_found"))
 	}
 	r, err := parseReplay(list[0].Path)
 	if err != nil {
-		return nil, fmt.Errorf("Не удалось прочитать %s: %w", filepath.Base(list[0].Path), err)
+		return nil, fmt.Errorf("%s", d.tr("replay.read_error", filepath.Base(list[0].Path), err.Error()))
 	}
 	players := make([]playerSummary, 0, len(r.Players))
 	for _, p := range r.Players {
 		players = append(players, playerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Result: p.Result})
 	}
 	res := map[string]any{"file": filepath.Base(list[0].Path), "map": r.Map, "players": players}
-	selected, err := findOutcome(r, cfg.PlayerName, cfg.PlayerToonHandle)
+	selected, err := findOutcome(r, cfg.PlayerName, cfg.PlayerToonHandle, cfg.lang())
 	if err != nil {
-		d.log("Реплей прочитан, но игрок не определён: " + err.Error())
+		d.log(d.tr("log.replay_no_player", err.Error()))
 	} else {
 		res["selected"] = playerSummary{Name: selected.Name, ToonHandle: selected.ToonHandle, Result: selected.Result}
-		d.log("Реплей: " + r.Map + " · " + selected.Name + " → " + selected.Result)
+		d.log(d.tr("log.replay_summary", r.Map, selected.Name, selected.Result))
 	}
 	d.invalidateReplays()
 	return res, nil
 }
 func readJSONRequest(r *http.Request, v any) error {
 	if r.ContentLength > 16384 {
-		return errors.New("Слишком большой запрос")
+		return errors.New(tr(langEn, "http.request_too_large"))
 	}
 	r.Body = http.MaxBytesReader(nil, r.Body, 16384)
 	dec := json.NewDecoder(r.Body)
@@ -372,36 +375,46 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			pending := d.authPending
 			d.mu.Unlock()
 			if pending {
-				requestError(w, errors.New("Заверши авторизацию Twitch перед изменением настроек"))
+				requestError(w, errors.New(d.tr("config.auth_pending")))
 				return
 			}
 			var body struct {
-				ClientID          string `json:"clientId"`
-				PlayerName        string `json:"playerName"`
-				PlayerToonHandle  string `json:"playerToonHandle"`
-				ReplayRoot        string `json:"replayRoot"`
-				RealMode          bool   `json:"realMode"`
-				ConfirmedRealMode bool   `json:"confirmedRealMode"`
+				ClientID            string `json:"clientId"`
+				PlayerName          string `json:"playerName"`
+				PlayerToonHandle    string `json:"playerToonHandle"`
+				ReplayRoot          string `json:"replayRoot"`
+				RealMode            bool   `json:"realMode"`
+				ConfirmedRealMode   bool   `json:"confirmedRealMode"`
+				Lang                string `json:"lang"`
+				PredictionWindowMin int    `json:"predictionWindowMin"`
 			}
 			if err := readJSONRequest(r, &body); err != nil {
 				requestError(w, err)
 				return
 			}
 			if body.RealMode && !body.ConfirmedRealMode {
-				requestError(w, errors.New("Подтверди включение реальных Predictions"))
+				requestError(w, errors.New(d.tr("config.confirm_real")))
+				return
+			}
+			if body.Lang != "" && normalizeLang(body.Lang) != body.Lang {
+				requestError(w, errors.New(d.tr("config.lang_invalid")))
+				return
+			}
+			if body.PredictionWindowMin < 0 || body.PredictionWindowMin > maxPredictionWindow {
+				requestError(w, errors.New(d.tr("config.window_invalid")))
 				return
 			}
 			if len(body.ClientID) > 160 || len(body.PlayerName) > 160 || len(body.PlayerToonHandle) > 240 || len(body.ReplayRoot) > 1000 {
-				requestError(w, errors.New("Значение настройки слишком длинное"))
+				requestError(w, errors.New(d.tr("config.too_long")))
 				return
 			}
-			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode}
+			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin}
 			if err := d.engine.updateConfig(cfg); err != nil {
 				requestError(w, err)
 				return
 			}
 			d.invalidateReplays()
-			d.log("Настройки сохранены")
+			d.log(d.tr("log.config_saved"))
 			jsonOutput(w, 200, map[string]any{"config": cfg})
 			return
 		case "auth":
@@ -415,7 +428,7 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 		case "replay/check":
 			v, err := d.checkReplay()
 			if err != nil {
-				d.log("Ошибка чтения реплея: " + err.Error())
+				d.log(d.tr("log.replay_check_error", err.Error()))
 				requestError(w, err)
 				return
 			}
@@ -426,12 +439,12 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				requestError(w, err)
 				return
 			}
-			d.log("Автоматизация запущена")
+			d.log(d.tr("log.automation_started"))
 			jsonOutput(w, 200, map[string]bool{"ok": true})
 			return
 		case "automation/stop":
 			d.engine.stopWatch()
-			d.log("Мониторинг останавливается")
+			d.log(d.tr("log.automation_stopping"))
 			jsonOutput(w, 200, map[string]bool{"ok": true})
 			return
 		case "quit":
@@ -460,7 +473,7 @@ func (d *dashboard) launch() (string, *http.Server, error) {
 	go func() {
 		e := srv.Serve(ln)
 		if e != nil && !errors.Is(e, http.ErrServerClosed) {
-			d.log("Локальный сервер: " + e.Error())
+			d.log(tr(d.config().Lang, "log.http_server", e.Error()))
 		}
 	}()
 	return "http://" + addr + "/" + key + "/", srv, nil
@@ -494,7 +507,7 @@ func (d *dashboard) runDesktop(open func(string) error) error {
 				last := d.lastActivity
 				d.mu.Unlock()
 				if !last.IsZero() && time.Since(last) > 4*time.Minute {
-					d.log("Окно закрыто или соединение потеряно: остановка приложения")
+					d.log(d.tr("log.shutdown_idle"))
 					d.shutdownOnce.Do(func() { close(d.shutdown) })
 					return
 				}

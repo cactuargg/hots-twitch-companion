@@ -31,12 +31,13 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           go build -trimpath '-ldflags=-H=windowsgui -s -w' -o dist/HotS-Twitch-Companion.exe .
           if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+          Copy-Item README.md dist/README.md
           Copy-Item README.ru.md dist/README.ru.md
           Copy-Item LICENSE dist/LICENSE
           $hash = (Get-FileHash dist/HotS-Twitch-Companion.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  HotS-Twitch-Companion.exe" | Set-Content dist/SHA256SUMS.txt -Encoding utf8
           Copy-Item dist/SHA256SUMS.txt SHA256SUMS.txt
-          Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
+          Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.md,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
 
       - name: Upload compiled package
         uses: actions/upload-artifact@v4
