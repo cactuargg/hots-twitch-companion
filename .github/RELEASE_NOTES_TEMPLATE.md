@@ -11,6 +11,7 @@ Portable Windows x64 app that automatically runs Twitch Predictions based on you
 - **Configurable Prediction duration** — betting window of 1–30 minutes, like the duration picker in the Twitch Predictions interface (default: 2 minutes).
 - CI: releases are published correctly and include a direct `.exe` download.
 - Fixed: the setup wizard could not be closed (CSS `display:grid` overrode the `hidden` attribute).
+- Fixed: the footer overlapped the content area after the navigation rework (stale `grid-row`), hiding view headings and floating the mode warning and Exit button mid-screen.
 
 ## Downloads
 

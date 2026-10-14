@@ -1,4 +1,4 @@
-# Build HotS Twitch Companion v0.4.1 from source on Windows.
+# Build HotS Twitch Companion v0.4.2 from source on Windows.
 # Requires Go 1.23+ on PATH. No third-party dependencies.
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
