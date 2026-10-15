@@ -18,8 +18,9 @@ function render(s){
   const needsSetup=!!state.config && !(state.config.playerName||state.config.playerToonHandle);
   const title=needsSetup&&!running?t('minimal.setup.title'):view.title;
   const description=needsSetup&&!running?t('minimal.setup.detail'):view.detail;
-  $('overview-state-title').textContent=title;
-  $('overview-state-detail').textContent=description;
+  // Avoid repeating live-region announcements on every 2.5-second status poll.
+  if($('overview-state-title').textContent!==title)$('overview-state-title').textContent=title;
+  if($('overview-state-detail').textContent!==description)$('overview-state-detail').textContent=description;
   $('overview-beacon').classList.toggle('on',running);
   $('overview-beacon').classList.toggle('tracking',view.phase==='tracking');
   $('top-connection').classList.toggle('connected',connected);
@@ -48,8 +49,10 @@ function render(s){
   $('automation-mode-detail').textContent=t(real?'minimal.realDetail':'minimal.simDetail');
   const warning=$('overview-alert');
   const authIssue=real&&running&&!connected;
-  warning.hidden=!real&&!authIssue;
-  warning.textContent=authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
+  const alertText=authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
+  const shouldWarn=real||authIssue;
+  if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
+  warning.hidden=!shouldWarn;
   $('start-label').textContent=needsSetup&&!running?t('minimal.configure'):t(running?'start.stop':'start.start');
   document.querySelector('.overview-toggle').dataset.action=needsSetup&&!running?'wizard':'toggle';
   $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
