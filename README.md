@@ -17,6 +17,16 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 
 Overview now puts **Start/Stop monitoring** and **Check latest replay** above the secondary cards. Its monitoring, Twitch connection, and Prediction statuses are separate. A stored OAuth token is shown as *Needs verification* until Twitch validates it. The estimated betting-window countdown is derived from local timestamps and configuration; it **does not confirm** the current remote Twitch Prediction status.
 
+## Easier setup and preview
+
+The setup wizard and Settings now offer **Choose player from a replay**: pick your identity from the most recent readable replay and the player name plus Toon Handle are filled in together. Choose **Save settings** (or advance through the wizard) to apply your selection. If you have no recorded games, enter the player name manually.
+
+**What viewers will see** previews the exact draft Prediction title, outcome texts and selected betting duration. The preview never makes a Twitch API call or creates a Prediction. It also appears on the wizard's final step.
+
+Twitch still requires a **Public** application Client ID that you provide yourself; no Client Secret is needed. Setup now shows step-by-step instructions, connection status, and a button to copy the Device Code. An embedded shared Client ID is intentionally not bundled.
+
+CI also checks the frontend JavaScript syntax and runs dependency-free Node.js onboarding tests; end users do not need Node.js installed.
+
 ## Getting started
 
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.

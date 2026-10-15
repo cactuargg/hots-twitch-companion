@@ -8,6 +8,19 @@ let toastTimer;
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'onboarding.players.title':'Choose player from a replay',
+  'onboarding.players.help':'Pick your account from the latest readable replay. The name and Toon Handle will be filled in; save to apply.',
+  'onboarding.players.none':'No readable replay with players found yet. You can enter your name manually.',
+  'onboarding.players.from':'From {map} · {n} players',
+  'onboarding.players.selected':'Selected {name} — save to apply.',
+  'onboarding.twitch.steps':'1. Create a Public application in the Twitch Developer Console. 2. Copy the Client ID (never use Client Secret). 3. Connect Twitch and approve the code in your browser.',
+  'onboarding.copy':'Copy code','onboarding.copy.ok':'Twitch code copied','onboarding.copy.fail':'Unable to copy code; select it manually.',
+  'onboarding.twitch.connected':'Connected as @{name}','onboarding.twitch.authorizing':'Waiting for Twitch approval…',
+  'onboarding.twitch.unverified':'Saved Twitch login requires verification.',
+  'onboarding.twitch.disconnected':'Not connected yet — you can continue in simulation mode.',
+  'onboarding.preview.title':'What viewers will see',
+  'onboarding.preview.sample':'Preview only — no Twitch Prediction is created',
+  'onboarding.preview.duration':'Betting window: {min} min',
   'overview.monitor':'HOTS MONITORING','overview.twitch.settings':'Manage Twitch',
   'overview.state.off':'Monitoring paused','overview.state.watching':'Waiting for a match','overview.state.tracking':'Tracking match result',
   'overview.detail.off':'Start monitoring to detect the next match. Simulation is safe by default.',
@@ -102,6 +115,19 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'onboarding.players.title':'Выбрать игрока из реплея',
+  'onboarding.players.help':'Выбери свой аккаунт из последнего доступного реплея. Ник и Toon Handle заполнятся автоматически; для применения сохрани настройки.',
+  'onboarding.players.none':'Реплей с данными игроков пока не найден. Можно ввести ник вручную.',
+  'onboarding.players.from':'Матч: {map} · игроков: {n}',
+  'onboarding.players.selected':'Выбран игрок {name} — сохрани настройки.',
+  'onboarding.twitch.steps':'1. Создай Public-приложение в Twitch Developer Console. 2. Скопируй Client ID (Client Secret не нужен). 3. Подключи Twitch и подтверди код в браузере.',
+  'onboarding.copy':'Скопировать код','onboarding.copy.ok':'Код Twitch скопирован','onboarding.copy.fail':'Не удалось скопировать код — выдели его вручную.',
+  'onboarding.twitch.connected':'Подключён аккаунт @{name}','onboarding.twitch.authorizing':'Ожидаем подтверждение Twitch…',
+  'onboarding.twitch.unverified':'Сохранённое подключение Twitch требует проверки.',
+  'onboarding.twitch.disconnected':'Twitch пока не подключён — можно продолжить в режиме симуляции.',
+  'onboarding.preview.title':'Как это увидят зрители',
+  'onboarding.preview.sample':'Только предпросмотр — Prediction на Twitch не создаётся',
+  'onboarding.preview.duration':'Приём ставок: {min} мин',
   'overview.monitor':'МОНИТОРИНГ HOTS','overview.twitch.settings':'Управление Twitch',
   'overview.state.off':'Мониторинг выключен','overview.state.watching':'Ожидание матча','overview.state.tracking':'Отслеживаем результат',
   'overview.detail.off':'Запусти мониторинг, чтобы отслеживать новый матч. По умолчанию работает симуляция.',
@@ -213,6 +239,8 @@ function applyI18n(){
   for (const o of $('predictionWindow').querySelectorAll('option')) o.textContent = o.value + ' ' + t('unit.min');
   for (const b of document.querySelectorAll('[data-wiz-lang]')) b.classList.toggle('active', b.dataset.wizLang === lang);
   $('lang').value = lang;
+  renderPredictionPreviews();
+  renderPlayerPickers();
 }
 async function setLang(l){
   if (l === lang) return;
@@ -242,6 +270,70 @@ async function setLang(l){
 }
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
+
+function latestReplayPlayers(replays){
+ const match=(Array.isArray(replays)?replays:[]).find(r=>!r.error&&Array.isArray(r.players)&&r.players.length);
+ if(!match)return {map:'',players:[]};
+ const seen=new Set();
+ const players=match.players.filter(p=>{
+   const name=String(p.name||'').trim(),handle=String(p.toonHandle||'').trim();
+   if(!name)return false;
+   const key=name+'|'+handle;
+   if(seen.has(key))return false;
+   seen.add(key);return true;
+ });
+ return {map:match.map||match.file||'',players};
+}
+function renderPlayerPickers(){
+ const match=latestReplayPlayers(state.replays);
+ for(const [id,wizard] of [['settings-player-picker',false],['wizard-player-picker',true]]){
+   const box=$(id);
+   if(!box)continue;
+   box.replaceChildren();
+   if(!match.players.length){box.append(line(t('onboarding.players.none'),'picker-empty'));continue;}
+   box.append(line(t('onboarding.players.from',{map:match.map,n:match.players.length}),'picker-caption'));
+   const list=document.createElement('div');list.className='player-picker-grid';
+   for(const player of match.players){
+     const button=document.createElement('button');button.type='button';button.className='player-choice';
+     const name=document.createElement('strong');name.textContent=player.name;
+     const handle=document.createElement('small');handle.textContent=player.toonHandle||'—';
+     button.append(name,handle);
+     const currentName=(wizard?$('wz-player'):$('playerName')).value.trim();
+     const currentHandle=$('toonHandle').value.trim();
+     const selected=currentName===player.name&&(!player.toonHandle||currentHandle===player.toonHandle);
+     button.classList.toggle('selected',selected);
+     button.setAttribute('aria-pressed',String(selected));
+     button.addEventListener('click',()=>{
+       if(wizard)$('wz-player').value=player.name;
+       else $('playerName').value=player.name;
+       $('toonHandle').value=player.toonHandle||'';
+       state.hasUnsaved=true;renderPlayerPickers();
+       toast(t('onboarding.players.selected',{name:player.name}));
+     });
+     list.append(button);
+   }
+   box.append(list);
+ }
+}
+function renderPredictionPreviews(){
+ const title=$('predTitle').value.trim()||t('prediction.title');
+ const win=$('predWin').value.trim()||t('prediction.win');
+ const loss=$('predLoss').value.trim()||t('prediction.loss');
+ const min=Number.parseInt($('predictionWindow').value,10)||2;
+ for(const prefix of ['preview-','wz-preview-']){
+   $(prefix+'title').textContent=title;
+   $(prefix+'win').textContent=win;
+   $(prefix+'loss').textContent=loss;
+   $(prefix+'duration').textContent=t('onboarding.preview.duration',{min});
+ }
+}
+async function copyTwitchCode(wizard){
+ const value=(wizard?$('wz-auth-code'):$('auth-code')).textContent.trim();
+ if(!value||value==='—')return;
+ try{await navigator.clipboard.writeText(value);toast(t('onboarding.copy.ok'));}
+ catch(e){toast(t('onboarding.copy.fail'),true);}
+}
+
 function toast(message, error = false){ const n=$('toast'); n.textContent=message; n.className='toast show'+(error?' error':''); clearTimeout(toastTimer); toastTimer=setTimeout(()=>n.className='toast',4600); }
 function safe(v){return v==null?'':String(v)}
 async function api(route, method='GET', data){
@@ -252,7 +344,7 @@ async function api(route, method='GET', data){
  finally{clearTimeout(timeout)}
 }
 function getInputs(){return {clientId:$('clientId').value.trim(),playerName:$('playerName').value.trim(),playerToonHandle:$('toonHandle').value.trim(),replayRoot:$('replayRoot').value.trim(),realMode:$('realMode').checked,lang:$('lang').value,predictionWindowMin:parseInt($('predictionWindow').value,10)||2,wizardDone:!!(state.config&&state.config.wizardDone),predictionTitle:$('predTitle').value.trim(),predictionWin:$('predWin').value.trim(),predictionLoss:$('predLoss').value.trim()}}
-function setInputs(c){$('clientId').value=c.clientId||'';$('playerName').value=c.playerName||'';$('toonHandle').value=c.playerToonHandle||'';$('replayRoot').value=c.replayRoot||'';$('realMode').checked=!!c.realMode;$('lang').value=c.lang||lang;$('predictionWindow').value=String(c.predictionWindowMin||2);$('predTitle').value=c.predictionTitle||'';$('predWin').value=c.predictionWin||'';$('predLoss').value=c.predictionLoss||'';state.hasUnsaved=false;}
+function setInputs(c){$('clientId').value=c.clientId||'';$('playerName').value=c.playerName||'';$('toonHandle').value=c.playerToonHandle||'';$('replayRoot').value=c.replayRoot||'';$('realMode').checked=!!c.realMode;$('lang').value=c.lang||lang;$('predictionWindow').value=String(c.predictionWindowMin||2);$('predTitle').value=c.predictionTitle||'';$('predWin').value=c.predictionWin||'';$('predLoss').value=c.predictionLoss||'';state.hasUnsaved=false;renderPredictionPreviews();renderPlayerPickers();}
 function go(view){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+view));document.querySelectorAll('.tab').forEach(n=>n.classList.toggle('active',n.dataset.view===view));}
 function line(text,cls){const d=document.createElement('div');d.className=cls||'';d.textContent=text;return d}
 function relative(iso){if(!iso)return '';const ms=Date.now()-new Date(iso).getTime();if(!Number.isFinite(ms))return '';const min=Math.round(ms/60000);if(min<2)return t('rel.now');if(min<60)return t('rel.min',{n:min});if(min<1440)return t('rel.hour',{n:Math.round(min/60)});return new Date(iso).toLocaleDateString(lang==='ru'?'ru-RU':'en-US')}
@@ -292,7 +384,7 @@ function showReplays(items){
   const keys=new Set(state.replays.map(replayKey));
   for(const key of state.expandedReplays)if(!keys.has(key))state.expandedReplays.delete(key);
   const box=$('recent-list'),full=$('full-replays');box.replaceChildren();full.replaceChildren();
-  if(!state.replays.length){box.append(line(t('replays.empty.recent'),'empty-mini'));full.append(line(t('replays.empty.full'),'empty-mini'));return}
+  if(!state.replays.length){box.append(line(t('replays.empty.recent'),'empty-mini'));full.append(line(t('replays.empty.full'),'empty-mini'));renderPlayerPickers();return}
   state.replays.slice(0,3).forEach((r,i)=>{
     const el=document.createElement('div');el.className='recent-item';
     const img=document.createElement('img');img.className='recent-img';img.src=mapPic(r.map);img.alt='';
@@ -323,6 +415,7 @@ function showReplays(items){
     item.append(head,detail);
     full.append(item);
   });
+  renderPlayerPickers();
 }
 function showLogs(logs){const arr=Array.isArray(logs)?logs:[];for(const id of ['log-preview','full-log']){const el=$(id);el.replaceChildren();const filtered=id==='log-preview'?arr.slice(-7):arr;if(!filtered.length){el.append(line(id==='log-preview'?t('logs.empty'):t('logs.empty.full'),'empty-mini'));continue}for(const entry of filtered){const row=document.createElement('div');row.className='log-row';const time=Object.assign(document.createElement('span'),{className:'log-time',textContent:(entry.time||'').slice(0,8)});const ico=Object.assign(document.createElement('span'),{className:'log-icon',textContent:entry.message&&/(Ошибка|Не удалось|error|fail|expired|invalid)/i.test(entry.message)?'!':'◆'});const msg=Object.assign(document.createElement('span'),{className:'log-msg',textContent:entry.message||''});row.append(time,ico,msg);el.append(row)}}}
 function monitoringView(st) {
@@ -392,6 +485,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'save':await save();break;
  case 'auth':{if(state.hasUnsaved)await save();if(!$('clientId').value.trim()){go('settings');toast(t('toast.need_client'),true);break}const x=await api('auth','POST',{});if(x.code){go('settings');$('auth-progress').hidden=false;$('auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'))}break}
  case 'activate':window.open(code.authUrl,'_blank','noopener,noreferrer');break;
+  case 'copy-code':await copyTwitchCode(false);break;
  case 'developer':window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');break;
  case 'replay':{
     const result=await api('replay/check','POST',{});
@@ -441,6 +535,8 @@ function openWizard(){
   $('wz-player').value=$('playerName').value;
   $('wz-client').value=$('clientId').value;
   $('wz-test-result').hidden=true;$('wz-auth-box').hidden=true;
+  renderPlayerPickers();
+  renderPredictionPreviews();
   renderWizard();
   $('wizard').hidden=false;
 }
@@ -461,11 +557,20 @@ function renderWizard(){
   set('wz-ch-player',!!(state.config&&state.config.playerName),(state.config&&state.config.playerName)||null);
   set('wz-ch-twitch',!!st.connected);
   set('wz-ch-monitor',!!st.running);
+  const twitch=st.twitchPhase||'disconnected';
+  $('wz-twitch-status').textContent=t('onboarding.twitch.'+twitch,{name:st.channel||''});
+  $('wz-twitch-status').classList.toggle('verified',twitch==='connected');
+  if(st.authCode){
+    $('wz-auth-box').hidden=false;
+    $('wz-auth-code').textContent=st.authCode;
+    $('wz-auth-info').textContent=st.authStatus||t('wiz.t.pending');
+  }else if(twitch==='connected'){$('wz-auth-box').hidden=true;}
+  renderPredictionPreviews();
 }
 async function wizNext(){
   if(wiz.step===0){$('playerName').value=$('wz-player').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
   if(wiz.step===1){$('clientId').value=$('wz-client').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
-  if(wiz.step===wiz.max){try{await save({wizardDone:true});}catch(e){toast(e.message,true);}closeWizard();return true;}
+  if(wiz.step===wiz.max){try{await save({wizardDone:true});}catch(e){toast(e.message,true);return false;}closeWizard();return true;}
   wiz.step++;renderWizard();return true;
 }
 async function wizardAction(kind){
@@ -485,6 +590,7 @@ async function wizardAction(kind){
       const x=await api('auth','POST',{});
       if(x.code){const box=$('wz-auth-box');box.hidden=false;$('wz-auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'));}
     }else if(kind==='activate'){window.open(code.authUrl,'_blank','noopener,noreferrer');}
+    else if(kind==='copy-code'){await copyTwitchCode(true);}
     else if(kind==='start'){
       // Wizard simulation must never create real channel-point predictions.
       if(state.config?.realMode || $('realMode').checked){toast(t('wiz.sim_only'),true);return;}
@@ -505,8 +611,20 @@ window.addEventListener('DOMContentLoaded',async()=>{
  document.querySelector('[data-wiz="next"]').addEventListener('click',wizNext);
  document.querySelector('[data-wiz="back"]').addEventListener('click',()=>{if(wiz.step>0){wiz.step--;renderWizard();}});
  document.querySelector('[data-wiz="skip"]').addEventListener('click',async()=>{try{await save({wizardDone:true});}catch(e){/* keep wizard re-runnable */}closeWizard();});
- for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){$(id).addEventListener('input',()=>state.hasUnsaved=true);$(id).addEventListener('change',()=>state.hasUnsaved=true);}
+ for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){
+    $(id).addEventListener('input',()=>{
+      state.hasUnsaved=true;
+      if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();
+    });
+    $(id).addEventListener('change',()=>{
+      state.hasUnsaved=true;
+      if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();
+    });
+  }
  $('lang').addEventListener('change',()=>setLang($('lang').value));
+  $('wz-player').addEventListener('input',renderPlayerPickers);
+  $('playerName').addEventListener('input',renderPlayerPickers);
+  $('toonHandle').addEventListener('input',renderPlayerPickers);
  applyI18n();
  render(null);
  try{
