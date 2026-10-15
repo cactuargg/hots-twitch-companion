@@ -6,7 +6,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'web/assets/app.js'), 'utf8');
+const scriptNames = ['core.js','i18n.js','replays.js','diagnostics.js','onboarding.js','app.js'];
+const source = scriptNames.map(file => fs.readFileSync(path.join(root, 'web/assets', file), 'utf8')).join('\n');
 const html = fs.readFileSync(path.join(root, 'web/index.html'), 'utf8');
 
 function section(start, end) {
@@ -123,7 +124,7 @@ test('Diagnostic filters use explicit severity instead of localized keywords', (
   const sandbox = {
     t: key => key,
   };
-  vm.runInNewContext(section('function selectReplays(', 'function renderHistory(') +
+  vm.runInNewContext(section('function selectEvents(', 'function diagnosticLevel(') +
     '\n' + section('function diagnosticLevel(', 'function createLogRow('), sandbox);
   const events = [
     { time:'10:00:01', level:'error', code:'prediction_create', message:'Prediction rejected' },
