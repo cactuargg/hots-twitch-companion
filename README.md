@@ -13,6 +13,14 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 - **Simulation mode by default** — full pipeline runs without touching real channel points until you explicitly enable real Predictions.
 - Read-only MPQ replay parser (zlib/BZip2) written from public file-format documentation — no DLL injection, hooks, drivers, or game-memory access.
 
+## Compact desktop and Windows display scaling
+
+The Edge app now starts at **1024×800** instead of 1440×950 (the window remains resizable). Spacing and card dimensions are reduced without shrinking text everywhere, and content reflows instead of forcing horizontal scrolling in narrow windows.
+
+Responsive CSS addresses effective viewport widths caused by **125–150% Windows display scaling** and browser zoom. Stop Monitoring is visually distinct from Start. While an app request runs, conflicting action buttons are disabled and the activated button shows a progress indicator; controls recover after success or failure. The OS reduced-motion preference is honored.
+
+Automated checks cover CSS breakpoints and interactive busy states, but cannot replace manual visual review on a high-DPI Windows desktop.
+
 ## Simplified first-run setup
 
 The first-run wizard now has **three focused steps**: (1) choose a HotS player from a replay or enter the nickname manually, (2) optionally connect Twitch, and (3) **start a safe simulation**. Twitch authorization is **not required to simulate**. Likewise, replay validation is optional until a finished match is available.
