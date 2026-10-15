@@ -1,13 +1,30 @@
 'use strict';
 const base = new URL('./', location.href).pathname;
 const $ = id => document.getElementById(id);
-const state = { status: null, config: null, replays: [], expandedReplays: new Set(), hasUnsaved: false, busy: false };
+const state = { status: null, config: null, replays: [], logs: [], expandedReplays: new Set(), hasUnsaved: false, busy: false };
 const code = { authUrl: 'https://www.twitch.tv/activate' };
 let toastTimer;
 
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'history.search':'Search by map, filename or player','history.all':'All results',
+  'history.count':'Showing {shown} of {total} recent matches','history.filtered.empty':'No matches fit the current filters.',
+  'history.playerUnknown':'Selected player not identified. Check the nickname and Toon Handle in Settings.',
+  'history.openSettings':'Review player settings','history.parseError':'Replay could not be read. Try another replay and check the replay folder.',
+  'logs.search':'Search events','logs.filter.all':'All events','logs.filter.error':'Errors','logs.filter.warning':'Warnings','logs.filter.info':'Info',
+  'logs.count':'Showing {shown} of {total} events','logs.filtered.empty':'No events match these filters.',
+  'logs.lifetime':'The event log is held in memory for this app session (up to 150 entries).',
+  'logs.severity.info':'INFO','logs.severity.warning':'WARNING','logs.severity.error':'ERROR',
+  'diag.help.twitch_auth':'Check the Twitch login in Settings, then reconnect if required.',
+  'diag.help.token_store':'The Twitch token could not be stored securely. Check Windows profile permissions.',
+  'diag.help.prediction_create':'Check broadcaster access, channel permissions and any Prediction already running on Twitch.',
+  'diag.help.prediction_settle':'Check the live Prediction state on Twitch. Do not assume viewer points were distributed.',
+  'diag.help.prediction_timeout':'No matching replay was found before the timeout. Check replay folder and player identity.',
+  'diag.help.replay_process':'Check the player name / Toon Handle and the latest replay in Match History.',
+  'diag.help.player_not_found':'Choose your HotS identity from a recent replay in Settings.',
+  'diag.help.replay_check':'Check that the replay folder exists and contains completed matches.',
+  'diag.help.local_server':'Restart the application and check local security software if the interface is inaccessible.',
   'onboarding.players.title':'Choose player from a replay',
   'onboarding.players.help':'Pick your account from the latest readable replay. The name and Toon Handle will be filled in; save to apply.',
   'onboarding.players.none':'No readable replay with players found yet. You can enter your name manually.',
@@ -115,6 +132,23 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'history.search':'Поиск по карте, файлу или игроку','history.all':'Все результаты',
+  'history.count':'Показано {shown} из {total} последних матчей','history.filtered.empty':'По текущим фильтрам матчей нет.',
+  'history.playerUnknown':'Выбранный игрок не определён. Проверь ник и Toon Handle в настройках.',
+  'history.openSettings':'Проверить настройки игрока','history.parseError':'Не удалось прочитать реплей. Попробуй другой и проверь папку записей.',
+  'logs.search':'Поиск событий','logs.filter.all':'Все события','logs.filter.error':'Ошибки','logs.filter.warning':'Предупреждения','logs.filter.info':'Информация',
+  'logs.count':'Показано {shown} из {total} событий','logs.filtered.empty':'По текущим фильтрам событий нет.',
+  'logs.lifetime':'Журнал хранится в памяти только до закрытия программы (до 150 записей).',
+  'logs.severity.info':'ИНФО','logs.severity.warning':'ВНИМАНИЕ','logs.severity.error':'ОШИБКА',
+  'diag.help.twitch_auth':'Проверь авторизацию Twitch в настройках и при необходимости подключись заново.',
+  'diag.help.token_store':'Не удалось безопасно сохранить Twitch-токен. Проверь права профиля Windows.',
+  'diag.help.prediction_create':'Проверь права канала, авторизацию и отсутствие другого активного Prediction на Twitch.',
+  'diag.help.prediction_settle':'Проверь состояние Prediction непосредственно на Twitch. Не считай баллы автоматически распределёнными.',
+  'diag.help.prediction_timeout':'Реплей не появился до тайм-аута. Проверь папку реплеев и выбранного игрока.',
+  'diag.help.replay_process':'Проверь ник / Toon Handle и последний реплей в истории матчей.',
+  'diag.help.player_not_found':'Выбери свой аккаунт из последнего реплея в настройках.',
+  'diag.help.replay_check':'Проверь существование папки и наличие завершённых матчей.',
+  'diag.help.local_server':'Перезапусти приложение и проверь локальную защиту Windows, если интерфейс недоступен.',
   'onboarding.players.title':'Выбрать игрока из реплея',
   'onboarding.players.help':'Выбери свой аккаунт из последнего доступного реплея. Ник и Toon Handle заполнятся автоматически; для применения сохрани настройки.',
   'onboarding.players.none':'Реплей с данными игроков пока не найден. Можно ввести ник вручную.',
