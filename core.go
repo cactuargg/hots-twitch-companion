@@ -736,9 +736,6 @@ func (e *Engine) watch(ctx context.Context) {
 			return
 		}
 	}
-	e.mu.Lock()
-	s := e.state
-	e.mu.Unlock()
 	started := time.Now()
 	lastError := ""
 	lastLog := time.Time{}
@@ -771,7 +768,7 @@ func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *str
 			if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
 				if er := e.doCreate(ctx, &s); er != nil {
 					e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
-					continue
+					return
 				}
 				e.log(tr(e.cfg.lang(), "log.new_game", filepath.Base(filepath.Dir(path))))
 			} else {
