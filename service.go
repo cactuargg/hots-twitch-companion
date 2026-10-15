@@ -162,9 +162,13 @@ func (d *dashboard) status() map[string]any {
 	d.mu.Unlock()
 	active := s.Active != nil
 	activeDry := false
-	if active {
-		activeDry = s.Active.DryRun
-	}
+ activeID := ""
+ activeStartedAt := int64(0)
+ if active {
+  activeDry = s.Active.DryRun
+  activeID = s.Active.ID
+  activeStartedAt = s.Active.StartedAt
+ }
 	phase, secondsLeft := predictionPhase(s.Active, config.predictionWindowMinutes(), time.Now())
 	return map[string]any{"running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
 		"twitchPhase": connectionPhase(hasToken, validated, authPending),
@@ -172,6 +176,7 @@ func (d *dashboard) status() map[string]any {
 		"predictionPhase": phase, "predictionWindowSecondsLeft": secondsLeft,
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
+  "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
 }
 func (d *dashboard) config() Config {
@@ -589,6 +594,24 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			}
 			jsonOutput(w, 200, v)
 			return
+		case "prediction/manual":
+   var body struct {
+    Outcome string `json:"outcome"`
+    ID string `json:"id"`
+    StartedAt int64 `json:"startedAt"`
+   }
+   if err := readJSONRequest(r, &body); err != nil {
+    requestError(w, err)
+    return
+   }
+   ctx, cancel := context.WithTimeout(r.Context(), 40*time.Second)
+   defer cancel()
+   if err := d.engine.manualOutcome(ctx, body.Outcome, body.ID, body.StartedAt); err != nil {
+    requestError(w, err)
+    return
+   }
+   jsonOutput(w, 200, map[string]any{"ok": true})
+   return
 		case "automation/start":
 			if err := d.engine.start(); err != nil {
 				requestError(w, err)
