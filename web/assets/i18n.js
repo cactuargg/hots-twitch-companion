@@ -130,7 +130,7 @@ const I18N = {
   'twitch.placeholder':'Paste your Client ID','twitch.console':'Twitch Console ↗','twitch.connect':'Connect Twitch','twitch.settings.title':'Settings',
   'auth.label':'Authorization code:','auth.activate':'Open Twitch Activate ↗',
   'replays.eyebrow':'MATCH HISTORY','replays.title':'Match History','replays.sub':'Click a match to see its details and players.',
-  'replays.refresh':'Refresh','replays.h2':'Saved matches','replays.check':'Check latest replay',
+  'replays.refresh':'Refresh','replays.h2':'Saved matches','replays.check':'View latest replay result',
   'match.players':'Players','match.you':'YOU','match.error':'Could not parse this replay',
    'replay.no_selected':'Replay decoded, but the configured player was not found. Check your player name or Toon Handle.',
    'toast.replay_no_player':'Replay decoded, but your player was not identified: {err}',
