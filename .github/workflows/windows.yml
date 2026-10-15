@@ -25,6 +25,14 @@ jobs:
       - name: Run tests
         run: go test ./...
 
+      - name: Check UI JavaScript and onboarding tests
+        shell: pwsh
+        run: |
+          node --check web/assets/app.js
+          if ($LASTEXITCODE -ne 0) { throw 'UI JavaScript syntax check failed' }
+          node --test tests/onboarding.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'UI onboarding tests failed' }
+
       - name: Build Windows x64 GUI executable
         shell: pwsh
         run: |
