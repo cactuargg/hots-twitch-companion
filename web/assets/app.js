@@ -32,10 +32,9 @@ function setActionBusy(name, busy){
     if(button.dataset.action==='quit')continue;
     button.disabled=!!busy;
     // Mark just the activated control as pending; other disabled controls are not loading.
-    if(button.dataset.action===name && button.classList?.contains('btn')){
-      if(busy)button.setAttribute('aria-busy','true');
-      else button.removeAttribute('aria-busy');
-    }
+    if(!busy)button.removeAttribute('aria-busy');
+    else if(button.dataset.action===name&&button.classList?.contains('btn'))
+      button.setAttribute('aria-busy','true');
   }
 }
 
