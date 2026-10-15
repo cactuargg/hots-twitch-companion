@@ -83,3 +83,21 @@
  .summary-value,.summary-row>strong{text-align:left;justify-content:flex-start}
  .overview-detail .text-action{align-self:flex-start}
 }
+
+
+/* Secondary controls are visible only while a Prediction is actually pending. */
+.prediction-manual{margin-top:18px;padding:18px 20px;border:1px solid var(--border);
+ border-radius:12px;background:var(--surface)}
+.prediction-manual-head h2{margin:0 0 5px;font-size:14px;font-weight:650}
+.prediction-manual-head p{margin:0 0 15px;color:var(--muted);font-size:12px;line-height:1.55}
+.prediction-manual-buttons{display:flex;gap:9px;flex-wrap:wrap}
+.prediction-manual-buttons .btn{min-height:44px}
+.prediction-manual-buttons .manual-cancel{color:var(--warning);border-color:#65513d}
+.prediction-manual-buttons .manual-cancel:hover:not(:disabled){border-color:var(--warning)}
+#prediction-sync{display:inline-flex;margin-top:10px;font-size:12px}
+@media(max-width:520px){
+ .prediction-manual{padding:15px}
+ .prediction-manual-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .prediction-manual-buttons .btn{min-width:0;white-space:normal}
+ .prediction-manual-buttons .manual-cancel{grid-column:1/-1}
+}
