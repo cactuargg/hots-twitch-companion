@@ -297,6 +297,7 @@ function applyI18n(){
   $('lang').value = lang;
   renderPredictionPreviews();
   renderPlayerPickers();
+  renderSettingsDraft();
 }
 async function setLang(l){
   if (l === lang) return;
