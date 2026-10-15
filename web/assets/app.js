@@ -10,48 +10,62 @@ function monitoringView(st) {
  return {phase,prediction,twitch,title:t('overview.state.'+phase),detail};
 }
 function render(s){
- if(s)state.status=s;
- const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
- const running=!!st.running, active=!!st.active, simulation=!st.realMode, name=st.channel||'';
- const view=monitoringView(st), connected=view.twitch==='connected';
- const twitchLabel=t('overview.twitch.'+view.twitch), predictionLabel=t('overview.pred.'+view.prediction);
- $('top-connection').classList.toggle('connected',connected);
- $('top-connection').classList.toggle('connecting',view.twitch==='authorizing'||view.twitch==='unverified');
- $('top-connected-text').textContent=connected?t('top.connected'):twitchLabel;
- // Keep the announced heading unchanged between polling updates unless the phase changes.
- if($('overview-state-title').textContent!==view.title)$('overview-state-title').textContent=view.title;
- $('overview-state-detail').textContent=view.detail;
- $('overview-player').textContent=st.playerName||st.playerToonHandle||t('dash.player.empty');
- $('overview-twitch').textContent=connected&&name?'@'+name:twitchLabel;
- $('overview-prediction').textContent=predictionLabel;
- $('overview-beacon').classList.toggle('on',running);
- $('overview-beacon').classList.toggle('tracking',view.phase==='tracking');
- $('overview-safety').classList.toggle('is-real',!simulation);
- $('dash-channel').textContent=connected?(name?'@'+name:t('dash.channel.authorized')):twitchLabel;
- $('channel-pill').textContent=twitchLabel;
- $('channel-pill').classList.toggle('online',connected);
- $('dash-player').textContent=st.playerName||st.playerToonHandle||t('dash.player.empty');
- $('dash-prediction').textContent=predictionLabel;
- $('dash-result').textContent=st.lastResult||t('dash.result.none');
- $('match-status').textContent=view.phase==='tracking'?t('match.status.tracking'):running?t('match.status.waiting'):t('match.status.off');
- $('match-description').textContent=view.phase==='tracking'?t('match.desc.tracking'):running?t('match.desc.waiting'):t('match.desc.off');
- $('match-mini').textContent=active?t('match.mini.active'):running?t('match.mini.running'):t('match.mini.waiting');
- $('prediction-state').textContent=predictionLabel;
- $('prediction-help').textContent=active?t('pred.help.active'):simulation?t('pred.help.sim'):t('pred.help.wait');
- $('watch-tag').classList.toggle('on',running);
- $('watch-tag').innerHTML='<span class="pulse-dot"></span> '+t(running?'watch.on':'watch.off');
- $('start-label').textContent=running?t('start.stop'):t('start.start');
- $('automation-mode').textContent=simulation?t('mode.sim'):t('mode.real');
- $('automation-mode-detail').textContent=simulation?t('mode.sim.detail'):t('mode.real.detail');
- $('footer-mode').textContent=simulation?t('footer.mode.sim'):t('footer.mode.real');
- $('footer-detail').textContent=simulation?t('footer.detail.sim'):t('footer.detail.real');
- $('footer-status').textContent=running?t('footer.status.on'):t('footer.status.off');
- $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
- if(st.authCode){$('auth-progress').hidden=false;$('auth-code').textContent=st.authCode;$('auth-info').textContent=st.authStatus||t('auth.info.default')}
- else if(st.authPending){$('auth-progress').hidden=false;$('auth-info').textContent=t('auth.info.pending')}
- else{$('auth-progress').hidden=true}
- showLogs(st.logs);
- if(!$('wizard').hidden)renderWizard();
+  if(s)state.status=s;
+  const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
+  const view=monitoringView(st);
+  const running=!!st.running,connected=view.twitch==='connected';
+  const name=st.channel||'';
+  const needsSetup=!!state.config && !(state.config.playerName||state.config.playerToonHandle);
+  const title=needsSetup&&!running?t('minimal.setup.title'):view.title;
+  const description=needsSetup&&!running?t('minimal.setup.detail'):view.detail;
+  // Avoid repeating live-region announcements on every 2.5-second status poll.
+  if($('overview-state-title').textContent!==title)$('overview-state-title').textContent=title;
+  if($('overview-state-detail').textContent!==description)$('overview-state-detail').textContent=description;
+  $('overview-beacon').classList.toggle('on',running);
+  $('overview-beacon').classList.toggle('tracking',view.phase==='tracking');
+  $('top-connection').classList.toggle('connected',connected);
+  $('top-connection').classList.toggle('connecting',view.twitch==='authorizing'||view.twitch==='unverified');
+  const twitchLabel=t('overview.twitch.'+view.twitch);
+  $('top-connected-text').textContent=connected?t('top.connected'):twitchLabel;
+  $('overview-twitch-dot').classList.toggle('good',connected);
+  $('overview-twitch').textContent=connected&&name?'@'+name:twitchLabel;
+  $('overview-prediction').textContent=t('overview.pred.'+view.prediction);
+  const replay=state.replays[0];
+  $('overview-last-map').textContent=replay?(replay.map||replay.file||'—'):t('minimal.noMatch');
+  const outcome=$('overview-last-outcome');
+  outcome.hidden=!replay;
+  if(replay){
+    const result=replay.result||'unknown';
+    outcome.className='outcome-pill '+(result==='win'?'win':result==='loss'?'loss':'unknown');
+    outcome.textContent=t(result==='win'?'badge.win':result==='loss'?'badge.loss':'badge.unknown');
+  }
+  const events=Array.isArray(st.logs)?st.logs:[];
+  const event=events.length?events[events.length-1]:null;
+  $('overview-latest-event').textContent=event?t('minimal.lastEvent',{message:String(event.message||'').slice(0,145)}):t('minimal.noEvents');
+  const real=!!st.realMode;
+  const safety=$('overview-safety');
+  safety.classList.toggle('is-real',real);
+  $('automation-mode').textContent=t(real?'minimal.realMode':'minimal.simMode');
+  $('automation-mode-detail').textContent=t(real?'minimal.realDetail':'minimal.simDetail');
+  const warning=$('overview-alert');
+  const authIssue=real&&running&&!connected;
+  const alertText=authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
+  const shouldWarn=real||authIssue;
+  if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
+  warning.hidden=!shouldWarn;
+  $('start-label').textContent=needsSetup&&!running?t('minimal.configure'):t(running?'start.stop':'start.start');
+  document.querySelector('.overview-toggle').dataset.action=needsSetup&&!running?'wizard':'toggle';
+  $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
+  if(st.authCode){
+    $('auth-progress').hidden=false;
+    $('auth-code').textContent=st.authCode;
+    $('auth-info').textContent=st.authStatus||t('auth.info.default');
+  }else if(st.authPending){
+    $('auth-progress').hidden=false;
+    $('auth-info').textContent=t('auth.info.pending');
+  }else $('auth-progress').hidden=true;
+  showLogs(st.logs);
+  if(!$('wizard').hidden)renderWizard();
 }
 async function loadStatus(){try{render(await api('status'))}catch(e){/* app closed, keep last UI */}}
 async function reloadReplays(){try{const x=await api('replays');showReplays(x.replays||[])}catch(e){toast(e.message,true)}}

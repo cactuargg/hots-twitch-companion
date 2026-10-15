@@ -26,11 +26,9 @@ function createLogRow(entry){
 }
 function showLogs(logs){
   state.logs=Array.isArray(logs)?logs:[];
-  const preview=$('log-preview'),full=$('full-log'),scroll=full.scrollTop;
-  preview.replaceChildren();
-  const recent=state.logs.slice(-7);
-  if(!recent.length)preview.append(line(t('logs.empty'),'empty-mini'));
-  else for(const entry of recent)preview.append(createLogRow(entry));
+  const full=$('full-log'),scroll=full.scrollTop;
+  // The overview no longer duplicates the event log. Full diagnostics live in History.
+
   const events=selectEvents(state.logs,$('log-filter').value,$('log-search').value);
   $('log-summary').textContent=t('logs.count',{shown:events.length,total:state.logs.length});
   full.replaceChildren();
