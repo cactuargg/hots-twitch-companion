@@ -485,6 +485,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'save':await save();break;
  case 'auth':{if(state.hasUnsaved)await save();if(!$('clientId').value.trim()){go('settings');toast(t('toast.need_client'),true);break}const x=await api('auth','POST',{});if(x.code){go('settings');$('auth-progress').hidden=false;$('auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'))}break}
  case 'activate':window.open(code.authUrl,'_blank','noopener,noreferrer');break;
+  case 'copy-code':await copyTwitchCode(false);break;
  case 'developer':window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');break;
  case 'replay':{
     const result=await api('replay/check','POST',{});
@@ -534,6 +535,8 @@ function openWizard(){
   $('wz-player').value=$('playerName').value;
   $('wz-client').value=$('clientId').value;
   $('wz-test-result').hidden=true;$('wz-auth-box').hidden=true;
+  renderPlayerPickers();
+  renderPredictionPreviews();
   renderWizard();
   $('wizard').hidden=false;
 }
@@ -554,11 +557,20 @@ function renderWizard(){
   set('wz-ch-player',!!(state.config&&state.config.playerName),(state.config&&state.config.playerName)||null);
   set('wz-ch-twitch',!!st.connected);
   set('wz-ch-monitor',!!st.running);
+  const twitch=st.twitchPhase||'disconnected';
+  $('wz-twitch-status').textContent=t('onboarding.twitch.'+twitch,{name:st.channel||''});
+  $('wz-twitch-status').classList.toggle('verified',twitch==='connected');
+  if(st.authCode){
+    $('wz-auth-box').hidden=false;
+    $('wz-auth-code').textContent=st.authCode;
+    $('wz-auth-info').textContent=st.authStatus||t('wiz.t.pending');
+  }else if(twitch==='connected'){$('wz-auth-box').hidden=true;}
+  renderPredictionPreviews();
 }
 async function wizNext(){
   if(wiz.step===0){$('playerName').value=$('wz-player').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
   if(wiz.step===1){$('clientId').value=$('wz-client').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
-  if(wiz.step===wiz.max){try{await save({wizardDone:true});}catch(e){toast(e.message,true);}closeWizard();return true;}
+  if(wiz.step===wiz.max){try{await save({wizardDone:true});}catch(e){toast(e.message,true);return false;}closeWizard();return true;}
   wiz.step++;renderWizard();return true;
 }
 async function wizardAction(kind){
@@ -578,6 +590,7 @@ async function wizardAction(kind){
       const x=await api('auth','POST',{});
       if(x.code){const box=$('wz-auth-box');box.hidden=false;$('wz-auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'));}
     }else if(kind==='activate'){window.open(code.authUrl,'_blank','noopener,noreferrer');}
+    else if(kind==='copy-code'){await copyTwitchCode(true);}
     else if(kind==='start'){
       // Wizard simulation must never create real channel-point predictions.
       if(state.config?.realMode || $('realMode').checked){toast(t('wiz.sim_only'),true);return;}
@@ -598,8 +611,20 @@ window.addEventListener('DOMContentLoaded',async()=>{
  document.querySelector('[data-wiz="next"]').addEventListener('click',wizNext);
  document.querySelector('[data-wiz="back"]').addEventListener('click',()=>{if(wiz.step>0){wiz.step--;renderWizard();}});
  document.querySelector('[data-wiz="skip"]').addEventListener('click',async()=>{try{await save({wizardDone:true});}catch(e){/* keep wizard re-runnable */}closeWizard();});
- for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){$(id).addEventListener('input',()=>state.hasUnsaved=true);$(id).addEventListener('change',()=>state.hasUnsaved=true);}
+ for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){
+    $(id).addEventListener('input',()=>{
+      state.hasUnsaved=true;
+      if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();
+    });
+    $(id).addEventListener('change',()=>{
+      state.hasUnsaved=true;
+      if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();
+    });
+  }
  $('lang').addEventListener('change',()=>setLang($('lang').value));
+  $('wz-player').addEventListener('input',renderPlayerPickers);
+  $('playerName').addEventListener('input',renderPlayerPickers);
+  $('toonHandle').addEventListener('input',renderPlayerPickers);
  applyI18n();
  render(null);
  try{
