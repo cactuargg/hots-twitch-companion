@@ -9,6 +9,23 @@ function monitoringView(st) {
  }
  return {phase,prediction,twitch,title:t('overview.state.'+phase),detail};
 }
+function renderSettingsDraft(){
+  const status=$('settings-save-status');
+  if(status){
+    status.textContent=t(state.hasUnsaved?'minimal.settings.unsaved':'minimal.settings.saved');
+    status.classList.toggle('dirty',state.hasUnsaved);
+  }
+  const warning=$('settings-real-warning');
+  if(warning){
+    const checked=$('realMode').checked, enabled=!!state.config?.realMode;
+    warning.hidden=!checked&&!enabled;
+    const key=enabled?(checked?'minimal.settings.realActive':'minimal.settings.realStopPending'):'minimal.settings.realPending';
+    warning.textContent=t(key);
+    const row=$('realMode').closest?.('.settings-real-mode');
+    row?.classList.toggle('active',checked||enabled);
+  }
+}
+
 function render(s){
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
@@ -56,6 +73,8 @@ function render(s){
   $('start-label').textContent=needsSetup&&!running?t('minimal.configure'):t(running?'start.stop':'start.start');
   document.querySelector('.overview-toggle').dataset.action=needsSetup&&!running?'wizard':'toggle';
   $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
+  $('settings-connect-label').textContent=t(connected?'minimal.settings.reconnect':'twitch.connect');
+  renderSettingsDraft();
   if(st.authCode){
     $('auth-progress').hidden=false;
     $('auth-code').textContent=st.authCode;
@@ -73,11 +92,29 @@ async function save(over={}){
  const data={...getInputs(),...over};
  if(data.realMode&&!state.config?.realMode){if(!confirm(t('confirm.real'))){data.realMode=false;$('realMode').checked=false}}
  const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
- state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();toast(t('toast.saved'));await loadStatus();return x;
+ state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();renderSettingsDraft();toast(t('toast.saved'));await loadStatus();return x;
 }
 async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;try{switch(name){
  case 'save':await save();break;
- case 'auth':{if(state.hasUnsaved)await save();if(!$('clientId').value.trim()){go('settings');toast(t('toast.need_client'),true);break}const x=await api('auth','POST',{});if(x.code){go('settings');$('auth-progress').hidden=false;$('auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'))}break}
+ case 'auth':{
+   if(!$('clientId').value.trim()){
+     go('settings');
+     $('settings-advanced').open=true;
+     $('clientId').focus();
+     toast(t('minimal.settings.clientRequired'),true);
+     break;
+   }
+   if(state.hasUnsaved)await save();
+   const x=await api('auth','POST',{});
+   if(x.code){
+     go('settings');
+     $('auth-progress').hidden=false;
+     $('auth-code').textContent=x.code;
+     code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';
+     toast(t('toast.auth_code'));
+   }
+   break;
+ }
  case 'activate':window.open(code.authUrl,'_blank','noopener,noreferrer');break;
   case 'copy-code':await copyTwitchCode(false);break;
  case 'developer':window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');break;
@@ -97,7 +134,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'wizard':openWizard();break;
  case 'check-root':await checkReplayRoot();break;
   case 'reset-root':
-    $('replayRoot').value='';state.hasUnsaved=true;
+    $('replayRoot').value='';state.hasUnsaved=true;renderSettingsDraft();
     await checkReplayRoot();
     break;
   case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
@@ -116,7 +153,7 @@ async function checkReplayRoot(){
       const cnt=Object.assign(document.createElement('small'),{textContent:en.exists?t('root.found',{n:en.replays}):t('root.none')});
       row.title=t('root.use');
       row.append(mark,info,cnt);
-      row.addEventListener('click',()=>{$('replayRoot').value=en.path;state.hasUnsaved=true;});
+      row.addEventListener('click',()=>{$('replayRoot').value=en.path;state.hasUnsaved=true;renderSettingsDraft();});
       box.append(row);
     }
   }catch(e){box.replaceChildren(line(e.message,'empty-mini'));}
@@ -134,11 +171,11 @@ window.addEventListener('DOMContentLoaded',async()=>{
  document.querySelector('[data-wiz="skip"]').addEventListener('click',async()=>{try{await save({wizardDone:true});}catch(e){/* keep wizard re-runnable */}closeWizard();});
  for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){
     $(id).addEventListener('input',()=>{
-      state.hasUnsaved=true;
+      state.hasUnsaved=true;renderSettingsDraft();
       if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();
     });
     $(id).addEventListener('change',()=>{
-      state.hasUnsaved=true;
+      state.hasUnsaved=true;renderSettingsDraft();
       if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();
     });
   }

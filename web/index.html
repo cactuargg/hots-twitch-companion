@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="./assets/overview.css" />
   <link rel="stylesheet" href="./assets/onboarding.css" />
   <link rel="stylesheet" href="./assets/diagnostics.css" />
+  <link rel="stylesheet" href="./assets/settings.css" />
   <script defer src="./assets/core.js"></script>
   <script defer src="./assets/i18n.js"></script>
   <script defer src="./assets/replays.js"></script>
@@ -82,46 +83,100 @@
           </div>
         </details>
       </section>
-      <section class="view" id="view-settings" role="tabpanel" aria-labelledby="tab-settings"><div class="view-heading"><div><div class="eyebrow" data-i18n="settings.eyebrow">КОНФИГУРАЦИЯ</div><h1 data-i18n="settings.title">Настройки</h1><p data-i18n="settings.sub">Все настройки сохраняются в профиле Windows. Файлы игры не изменяются.</p></div></div><div class="content-panel">
-        <h2 data-i18n="settings.interface">Интерфейс</h2>
-        <label for="lang" data-i18n="settings.lang">Язык интерфейса</label><select id="lang"><option value="en">English</option><option value="ru">Русский</option></select>
-        <div class="separation"></div>
-        <h2 data-i18n="settings.twitch">Twitch</h2>
-        <p id="twitch-info" class="secondary">…</p>
-        <p class="field-hint onboarding-hint" data-i18n="onboarding.twitch.steps">1. Создай Public-приложение в Twitch Developer Console. 2. Скопируй Client ID (Client Secret не нужен). 3. Подключи Twitch и подтверди код в браузере.</p>
-        <label for="clientId">Twitch Client ID</label><input id="clientId" type="text" spellcheck="false" placeholder="Вставь Client ID" maxlength="160" data-i18n-placeholder="twitch.placeholder"/>
-        <div class="form-buttons"><button class="btn btn-outline" data-action="developer"><span data-i18n="twitch.console">Консоль Twitch ↗</span></button><button class="btn btn-primary short" data-action="auth"><span data-i18n="twitch.connect">Подключить Twitch</span></button></div>
-        <div class="auth-progress" id="auth-progress" hidden><strong><span data-i18n="auth.label">Код для авторизации:</span> <span id="auth-code">—</span></strong><span id="auth-info">…</span><button class="btn btn-outline" data-action="copy-code" data-i18n="onboarding.copy">Копировать код</button><button class="btn btn-outline" data-action="activate"><span data-i18n="auth.activate">Открыть Twitch Activate ↗</span></button></div>
-        <div class="separation"></div>
-        <h2>Heroes of the Storm</h2>
-        <div class="player-discovery">
-          <div class="player-discovery-intro"><strong data-i18n="onboarding.players.title">Выбрать игрока из реплея</strong><small data-i18n="onboarding.players.help">Выбери себя из игроков последнего доступного матча — ник и Toon Handle заполнятся автоматически. Изменения сохраняются кнопкой ниже.</small></div>
-          <div id="settings-player-picker" class="player-picker" aria-live="polite"></div>
+      <section class="view" id="view-settings" role="tabpanel" aria-labelledby="tab-settings">
+        <div class="view-heading">
+          <h1 data-i18n="settings.title">Настройки</h1>
+          <p data-i18n="minimal.settings.sub">Всё необходимое для автоматизации. Остальное — в расширенных настройках.</p>
         </div>
-        <label for="playerName" data-i18n="settings.player">Ник игрока</label><input id="playerName" type="text" placeholder="Ник из реплея" maxlength="160" data-i18n-placeholder="settings.player.ph"/>
-        <label for="toonHandle" data-i18n="settings.toon">Toon Handle (необязательно)</label><input id="toonHandle" type="text" placeholder="Точный идентификатор игрока" maxlength="240" data-i18n-placeholder="settings.toon.ph"/>
-        <small class="field-hint" data-i18n="settings.toon.hint">Не BattleTag. Уникальный ID аккаунта Blizzard из реплея (например 2-Hero-1-123456). Нужен только если ник не уникален; скопируй его из «Истории матчей» рядом со своим ником.</small>
-        <label for="replayRoot" data-i18n="settings.root">Папка с реплеями (можно оставить пустой)</label><input id="replayRoot" type="text" placeholder="Поиск в Documents / Heroes of the Storm" maxlength="1000" data-i18n-placeholder="settings.root.ph"/>
-        <small class="field-hint" data-i18n="settings.root.hint">Пусто — стандартные папки Documents и OneDrive/Documents (Heroes of the Storm). Введи свой путь и проверь его кнопкой ниже.</small>
-        <div class="form-buttons root-actions"><button type="button" class="btn btn-outline" data-action="check-root"><svg><use href="#i-refresh"/></svg> <span data-i18n="root.check">Проверить папку</span></button><button type="button" class="btn btn-outline" data-action="reset-root"><span data-i18n="root.reset">Стандартная папка</span></button></div>
-        <div id="root-check-result" class="root-check" hidden></div>
-        <div class="separation"></div>
-        <h2 data-i18n="settings.mode">Режим работы</h2>
-        <label for="predictionWindow" data-i18n="settings.window">Длительность Prediction</label><select id="predictionWindow"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option></select><small class="field-hint" data-i18n="settings.window.hint">Время приёма ставок, как в интерфейсе Twitch Predictions (1–30 минут).</small>
-        <label for="predTitle" data-i18n="settings.predTitle">Заголовок Prediction</label><input id="predTitle" type="text" maxlength="45" data-i18n-placeholder="prediction.title"/>
-        <label for="predWin" data-i18n="settings.predWin">Вариант победы</label><input id="predWin" type="text" maxlength="25" data-i18n-placeholder="prediction.win"/>
-        <label for="predLoss" data-i18n="settings.predLoss">Вариант поражения</label><input id="predLoss" type="text" maxlength="25" data-i18n-placeholder="prediction.loss"/>
-        <small class="field-hint" data-i18n="settings.predHint">Оставь поля пустыми — используются значения по умолчанию для выбранного языка.</small>
-        <div class="prediction-preview" aria-label="Prediction preview" role="group">
-          <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — ничего не создаётся на Twitch</small></div>
-          <strong id="preview-title">…</strong>
-          <div class="prediction-options"><span id="preview-win">…</span><span id="preview-loss">…</span></div>
-          <small id="preview-duration">…</small>
+        <div class="settings-language">
+          <label for="lang" data-i18n="settings.lang">Язык интерфейса</label>
+          <select id="lang"><option value="en">English</option><option value="ru">Русский</option></select>
         </div>
-        <div class="separation"></div>
-        <label class="check-row"><input id="realMode" type="checkbox"/><span><strong data-i18n="settings.real">Разрешить реальные Twitch Predictions</strong><small data-i18n="settings.real.sub">Только после проверки парсера: реальные баллы зрителей будут распределяться автоматически.</small></span></label>
-        <div class="form-buttons"><button class="btn btn-primary short" data-action="save"><svg><use href="#i-settings"/></svg> <span data-i18n="settings.save">Сохранить настройки</span></button><button class="btn btn-outline" data-action="wizard"><svg><use href="#i-wand"/></svg> <span data-i18n="settings.wizard">Мастер настройки</span></button></div>
-      </div></section>
+        <div class="settings-stack">
+          <section class="settings-card" aria-labelledby="settings-twitch-title">
+            <div class="settings-card-heading">
+              <h2 id="settings-twitch-title">Twitch</h2>
+              <span class="settings-status" id="twitch-info" role="status">…</span>
+            </div>
+            <p class="settings-card-description" data-i18n="minimal.settings.twitch">Подключи канал, на котором будут создаваться Predictions.</p>
+            <button type="button" class="btn btn-outline" data-action="auth"><span id="settings-connect-label" data-i18n="twitch.connect">Подключить Twitch</span></button>
+            <div class="auth-progress" id="auth-progress" hidden>
+              <strong><span data-i18n="auth.label">Код для авторизации:</span> <span id="auth-code">—</span></strong>
+              <span id="auth-info">…</span>
+              <button type="button" class="btn btn-outline" data-action="copy-code" data-i18n="onboarding.copy">Копировать код</button>
+              <button type="button" class="btn btn-outline" data-action="activate"><span data-i18n="auth.activate">Открыть Twitch Activate ↗</span></button>
+            </div>
+          </section>
+
+          <section class="settings-card" aria-labelledby="settings-player-title">
+            <h2 id="settings-player-title">Heroes of the Storm</h2>
+            <label for="playerName" data-i18n="settings.player">Ник игрока</label>
+            <input id="playerName" type="text" placeholder="Ник из реплея" maxlength="160" data-i18n-placeholder="settings.player.ph"/>
+            <details class="settings-inline-details" id="settings-player-choose">
+              <summary data-i18n="minimal.settings.selectPlayer">Выбрать игрока из последнего реплея</summary>
+              <div class="player-discovery">
+                <div class="player-discovery-intro"><small data-i18n="onboarding.players.help">Выбери себя из последнего реплея. Ник и Toon Handle подставятся автоматически.</small></div>
+                <div id="settings-player-picker" class="player-picker" aria-live="polite"></div>
+              </div>
+            </details>
+          </section>
+
+          <section class="settings-card" aria-labelledby="settings-pred-title">
+            <h2 id="settings-pred-title">Prediction</h2>
+            <label for="predictionWindow" data-i18n="settings.window">Длительность Prediction</label>
+            <select id="predictionWindow"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option></select>
+            <div class="prediction-preview" aria-label="Prediction preview" role="group">
+              <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — ничего не создаётся на Twitch</small></div>
+              <strong id="preview-title">…</strong>
+              <div class="prediction-options"><span id="preview-win">…</span><span id="preview-loss">…</span></div>
+              <small id="preview-duration">…</small>
+            </div>
+            <label class="check-row settings-real-mode"><input id="realMode" type="checkbox"/><span><strong data-i18n="settings.real">Разрешить реальные Twitch Predictions</strong><small data-i18n="settings.real.sub">Используются настоящие баллы зрителей. Включай после проверки симуляции.</small></span></label>
+            <p id="settings-real-warning" class="settings-real-warning" hidden data-i18n="minimal.settings.realPending">Реальный режим будет включён после сохранения и подтверждения.</p>
+          </section>
+        </div>
+
+        <details class="secondary-details settings-advanced" id="settings-advanced">
+          <summary data-i18n="minimal.settings.advanced">Расширенные настройки</summary>
+          <div class="secondary-details-body">
+            <section class="settings-advanced-group">
+              <h3 data-i18n="minimal.settings.twitchAdvanced">Подключение Twitch</h3>
+              <p class="field-hint" data-i18n="onboarding.twitch.steps">Создай Public-приложение в Twitch Developer Console и вставь его Client ID. Client Secret не нужен.</p>
+              <label for="clientId">Twitch Client ID</label>
+              <input id="clientId" type="text" spellcheck="false" maxlength="160" autocomplete="off" data-i18n-placeholder="twitch.placeholder"/>
+              <button type="button" class="text-action" data-action="developer" data-i18n="twitch.console">Консоль Twitch ↗</button>
+            </section>
+            <section class="settings-advanced-group">
+              <h3 data-i18n="minimal.settings.playerAdvanced">Распознавание игрока и реплеев</h3>
+              <label for="toonHandle" data-i18n="settings.toon">Toon Handle (необязательно)</label>
+              <input id="toonHandle" type="text" maxlength="240" data-i18n-placeholder="settings.toon.ph"/>
+              <small class="field-hint" data-i18n="settings.toon.hint">Уникальный ID из реплея, нужен только при неуникальном нике.</small>
+              <label for="replayRoot" data-i18n="settings.root">Папка с реплеями (можно оставить пустой)</label>
+              <input id="replayRoot" type="text" maxlength="1000" data-i18n-placeholder="settings.root.ph"/>
+              <small class="field-hint" data-i18n="settings.root.hint">Пусто — автоматический поиск стандартной папки.</small>
+              <div class="form-buttons root-actions"><button type="button" class="btn btn-outline" data-action="check-root"><span data-i18n="root.check">Проверить папку</span></button><button type="button" class="btn btn-outline" data-action="reset-root"><span data-i18n="root.reset">Стандартная папка</span></button></div>
+              <div id="root-check-result" class="root-check" hidden></div>
+            </section>
+            <section class="settings-advanced-group">
+              <h3 data-i18n="minimal.settings.copyAdvanced">Текст Prediction</h3>
+              <label for="predTitle" data-i18n="settings.predTitle">Заголовок Prediction</label>
+              <input id="predTitle" type="text" maxlength="45" data-i18n-placeholder="prediction.title"/>
+              <label for="predWin" data-i18n="settings.predWin">Вариант победы</label>
+              <input id="predWin" type="text" maxlength="25" data-i18n-placeholder="prediction.win"/>
+              <label for="predLoss" data-i18n="settings.predLoss">Вариант поражения</label>
+              <input id="predLoss" type="text" maxlength="25" data-i18n-placeholder="prediction.loss"/>
+              <small class="field-hint" data-i18n="settings.predHint">Пустые поля — варианты по умолчанию для выбранного языка.</small>
+            </section>
+          </div>
+        </details>
+        <div class="settings-savebar">
+          <span id="settings-save-status" class="settings-save-status" role="status" aria-live="polite" data-i18n="minimal.settings.saved">Все изменения сохранены</span>
+          <div class="form-buttons">
+            <button type="button" class="btn btn-primary short" data-action="save"><span data-i18n="settings.save">Сохранить настройки</span></button>
+            <button type="button" class="btn btn-outline" data-action="wizard"><span data-i18n="settings.wizard">Мастер настройки</span></button>
+          </div>
+        </div>
+      </section>
     </main>
     <footer class="footer"><span>HotS Twitch Companion</span><button type="button" class="quit" data-action="quit" data-i18n="footer.quit">Выход</button></footer>
   </div>

@@ -13,6 +13,14 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 - **Simulation mode by default** — full pipeline runs without touching real channel points until you explicitly enable real Predictions.
 - Read-only MPQ replay parser (zlib/BZip2) written from public file-format documentation — no DLL injection, hooks, drivers, or game-memory access.
 
+## Simplified settings
+
+Settings now has three straightforward cards: Twitch (connection and status), Heroes of the Storm (player name and optional replay-based selection), and Prediction (betting window, preview and an **explicit live viewer-points toggle**).
+
+The technical controls (Twitch Client ID, Toon Handle, replay path and customized Prediction copy) remain fully supported but are tucked into **Advanced settings**. The configuration format and behavior are unchanged. If a user clicks Connect without a Client ID, the advanced section opens and focuses the correct field.
+
+A persistent Save bar indicates draft changes. First enabling real Predictions still requires explicit confirmation, and unchecking an enabled live mode warns that live points remain enabled until the change is saved. Language selection is visible at the top and persists independently.
+
 ## Minimal production interface
 
 The live Home screen now follows the approved minimalist prototype: **one status, one Start/Stop action, Twitch, Prediction and last match**. The full event log retains its filters inside expandable Diagnostics in History. Navigation has three tabs: Home, History and Settings. Decorative game frames, glowing cards and banners were removed. Live mode still warns about real viewer channel points.
