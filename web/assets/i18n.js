@@ -332,7 +332,7 @@ const I18N = {
   'twitch.placeholder':'Вставь Client ID','twitch.console':'Консоль Twitch ↗','twitch.connect':'Подключить Twitch','twitch.settings.title':'Настройки',
   'auth.label':'Код для авторизации:','auth.activate':'Открыть Twitch Activate ↗',
   'replays.eyebrow':'ИСТОРИЯ МАТЧЕЙ','replays.title':'История матчей','replays.sub':'Нажми на матч, чтобы увидеть данные игры и игроков.',
-  'replays.refresh':'Обновить','replays.h2':'Сохранённые матчи','replays.check':'Показать результат реплея'
+  'replays.refresh':'Обновить','replays.h2':'Сохранённые матчи','replays.check':'Показать результат реплея',
   'match.players':'Игроки','match.you':'ВЫ','match.error':'Не удалось разобрать этот реплей',
    'replay.no_selected':'Реплей прочитан, но выбранный игрок не найден. Проверь ник или Toon Handle.',
    'toast.replay_no_player':'Реплей прочитан, но твой игрок не определён: {err}',
