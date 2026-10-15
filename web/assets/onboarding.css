@@ -36,3 +36,18 @@
 .wizard-preview{padding:14px}
 @media(max-width:440px){.player-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .prediction-options{grid-template-columns:1fr}}
+
+
+/* Pickers and previews must not impose a minimum width on compact desktop windows. */
+.player-discovery,.player-picker,.prediction-preview{min-width:0}
+.player-picker-grid{grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr))}
+.player-choice{min-width:0}
+.player-choice strong,.player-choice small{max-width:100%}
+.prediction-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:520px){
+ .player-discovery{padding:12px}
+ .prediction-preview{padding:14px;gap:11px}
+ .prediction-options{gap:8px}
+ .prediction-options span{padding:11px 8px}
+}
+@media(max-width:380px){.prediction-options{grid-template-columns:minmax(0,1fr)}}
