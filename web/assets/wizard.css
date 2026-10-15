@@ -46,3 +46,57 @@
  .wizard-foot{flex-wrap:wrap}
  .wiz-nav{margin-left:auto}
 }
+
+
+/* First-run flow: short tasks, progressive disclosure, one primary action. */
+.wizard{width:min(540px,100%);max-height:min(90vh,760px)}
+.wizard-head{padding:25px 28px 19px;align-items:center}
+.wizard-head h2{font-size:21px;letter-spacing:-.4px}
+.wizard-progress{margin:6px 0 0;color:var(--muted);font-size:12px}
+.wizard-body{padding:12px 28px 23px}
+.wizard-body h3{font-size:20px;font-weight:650;margin:19px 0 8px;letter-spacing:-.5px}
+.wizard-body>section>.secondary{margin:0 0 20px;line-height:1.6}
+.wizard-body .wizard-disclosure{margin-top:17px;padding:0;border-top:1px solid var(--border)}
+.wizard-disclosure summary{cursor:pointer;color:var(--muted-strong);font-size:12px;
+  font-weight:600;padding:17px 0 8px}
+.wizard-disclosure[open] summary{color:var(--accent)}
+.wizard-disclosure .field-hint{display:block;margin:2px 0 12px}
+.wizard-disclosure .text-action{display:block;margin-top:12px}
+.wizard-disclosure>.btn{margin-top:7px}
+.wizard-disclosure>.wiz-result{margin:12px 0 0}
+.wizard-discovery{padding:10px 14px;margin:12px 0 17px}
+.wizard-discovery .player-picker{margin-top:0}
+.wizard-discovery .picker-caption{margin-bottom:10px}
+.wizard-discovery .player-picker-grid{max-height:180px}
+.wizard-ready{display:grid;gap:0;margin:18px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface-raised)}
+.wizard-ready>div{display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:13px 16px;font-size:13px}
+.wizard-ready>div+div{border-top:1px solid var(--border)}
+.wizard-ready span{color:var(--muted)}
+.wizard-ready strong{text-align:right;font-weight:600;color:var(--ink);min-width:0;overflow-wrap:anywhere}
+.wizard-safe-note{font-size:12px;color:var(--good);line-height:1.6;margin:17px 0 0}
+.wizard-safe-note.warning{color:var(--warning)}
+.wizard-body .twitch-onboarding-state{margin:18px 0 13px}
+.wizard-body .wiz-result{margin-top:15px}
+.wizard-body .wizard-preview{margin-top:9px}
+.wizard-foot{padding:18px 28px 23px}
+.wizard-foot>[data-wiz="skip"]{background:transparent;border-color:transparent;color:var(--muted)}
+.wizard-foot>[data-wiz="skip"]:hover{color:var(--ink)}
+.wiz-nav>[data-wiz="back"]:disabled{visibility:hidden}
+.wiz-nav .btn-primary{min-width:147px}
+@media(max-width:600px){
+ .wizard-head,.wizard-body,.wizard-foot{padding-left:18px;padding-right:18px}
+ .wizard-body h3{font-size:18px}
+ .wiz-nav .btn-primary{min-width:122px}
+ .wizard-ready>div{padding:12px}
+}
+
+.wizard-head-tools{display:flex;align-items:center;gap:17px;margin-left:auto}
+.wizard-head-tools .wiz-dots{margin-left:0}
+.wizard-locale{display:inline-flex;align-items:center;gap:3px;padding:3px;
+  border:1px solid var(--border);border-radius:7px;background:var(--surface-raised)}
+.wizard-locale button{padding:5px 7px;border:0;border-radius:5px;background:transparent;
+  color:var(--muted);font-weight:700;font-size:11px}
+.wizard-locale button:hover{color:var(--ink)}
+.wizard-locale button.active{background:var(--surface-hover);color:var(--ink)}
+@media(max-width:440px){.wizard-head-tools{gap:9px}.wizard-head h2{font-size:18px}}

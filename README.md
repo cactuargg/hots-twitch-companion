@@ -13,6 +13,14 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 - **Simulation mode by default** — full pipeline runs without touching real channel points until you explicitly enable real Predictions.
 - Read-only MPQ replay parser (zlib/BZip2) written from public file-format documentation — no DLL injection, hooks, drivers, or game-memory access.
 
+## Simplified first-run setup
+
+The first-run wizard now has **three focused steps**: (1) choose a HotS player from a replay or enter the nickname manually, (2) optionally connect Twitch, and (3) **start a safe simulation**. Twitch authorization is **not required to simulate**. Likewise, replay validation is optional until a finished match is available.
+
+Twitch Client ID and manual replay validation live in expandable details, rather than lengthy instructions. The final step has one primary **Start simulation** action, with **Finish without starting** as a secondary choice. The app persists `realMode=false` before asking the engine to start; it will not silently switch an already-running live monitor. If starting fails, the wizard remains open, without marking the setup complete.
+
+Existing Go API endpoints, Twitch OAuth, and configuration file format are unchanged. A compact EN/RU switch remains available in the wizard header and in Settings.
+
 ## Simplified settings
 
 Settings now has three straightforward cards: Twitch (connection and status), Heroes of the Storm (player name and optional replay-based selection), and Prediction (betting window, preview and an **explicit live viewer-points toggle**).

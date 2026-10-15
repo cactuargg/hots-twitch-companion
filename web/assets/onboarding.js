@@ -63,35 +63,48 @@ async function copyTwitchCode(wizard){
  catch(e){toast(t('onboarding.copy.fail'),true);}
 }
 
-/* ── setup wizard ────────────────────────────────────────────────────── */
-const wiz={step:0,max:2};
+/* ── Minimal first-run setup ─────────────────────────────────────────── */
+const wiz={step:0,max:2,busy:false};
+
 function openWizard(){
   wiz.step=0;
   $('wz-player').value=$('playerName').value;
   $('wz-client').value=$('clientId').value;
-  $('wz-test-result').hidden=true;$('wz-auth-box').hidden=true;
+  $('wz-test-result').hidden=true;
+  $('wz-auth-box').hidden=true;
+  $('wz-twitch-details').open=false;
+  $('wizard').hidden=false;
   renderPlayerPickers();
   renderPredictionPreviews();
   renderWizard();
-  $('wizard').hidden=false;
 }
-function closeWizard(){$('wizard').hidden=true;}
+
+function closeWizard(){
+  $('wizard').hidden=true;
+}
+
 function renderWizard(){
   const steps=document.querySelectorAll('.wizard-body section');
   steps.forEach(sec=>sec.hidden=Number(sec.dataset.step)!==wiz.step);
   const dots=$('wiz-dots');dots.replaceChildren();
-  for(let i=0;i<=wiz.max;i++){const d=document.createElement('span');d.className='dot'+(i===wiz.step?' on':'')+(i<wiz.step?' done':'');dots.append(d);}
-  document.querySelector('[data-wiz="back"]').disabled=wiz.step===0;
-  $('wiz-next').textContent=wiz.step===wiz.max?t('wiz.finish'):t('wiz.next');
+  for(let i=0;i<=wiz.max;i++){
+    const dot=document.createElement('span');
+    dot.className='dot'+(i===wiz.step?' on':'')+(i<wiz.step?' done':'');
+    dots.append(dot);
+  }
+  const progress=t('onboarding.simple.progress',{step:wiz.step+1,total:wiz.max+1});
+  if($('wiz-progress').textContent!==progress)$('wiz-progress').textContent=progress;
+  document.querySelector('[data-wiz="back"]').disabled=wiz.step===0||wiz.busy;
+  $('wiz-next').textContent=t(wiz.step===wiz.max?'onboarding.simple.start':'wiz.next');
+  $('wiz-skip').textContent=t(wiz.step===wiz.max?'onboarding.simple.finishLater':'onboarding.simple.later');
+  $('wiz-next').disabled=wiz.busy;
+  $('wiz-skip').disabled=wiz.busy;
   const st=state.status||{};
-  const set=(id,ok,text)=>{
-    const li=$(id);
-    li.classList.toggle('ok',!!ok);
-    li.querySelector('b').textContent=text!=null&&text!==''?text:(ok?t('wiz.ok'):t('wiz.pending'));
-  };
-  set('wz-ch-player',!!(state.config&&state.config.playerName),(state.config&&state.config.playerName)||null);
-  set('wz-ch-twitch',!!st.connected);
-  set('wz-ch-monitor',!!st.running);
+  $('wz-ch-player').textContent=$('wz-player').value.trim()||t('wiz.pending');
+  $('wz-ch-twitch').textContent=st.connected?
+    (st.channel?'@'+st.channel:t('overview.twitch.connected')):
+    t('onboarding.simple.twitchOptional');
+  $('wz-ch-monitor').textContent=t('minimal.simMode');
   const twitch=st.twitchPhase||'disconnected';
   $('wz-twitch-status').textContent=t('onboarding.twitch.'+twitch,{name:st.channel||''});
   $('wz-twitch-status').classList.toggle('verified',twitch==='connected');
@@ -99,41 +112,139 @@ function renderWizard(){
     $('wz-auth-box').hidden=false;
     $('wz-auth-code').textContent=st.authCode;
     $('wz-auth-info').textContent=st.authStatus||t('wiz.t.pending');
-  }else if(twitch==='connected'){$('wz-auth-box').hidden=true;}
+  }else if(twitch==='connected'){
+    $('wz-auth-box').hidden=true;
+  }
+  const note=$('wz-safe-note');
+  if(note){
+    const liveRunning=!!st.running&&!!st.realMode;
+    note.textContent=t(liveRunning?'onboarding.simple.liveRunning':'onboarding.simple.safe');
+    note.classList.toggle('warning',liveRunning);
+  }
   renderPredictionPreviews();
 }
-async function wizNext(){
-  if(wiz.step===0){$('playerName').value=$('wz-player').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
-  if(wiz.step===1){$('clientId').value=$('wz-client').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
-  if(wiz.step===wiz.max){try{await save({wizardDone:true});}catch(e){toast(e.message,true);return false;}closeWizard();return true;}
-  wiz.step++;renderWizard();return true;
+
+async function wizardSkip(){
+  if(wiz.busy)return false;
+  wiz.busy=true;renderWizard();
+  try{
+    // Mark the wizard dismissed without committing unrelated draft Settings fields.
+    const cfg=state.config||getInputs();
+    const x=await api('config','POST',{
+      ...cfg,wizardDone:true,confirmedRealMode:!!cfg.realMode
+    });
+    state.config=x.config;
+    closeWizard();
+    render(state.status);
+    return true;
+  }catch(e){
+    toast(e.message||t('toast.request_error'),true);
+    return false;
+  }finally{wiz.busy=false;if(!$('wizard').hidden)renderWizard();}
 }
+
+async function wizNext(){
+  if(wiz.busy)return false;
+  if(wiz.step===wiz.max)return wizardAction('start');
+  wiz.busy=true;renderWizard();
+  try{
+    if(wiz.step===0){
+      const name=$('wz-player').value.trim();
+      if(!name){
+        toast(t('onboarding.simple.needPlayer'),true);
+        $('wz-player').focus();
+        return false;
+      }
+      $('playerName').value=name;
+      await save();
+    }else if(wiz.step===1){
+      const id=$('wz-client').value.trim();
+      if(id!==$('clientId').value.trim()){
+        $('clientId').value=id;
+        await save();
+      }
+    }
+    wiz.step++;
+    renderWizard();
+    return true;
+  }catch(e){toast(e.message||t('toast.request_error'),true);return false;}
+  finally{wiz.busy=false;renderWizard();}
+}
+
 async function wizardAction(kind){
+  if(wiz.busy)return false;
+  wiz.busy=true;renderWizard();
   try{
     if(kind==='test'){
       const res=$('wz-test-result');res.hidden=false;res.textContent='…';
-      $('playerName').value=$('wz-player').value.trim();await save();
+      if(!$('wz-player').value.trim())throw Error(t('onboarding.simple.needPlayer'));
+      $('playerName').value=$('wz-player').value.trim();
+      await save();
       const x=await api('replay/check','POST',{});
       if(!x.selected)throw Error(x.playerError||t('replay.no_selected'));
       res.className='wiz-result ok';
       res.textContent=t('wiz.p.ok',{res:x.selected.name+' → '+x.selected.result,map:x.map});
       await reloadReplays();
-    }else if(kind==='console'){window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');}
-    else if(kind==='auth'){
-      $('clientId').value=$('wz-client').value.trim();await save();
-      if(!$('clientId').value.trim()){toast(t('toast.need_client'),true);return;}
+    }else if(kind==='console'){
+      window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');
+    }else if(kind==='auth'){
+      const id=$('wz-client').value.trim();
+      if(!id){
+        $('wz-twitch-details').open=true;
+        $('wz-client').focus();
+        toast(t('minimal.settings.clientRequired'),true);
+        return false;
+      }
+      if(id!==$('clientId').value.trim()||state.hasUnsaved){
+        $('clientId').value=id;
+        await save();
+      }
       const x=await api('auth','POST',{});
-      if(x.code){const box=$('wz-auth-box');box.hidden=false;$('wz-auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'));}
-    }else if(kind==='activate'){window.open(code.authUrl,'_blank','noopener,noreferrer');}
-    else if(kind==='copy-code'){await copyTwitchCode(true);}
-    else if(kind==='start'){
-      // Wizard simulation must never create real channel-point predictions.
-      if(state.config?.realMode || $('realMode').checked){toast(t('wiz.sim_only'),true);return;}
-      $('playerName').value=$('wz-player').value.trim();await save({realMode:false});
-      await api('automation/start','POST',{});toast(t('toast.started'));await loadStatus();
+      if(x.code){
+        $('wz-auth-box').hidden=false;
+        $('wz-auth-code').textContent=x.code;
+        code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';
+        toast(t('toast.auth_code'));
+      }
+    }else if(kind==='activate'){
+      window.open(code.authUrl,'_blank','noopener,noreferrer');
+    }else if(kind==='copy-code'){
+      await copyTwitchCode(true);
+    }else if(kind==='start'){
+      const name=$('wz-player').value.trim();
+      if(!name){
+        wiz.step=0;
+        renderWizard();
+        toast(t('onboarding.simple.needPlayer'),true);
+        return false;
+      }
+      if(state.status?.running&&state.status?.realMode){
+        toast(t('onboarding.simple.liveRunning'),true);
+        return false;
+      }
+      $('playerName').value=name;
+      // Make the mode safe on disk *before* requesting monitoring.
+      await save({realMode:false});
+      if(!state.status?.running){
+        await api('automation/start','POST',{});
+      }
+      const x=await api('config','POST',{
+        ...state.config,wizardDone:true,realMode:false,confirmedRealMode:false
+      });
+      state.config=x.config;
+      state.hasUnsaved=false;
+      closeWizard();
+      toast(t('toast.started'));
+      await loadStatus();
+      go('dashboard');
     }
+    return true;
   }catch(e){
-    if(kind==='test'){const res=$('wz-test-result');res.hidden=false;res.className='wiz-result err';res.textContent=t('wiz.p.fail',{err:e.message});}
-    else toast(e.message||t('toast.request_error'),true);
-  }
+    if(kind==='test'){
+      const res=$('wz-test-result');
+      res.hidden=false;res.className='wiz-result err';
+      res.textContent=t('wiz.p.fail',{err:e.message});
+    }else toast(e.message||t('toast.request_error'),true);
+    return false;
+  }finally{wiz.busy=false;if(!$('wizard').hidden)renderWizard();}
 }

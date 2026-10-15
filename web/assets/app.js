@@ -164,11 +164,14 @@ window.addEventListener('DOMContentLoaded',async()=>{
  $('nav').addEventListener('keydown',handleTabKeyDown);
  document.querySelectorAll('[data-goto]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.goto)));
  document.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',()=>action(el.dataset.action)));
- document.querySelectorAll('[data-wiz]').forEach(el=>el.addEventListener('click',()=>wizardAction(el.dataset.wiz)));
+ document.querySelectorAll('[data-wiz]').forEach(el=>{
+   if(!['next','back','skip'].includes(el.dataset.wiz))
+     el.addEventListener('click',()=>wizardAction(el.dataset.wiz));
+ });
  document.querySelectorAll('[data-wiz-lang]').forEach(el=>el.addEventListener('click',()=>setLang(el.dataset.wizLang)));
  document.querySelector('[data-wiz="next"]').addEventListener('click',wizNext);
- document.querySelector('[data-wiz="back"]').addEventListener('click',()=>{if(wiz.step>0){wiz.step--;renderWizard();}});
- document.querySelector('[data-wiz="skip"]').addEventListener('click',async()=>{try{await save({wizardDone:true});}catch(e){/* keep wizard re-runnable */}closeWizard();});
+ document.querySelector('[data-wiz="back"]').addEventListener('click',()=>{if(!wiz.busy&&wiz.step>0){wiz.step--;renderWizard();}});
+ document.querySelector('[data-wiz="skip"]').addEventListener('click',wizardSkip);
  for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){
     $(id).addEventListener('input',()=>{
       state.hasUnsaved=true;renderSettingsDraft();

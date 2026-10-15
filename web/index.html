@@ -184,62 +184,81 @@
   <div class="wizard-backdrop" id="wizard" hidden>
     <div class="wizard" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
       <header class="wizard-head">
-        <div class="section-icon purple-box">✦</div>
-        <div><div class="eyebrow" data-i18n="wiz.eyebrow">ПЕРВОНАЧАЛЬНАЯ НАСТРОЙКА</div><h2 id="wiz-title" data-i18n="wiz.title">Мастер настройки</h2></div>
-        <div class="wiz-dots" id="wiz-dots"></div>
+        <div>
+          <h2 id="wiz-title" data-i18n="onboarding.simple.title">Начало работы</h2>
+          <p class="wizard-progress" id="wiz-progress" role="status">…</p>
+        </div>
+        <div class="wizard-head-tools">
+          <div class="wizard-locale" role="group" aria-label="Language">
+            <button type="button" data-wiz-lang="en" lang="en">EN</button>
+            <button type="button" data-wiz-lang="ru" lang="ru">RU</button>
+          </div>
+          <div class="wiz-dots" id="wiz-dots" aria-hidden="true"></div>
+        </div>
       </header>
       <div class="wizard-body">
         <section data-step="0">
-          <h3 data-i18n="wiz.lang.h">Выбери язык</h3>
-          <p class="secondary" data-i18n="wiz.lang.sub">Интерфейс и сообщения приложения переключаются сразу.</p>
-          <div class="wiz-lang-row"><button type="button" class="btn btn-outline" data-wiz-lang="en">English</button><button type="button" class="btn btn-outline" data-wiz-lang="ru">Русский</button></div>
-          <div class="separation"></div>
-          <h3 data-i18n="wiz.p.h">Твой игрок в HotS</h3>
-          <p class="secondary" data-i18n="wiz.p.sub">Введи точный ник, под которым играешь — он должен совпадать с именем в реплеях. Если ник не уникален, позже укажи Toon Handle в настройках.</p>
+          <h3 data-i18n="onboarding.simple.player">Кем ты играешь?</h3>
+          <p class="secondary" data-i18n="onboarding.simple.playerHelp">Выбери себя из последнего матча или введи ник вручную.</p>
           <div class="player-discovery wizard-discovery">
-            <strong data-i18n="onboarding.players.title">Выбрать игрока из реплея</strong>
             <div id="wizard-player-picker" class="player-picker" aria-live="polite"></div>
           </div>
           <label for="wz-player" data-i18n="settings.player">Ник игрока</label>
-          <input id="wz-player" type="text" maxlength="160" data-i18n-placeholder="settings.player.ph"/>
-          <div class="form-buttons"><button type="button" class="btn btn-outline" data-wiz="test"><span data-i18n="wiz.p.btn">Проверить последний реплей</span></button></div>
-          <div class="wiz-result" id="wz-test-result" hidden></div>
-          <p class="field-hint" data-i18n="wiz.p.hint">Ожидаемый результат: твой ник и «Победа» или «Поражение». Если реплеев нет — сыграй одну игру и повтори.</p>
+          <input id="wz-player" type="text" maxlength="160" autocomplete="off" data-i18n-placeholder="settings.player.ph" />
+          <details class="wizard-disclosure">
+            <summary data-i18n="onboarding.simple.playerVerify">Проверить по последнему реплею</summary>
+            <p class="field-hint" data-i18n="onboarding.simple.playerVerifyHint">Это необязательно. Если реплеев пока нет, можно продолжить.</p>
+            <button type="button" class="btn btn-outline" data-wiz="test" data-i18n="wiz.p.btn">Проверить последний реплей</button>
+            <div class="wiz-result" id="wz-test-result" hidden></div>
+          </details>
         </section>
         <section data-step="1">
-          <h3 data-i18n="wiz.t.h">Подключение Twitch</h3>
-          <p class="secondary" data-i18n="wiz.t.sub">В Twitch Developer Console создай приложение типа «Public», скопируй Client ID (секрет не нужен) и вставь сюда.</p>
-          <p class="field-hint onboarding-hint" data-i18n="onboarding.twitch.steps">1. Создай Public-приложение в Twitch Developer Console. 2. Скопируй Client ID (Client Secret не нужен). 3. Подключи Twitch и подтверди код в браузере.</p>
+          <h3 data-i18n="onboarding.simple.twitch">Подключение Twitch</h3>
+          <p class="secondary" data-i18n="onboarding.simple.twitchHelp">Для настоящих Predictions нужен Twitch. Для безопасной симуляции этот шаг можно пропустить.</p>
           <p id="wz-twitch-status" class="twitch-onboarding-state" role="status">…</p>
-          <label for="wz-client">Twitch Client ID</label>
-          <input id="wz-client" type="text" spellcheck="false" maxlength="160" data-i18n-placeholder="twitch.placeholder"/>
-          <div class="form-buttons"><button type="button" class="btn btn-outline" data-wiz="console"><span data-i18n="wiz.t.console">Открыть консоль Twitch ↗</span></button><button type="button" class="btn btn-primary short" data-wiz="auth"><span data-i18n="twitch.connect">Подключить Twitch</span></button></div>
-          <div class="wiz-result" id="wz-auth-box" hidden><strong><span data-i18n="auth.label">Код для авторизации:</span> <span id="wz-auth-code">—</span></strong><span id="wz-auth-info" data-i18n="wiz.t.pending">Ожидаем подтверждения Twitch…</span><button type="button" class="btn btn-outline" data-wiz="copy-code" data-i18n="onboarding.copy">Копировать код</button><button type="button" class="btn btn-outline" data-wiz="activate"><span data-i18n="auth.activate">Открыть Twitch Activate ↗</span></button></div>
-          <p class="field-hint" data-i18n="wiz.t.hint">Ожидаемый результат: появится код, ты подтвердишь доступ на странице Twitch, и статус станет «Twitch подключён».</p>
+          <button type="button" class="btn btn-outline" data-wiz="auth" data-i18n="twitch.connect">Подключить Twitch</button>
+          <details class="wizard-disclosure" id="wz-twitch-details">
+            <summary data-i18n="onboarding.simple.twitchClient">Настроить Twitch Client ID</summary>
+            <p class="field-hint" data-i18n="onboarding.simple.clientHelp">Нужен Client ID приложения Public. Client Secret не используется.</p>
+            <label for="wz-client">Twitch Client ID</label>
+            <input id="wz-client" type="text" spellcheck="false" autocomplete="off" maxlength="160" data-i18n-placeholder="twitch.placeholder" />
+            <button type="button" class="text-action" data-wiz="console" data-i18n="wiz.t.console">Открыть консоль Twitch ↗</button>
+          </details>
+          <div class="wiz-result" id="wz-auth-box" hidden>
+            <strong><span data-i18n="auth.label">Код для авторизации:</span> <span id="wz-auth-code">—</span></strong>
+            <span id="wz-auth-info" data-i18n="wiz.t.pending">Ожидаем подтверждения Twitch…</span>
+            <div class="form-buttons">
+              <button type="button" class="btn btn-outline" data-wiz="copy-code" data-i18n="onboarding.copy">Копировать код</button>
+              <button type="button" class="btn btn-outline" data-wiz="activate" data-i18n="auth.activate">Открыть Twitch Activate ↗</button>
+            </div>
+          </div>
         </section>
         <section data-step="2">
-          <h3 data-i18n="wiz.a.h">Автоматизация</h3>
-          <p class="secondary" data-i18n="wiz.a.sub">Во время игры приложение следит за файлами HotS, создаёт Prediction «Победа в HotS?» и завершает его по результату матча. По умолчанию включён режим симуляции — реальные баллы зрителей не затрагиваются.</p>
-          <p class="secondary" data-i18n="wiz.a.duration">Длительность приёма ставок и тексты Prediction настраиваются в «Настройках» (1–30 минут).</p>
-          <div class="prediction-preview wizard-preview" role="group" aria-label="Prediction preview">
-            <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — ничего не создаётся на Twitch</small></div>
-            <strong id="wz-preview-title">…</strong>
-            <div class="prediction-options"><span id="wz-preview-win">…</span><span id="wz-preview-loss">…</span></div>
-            <small id="wz-preview-duration">…</small>
+          <h3 data-i18n="onboarding.simple.ready">Готово к запуску</h3>
+          <p class="secondary" data-i18n="onboarding.simple.readyHelp">Сначала запустим симуляцию: баллы зрителей не используются. Реальный режим можно включить позже в настройках.</p>
+          <div class="wizard-ready">
+            <div><span data-i18n="wiz.f.player">Игрок</span><strong id="wz-ch-player">…</strong></div>
+            <div><span>Twitch</span><strong id="wz-ch-twitch">…</strong></div>
+            <div><span data-i18n="settings.mode">Режим</span><strong id="wz-ch-monitor" data-i18n="minimal.simMode">Симуляция</strong></div>
           </div>
-          <div class="form-buttons"><button type="button" class="btn btn-primary short" data-wiz="start"><svg><use href="#i-lightning"/></svg> <span data-i18n="wiz.a.btn">Запустить мониторинг (симуляция)</span></button></div>
-          <div class="separation"></div>
-          <ul class="wiz-checklist">
-            <li id="wz-ch-player"><span data-i18n="wiz.f.player">Игрок</span><b>…</b></li>
-            <li id="wz-ch-twitch"><span data-i18n="wiz.f.twitch">Twitch</span><b>…</b></li>
-            <li id="wz-ch-monitor"><span data-i18n="wiz.f.monitor">Мониторинг</span><b>…</b></li>
-          </ul>
-          <p class="secondary" data-i18n="wiz.f.sub">Всё можно изменить позже в «Настройках». Реальные Predictions включаются там же и только после проверки парсера на своих реплеях.</p>
+          <details class="wizard-disclosure">
+            <summary data-i18n="onboarding.simple.preview">Посмотреть пример Prediction</summary>
+            <div class="prediction-preview wizard-preview" role="group" aria-label="Prediction preview">
+              <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — ничего не создаётся на Twitch</small></div>
+              <strong id="wz-preview-title">…</strong>
+              <div class="prediction-options"><span id="wz-preview-win">…</span><span id="wz-preview-loss">…</span></div>
+              <small id="wz-preview-duration">…</small>
+            </div>
+          </details>
+          <p id="wz-safe-note" class="wizard-safe-note" data-i18n="onboarding.simple.safe">Симуляция не создаёт Predictions на Twitch.</p>
         </section>
       </div>
       <footer class="wizard-foot">
-        <button type="button" class="btn btn-outline" data-wiz="skip" data-i18n="wiz.skip">Пропустить</button>
-        <div class="wiz-nav"><button type="button" class="btn btn-outline" data-wiz="back" data-i18n="wiz.back">Назад</button><button type="button" class="btn btn-primary short" data-wiz="next" id="wiz-next" data-i18n="wiz.next">Далее</button></div>
+        <button type="button" class="btn btn-outline" data-wiz="skip" id="wiz-skip" data-i18n="onboarding.simple.later">Позже</button>
+        <div class="wiz-nav">
+          <button type="button" class="btn btn-outline" data-wiz="back" data-i18n="wiz.back">Назад</button>
+          <button type="button" class="btn btn-primary short" data-wiz="next" id="wiz-next" data-i18n="wiz.next">Далее</button>
+        </div>
       </footer>
     </div>
   </div>
