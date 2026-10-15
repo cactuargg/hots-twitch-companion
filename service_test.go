@@ -281,6 +281,11 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	if string(checked["selected"]) != "" || len(checked["playerError"]) == 0 {
 		t.Fatalf("missing-player check must report playerError without selected player: %s", response.Body.String())
 	}
+	missingReplays := missing.currentReplays()
+	if len(missingReplays) != 1 || missingReplays[0].SelectionError == "" ||
+		missingReplays[0].Result != "unknown" || missingReplays[0].Error != "" {
+		t.Fatalf("replay selection failure should be separate from parse errors: %+v", missingReplays)
+	}
 	before, err := os.ReadFile(name)
 	if err != nil {
 		t.Fatal(err)
@@ -354,5 +359,35 @@ func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
 	st = d.status()
 	if st["connected"] != true || st["twitchPhase"] != "connected" {
 		t.Fatalf("verified connection not reflected: %#v", st)
+	}
+}
+
+func TestStructuredDiagnostics(t *testing.T) {
+	dir := t.TempDir()
+	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
+	d, err := newDashboard(p, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.logEvent("error", "prediction_create", "Prediction API failed")
+	d.logEvent("warning", "replay_process", "Player not found")
+	d.logEvent("invalid", "unknown", "Normal note")
+	status := d.status()
+	logs, ok := status["logs"].([]event)
+	if !ok || len(logs) < 3 {
+		t.Fatalf("events not present in status: %#v", status["logs"])
+	}
+	last := logs[len(logs)-3:]
+	if last[0].Level != "error" || last[0].Code != "prediction_create" ||
+		last[1].Level != "warning" || last[1].Code != "replay_process" ||
+		last[2].Level != "info" {
+		t.Fatalf("incorrect diagnostic levels: %+v", last)
+	}
+	data, err := json.Marshal(last)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(data, []byte(`"level":"error"`)) || !bytes.Contains(data, []byte(`"code":"prediction_create"`)) {
+		t.Fatalf("structured fields not available to UI: %s", data)
 	}
 }
