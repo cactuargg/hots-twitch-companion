@@ -1,0 +1,54 @@
+# One-time release bootstrap because the installed GitHub connector cannot create tags.
+# The standard Windows build/release workflow remains the only publisher of binaries.
+name: Publish v0.6.0 tag
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v0.6.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure v0.6.0 has not been tagged already
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GH_REPO/git/ref/tags/v0.6.0" >/dev/null 2>&1; then
+            echo "v0.6.0 tag already exists; refusing to retag."
+            exit 1
+          fi
+
+      - name: Tag the reviewed main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/$GH_REPO/git/refs" \
+            --raw-field ref="refs/tags/v0.6.0" \
+            --raw-field sha="$TARGET_SHA"
+          echo "Created v0.6.0 at $TARGET_SHA"
+
+      - name: Build and publish Windows release from the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/$GH_REPO/actions/workflows/windows.yml/dispatches" \
+            -f ref="v0.6.0"
+          echo "Dispatched tested Windows release for v0.6.0."
