@@ -1,17 +1,21 @@
 # HotS Twitch Companion v0.5
 
-Portable Windows x64 EXE with a dark interface styled after Heroes of the Storm. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. A separate desktop window is opened through the installed Microsoft Edge in `--app` mode; without Edge, your default browser is used. **[Читать на русском](README.ru.md)**
+Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface. The gaming visuals and decorative panels were removed. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. A separate desktop window is opened through the installed Microsoft Edge in `--app` mode; without Edge, your default browser is used. **[Читать на русском](README.ru.md)**
 
 The app watches local Heroes of the Storm files, and when a match starts it creates a **Twitch Prediction** ("HotS win?"). When the match ends, the replay is parsed, the tracked player's win/loss is determined, and the Prediction resolves automatically.
 
 ## Key features
 
-- **English and Russian interface** — switch any time via the `EN / RU` control in the top bar or in Settings. Backend log and error messages follow the selected language.
+- **English and Russian interface** — switch language from Settings or the setup wizard. Backend log and error messages follow the selected language.
 - **Configurable Prediction duration** — the betting window (1–30 minutes) is selected in Settings, just like the duration picker in the Twitch Predictions interface. Default: 2 minutes.
 - **Customizable Prediction texts** — title and outcome names can be changed in Settings; empty fields use localized defaults.
 - **Replays folder check** — Settings has a button that verifies the folder (default or custom) and counts found `.StormReplay` files before saving.
 - **Simulation mode by default** — full pipeline runs without touching real channel points until you explicitly enable real Predictions.
 - Read-only MPQ replay parser (zlib/BZip2) written from public file-format documentation — no DLL injection, hooks, drivers, or game-memory access.
+
+## Minimal production interface
+
+The live Home screen now follows the approved minimalist prototype: **one status, one Start/Stop action, Twitch, Prediction and last match**. The full event log retains its filters inside expandable Diagnostics in History. Navigation has three tabs: Home, History and Settings. Decorative game frames, glowing cards and banners were removed. Live mode still warns about real viewer channel points.
 
 ## Dashboard status model
 
