@@ -36,7 +36,7 @@ function renderPlayerPickers(){
        if(wizard)$('wz-player').value=player.name;
        else $('playerName').value=player.name;
        $('toonHandle').value=player.toonHandle||'';
-       state.hasUnsaved=true;renderPlayerPickers();
+       state.hasUnsaved=true;renderPlayerPickers();renderSettingsDraft();
        toast(t('onboarding.players.selected',{name:player.name}));
      });
      list.append(button);
