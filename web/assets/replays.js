@@ -1,11 +1,3 @@
-function mapPic(name){
-  const map=String(name||'').toLowerCase();
-  if(map.includes('towers of doom'))return './assets/map-towers.webp';
-  if(map.includes('cursed hollow'))return './assets/map-hollow.webp';
-  if(map.includes('dragon shire'))return './assets/map-dragon.webp';
-  return './assets/battleground.webp'; // Unknown maps use neutral artwork.
-}
-
 function playerRow(p, selected){
   const row=document.createElement('div');row.className='player-row'+(selected?' you':'');
   const name=document.createElement('span');name.className='player-name';name.textContent=p.name||'—';
