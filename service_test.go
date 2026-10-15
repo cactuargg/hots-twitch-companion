@@ -244,6 +244,16 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	if script.Code != 200 || !bytes.Contains(script.Body.Bytes(), []byte("automation/start")) {
 		t.Fatalf("JS missing: %d", script.Code)
 	}
+	// All standalone JS/CSS modules must be embedded and served by the secure local server.
+	for _, asset := range []string{
+		"core.js", "i18n.js", "replays.js", "diagnostics.js", "onboarding.js", "app.js",
+		"style.css", "wizard.css", "overview.css", "onboarding.css", "diagnostics.css",
+	} {
+		res := get("/secret/assets/"+asset, false)
+		if res.Code != http.StatusOK || res.Body.Len() == 0 {
+			t.Fatalf("embedded UI asset %q unavailable: status %d", asset, res.Code)
+		}
+	}
 	boot := get("/secret/api/bootstrap", true)
 	if boot.Code != 200 {
 		t.Fatalf("bootstrap returned %d", boot.Code)
