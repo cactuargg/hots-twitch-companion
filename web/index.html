@@ -6,6 +6,15 @@
   <meta name="color-scheme" content="dark" />
   <title>HotS Twitch Companion</title>
   <link rel="stylesheet" href="./assets/style.css" />
+  <link rel="stylesheet" href="./assets/wizard.css" />
+  <link rel="stylesheet" href="./assets/overview.css" />
+  <link rel="stylesheet" href="./assets/onboarding.css" />
+  <link rel="stylesheet" href="./assets/diagnostics.css" />
+  <script defer src="./assets/core.js"></script>
+  <script defer src="./assets/i18n.js"></script>
+  <script defer src="./assets/replays.js"></script>
+  <script defer src="./assets/diagnostics.js"></script>
+  <script defer src="./assets/onboarding.js"></script>
   <script defer src="./assets/app.js"></script>
 </head>
 <body>
@@ -17,14 +26,14 @@
       <div class="topbar-art"></div>
       <div class="status-chip" id="top-connection"><span class="dot"></span><span id="top-connected-text">Не подключён</span></div>
     </header>
-    <nav class="tabbar" id="nav">
-      <button class="tab active" data-view="dashboard"><svg><use href="#i-home"/></svg><span data-i18n="nav.dashboard">Обзор</span></button>
-      <button class="tab" data-view="replays"><svg><use href="#i-trophy"/></svg><span data-i18n="nav.history">История матчей</span></button>
-      <button class="tab" data-view="settings"><svg><use href="#i-settings"/></svg><span data-i18n="nav.settings">Настройки</span></button>
-      <button class="tab" data-view="logs"><svg><use href="#i-file"/></svg><span data-i18n="nav.logs">Журнал</span></button>
+    <nav class="tabbar" id="nav" role="tablist" aria-label="Application sections" data-i18n-aria-label="nav.sections">
+      <button class="tab active" id="tab-dashboard" data-view="dashboard" role="tab" aria-controls="view-dashboard" aria-selected="true" tabindex="0"><svg><use href="#i-home"/></svg><span data-i18n="nav.dashboard">Обзор</span></button>
+      <button class="tab" id="tab-replays" data-view="replays" role="tab" aria-controls="view-replays" aria-selected="false" tabindex="-1"><svg><use href="#i-trophy"/></svg><span data-i18n="nav.history">История матчей</span></button>
+      <button class="tab" id="tab-settings" data-view="settings" role="tab" aria-controls="view-settings" aria-selected="false" tabindex="-1"><svg><use href="#i-settings"/></svg><span data-i18n="nav.settings">Настройки</span></button>
+      <button class="tab" id="tab-logs" data-view="logs" role="tab" aria-controls="view-logs" aria-selected="false" tabindex="-1"><svg><use href="#i-file"/></svg><span data-i18n="nav.logs">Журнал</span></button>
     </nav>
     <main class="main">
-      <section class="view active" id="view-dashboard">
+      <section class="view active" id="view-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
         <div class="view-heading"><div><div class="eyebrow" data-i18n="dash.eyebrow">ЦЕНТР УПРАВЛЕНИЯ</div><h1 data-i18n="dash.title">Обзор</h1><p data-i18n="dash.sub">Состояние HotS, подключения Twitch и автоматических прогнозов.</p></div><div class="mini-live" id="watch-tag"><span class="pulse-dot"></span> <span data-i18n="watch.off">Мониторинг выключен</span></div></div>
         <section class="overview-command" aria-labelledby="overview-state-title">
           <div class="overview-command-copy">
@@ -51,7 +60,7 @@
         </div>
         <article class="panel steps-card"><div class="panel-title"><span class="panel-symbol blue">⚡</span><h2 data-i18n="automation.how">Как это работает</h2></div><div class="steps"><div><b>01</b><span><span data-i18n="automation.step1.pre">Появился новый </span><code>replay.server.battlelobby</code></span></div><div><b>02</b><span data-i18n="automation.step2">Создаётся прогноз «Победа в HotS?» (приём ставок — {min} мин)</span></div><div><b>03</b><span data-i18n="automation.step3">После появления реплея считывается результат выбранного игрока</span></div><div><b>04</b><span data-i18n="automation.step4">Prediction завершается нужным исходом либо отменяется при тайм-ауте</span></div></div></article>
       </section>
-      <section class="view" id="view-replays"><div class="view-heading"><div><div class="eyebrow" data-i18n="replays.eyebrow">ИСТОРИЯ МАТЧЕЙ</div><h1 data-i18n="replays.title">История матчей</h1><p data-i18n="replays.sub">Нажми на матч, чтобы увидеть данные игры и игроков.</p></div><div class="head-actions"><button class="btn btn-outline" data-action="refresh-replays"><svg><use href="#i-refresh"/></svg> <span data-i18n="replays.refresh">Обновить</span></button><button class="btn btn-primary short" data-action="replay"><svg><use href="#i-play"/></svg> <span data-i18n="replays.check">Проверить последний реплей</span></button></div></div><div class="content-panel">
+      <section class="view" id="view-replays" role="tabpanel" aria-labelledby="tab-replays"><div class="view-heading"><div><div class="eyebrow" data-i18n="replays.eyebrow">ИСТОРИЯ МАТЧЕЙ</div><h1 data-i18n="replays.title">История матчей</h1><p data-i18n="replays.sub">Нажми на матч, чтобы увидеть данные игры и игроков.</p></div><div class="head-actions"><button class="btn btn-outline" data-action="refresh-replays"><svg><use href="#i-refresh"/></svg> <span data-i18n="replays.refresh">Обновить</span></button><button class="btn btn-primary short" data-action="replay"><svg><use href="#i-play"/></svg> <span data-i18n="replays.check">Проверить последний реплей</span></button></div></div><div class="content-panel">
           <h2 data-i18n="replays.h2">Сохранённые матчи</h2>
           <div class="diagnostics-toolbar">
             <input id="history-search" type="search" autocomplete="off" data-i18n-placeholder="history.search" placeholder="Поиск карты или файла" aria-label="Search matches" />
@@ -65,7 +74,7 @@
           <div id="history-summary" class="results-summary" role="status"></div>
           <div id="full-replays" class="full-replays"></div>
         </div></section>
-      <section class="view" id="view-settings"><div class="view-heading"><div><div class="eyebrow" data-i18n="settings.eyebrow">КОНФИГУРАЦИЯ</div><h1 data-i18n="settings.title">Настройки</h1><p data-i18n="settings.sub">Все настройки сохраняются в профиле Windows. Файлы игры не изменяются.</p></div></div><div class="content-panel">
+      <section class="view" id="view-settings" role="tabpanel" aria-labelledby="tab-settings"><div class="view-heading"><div><div class="eyebrow" data-i18n="settings.eyebrow">КОНФИГУРАЦИЯ</div><h1 data-i18n="settings.title">Настройки</h1><p data-i18n="settings.sub">Все настройки сохраняются в профиле Windows. Файлы игры не изменяются.</p></div></div><div class="content-panel">
         <h2 data-i18n="settings.interface">Интерфейс</h2>
         <label for="lang" data-i18n="settings.lang">Язык интерфейса</label><select id="lang"><option value="en">English</option><option value="ru">Русский</option></select>
         <div class="separation"></div>
@@ -105,7 +114,7 @@
         <label class="check-row"><input id="realMode" type="checkbox"/><span><strong data-i18n="settings.real">Разрешить реальные Twitch Predictions</strong><small data-i18n="settings.real.sub">Только после проверки парсера: реальные баллы зрителей будут распределяться автоматически.</small></span></label>
         <div class="form-buttons"><button class="btn btn-primary short" data-action="save"><svg><use href="#i-settings"/></svg> <span data-i18n="settings.save">Сохранить настройки</span></button><button class="btn btn-outline" data-action="wizard"><svg><use href="#i-wand"/></svg> <span data-i18n="settings.wizard">Мастер настройки</span></button></div>
       </div></section>
-      <section class="view" id="view-logs"><div class="view-heading"><div><div class="eyebrow" data-i18n="logs.eyebrow">ДИАГНОСТИКА</div><h1 data-i18n="logs.title">Журнал событий</h1><p data-i18n="logs.sub">Только локальные события и результаты API без секретных токенов.</p></div></div><div class="content-panel">
+      <section class="view" id="view-logs" role="tabpanel" aria-labelledby="tab-logs"><div class="view-heading"><div><div class="eyebrow" data-i18n="logs.eyebrow">ДИАГНОСТИКА</div><h1 data-i18n="logs.title">Журнал событий</h1><p data-i18n="logs.sub">Только локальные события и результаты API без секретных токенов.</p></div></div><div class="content-panel">
           <div class="diagnostics-toolbar">
             <input id="log-search" type="search" autocomplete="off" data-i18n-placeholder="logs.search" placeholder="Поиск по событиям" aria-label="Search diagnostic events" />
             <select id="log-filter" aria-label="Filter diagnostic level">

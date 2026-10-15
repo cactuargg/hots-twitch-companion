@@ -35,6 +35,25 @@ CI also checks the frontend JavaScript syntax and runs dependency-free Node.js o
 
 The event log remains **in memory only**, with a limit of 150 entries; it is not a persistent audit log and it does not guarantee Twitch's live remote Prediction state. Replay history displays the most recent 12 parsed replays, not a complete match archive.
 
+## Frontend architecture and accessibility
+
+The Windows application still runs from **one Go executable**. HTML/CSS/JS assets are compiled into it via `go:embed`; users do not need Node.js or a separate local web server.
+
+The old monolithic frontend is now organized into standalone files, loaded in order without bundlers or external dependencies:
+
+- `core.js` — local API, shared state, navigation, helpers
+- `i18n.js` — Russian/English labels and locale switching
+- `replays.js` — match history and replay cards
+- `diagnostics.js` — event log and troubleshooting
+- `onboarding.js` — setup wizard, player picker and Prediction preview
+- `app.js` — status rendering, actions and application startup
+
+CSS follows the same pattern: `style.css` foundation, then `wizard.css`, `overview.css`, `onboarding.css`, and `diagnostics.css`. Their order in `web/index.html` is intentional. The existing Go embed directive includes every file in `web/assets/`.
+
+Tabs support keyboard Left/Right, Home/End, track focus, and expose their selected state to assistive technologies.
+
+For contributors, run `go test ./...`, `node --test`, and `node --check web/assets/app.js`. GitHub Actions performs syntax checks on **all** JS files and runs all tests before building the Windows executable. Node.js is only needed for development and CI.
+
 ## Getting started
 
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
