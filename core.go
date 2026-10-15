@@ -523,6 +523,13 @@ func findLobby() (string, string, time.Time, error) {
 	return newest, key, st.ModTime(), nil
 }
 
+type ReplayScan struct {
+ Code string `json:"code"`
+ File string `json:"file,omitempty"`
+ Detail string `json:"detail,omitempty"`
+ CheckedAt int64 `json:"checkedAt,omitempty"`
+}
+
 type Engine struct {
 	mu      sync.Mutex
 	actionMu sync.Mutex
@@ -530,6 +537,7 @@ type Engine struct {
 	cfg     Config
 	twitch  *Twitch
 	state   State
+	scan    ReplayScan
 	running bool
 	stop    context.CancelFunc
 	log      func(string)
@@ -789,27 +797,89 @@ func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *str
 		}
 		return
 	}
-	for _, f := range replaysAfter(e.cfg, time.UnixMilli(s.Active.StartedAt+1500), 8) {
-		if now.Sub(f.Modified) < 8*time.Second || f.Size < 100 {
-			continue
-		}
-		replay, er := parseReplay(f.Path)
-		if er == nil {
-			var p Player
-			p, er = findOutcome(replay, e.cfg.PlayerName, e.cfg.PlayerToonHandle, e.cfg.lang())
-			if er == nil {
-				e.log(tr(e.cfg.lang(), "log.result", p.Name, p.Result, replay.Map))
-				if er = e.doSettle(ctx, &s, p.Result, f.Path); er == nil {
-					e.log(tr(e.cfg.lang(), "log.settled", p.Result))
-					break
-				}
-			}
-		}
-		if er != nil && (er.Error() != *lastError || time.Since(*lastLog) > time.Minute) {
-			e.report("warning", "replay_process", tr(e.cfg.lang(), "log.process_error", filepath.Base(f.Path), er.Error()))
-			*lastError = er.Error()
-			*lastLog = time.Now()
-		}
-	}
-	}
+	e.scanReplay(ctx, &s, now, lastError, lastLog)
+}
 
+func (e *Engine) setReplayScan(code, file, detail string) {
+ e.mu.Lock()
+ e.scan = ReplayScan{Code: code, File: file, Detail: detail, CheckedAt: time.Now().UnixMilli()}
+ e.mu.Unlock()
+}
+
+// scanReplay uses the same set of recent files as History. A short timestamp
+// tolerance handles file timestamp granularity, without accepting older matches.
+// An already-completed replay may be listed in History before it is eligible for
+// automated settlement: the scan status explains why.
+func (e *Engine) scanReplay(ctx context.Context, s *State, now time.Time, lastError *string, lastLog *time.Time) {
+ if s.Active == nil { return }
+ recent := replaysAfter(e.cfg, time.Time{}, 12)
+ cutoff := time.UnixMilli(s.Active.StartedAt).Add(-2 * time.Second)
+ if len(recent) == 0 {
+  e.setReplayScan("no_replays", "", "")
+  return
+ }
+ eligible := false
+ bestCode, bestFile, bestDetail := "waiting_replay", "", ""
+ for _, f := range recent {
+  if !f.Modified.After(cutoff) { continue }
+  eligible = true
+  name := filepath.Base(f.Path)
+  if f.Size < 100 || now.Sub(f.Modified) < 8*time.Second {
+   if bestCode == "waiting_replay" {
+    bestCode, bestFile = "writing", name
+   }
+   continue
+  }
+  replay, err := parseReplay(f.Path)
+  if err == nil {
+   var player Player
+   player, err = findOutcome(replay, e.cfg.PlayerName, e.cfg.PlayerToonHandle, e.cfg.lang())
+   if err == nil {
+    e.log(tr(e.cfg.lang(), "log.result", player.Name, player.Result, replay.Map))
+    if err = e.doSettle(ctx, s, player.Result, f.Path); err == nil {
+     e.setReplayScan("settled", name, "")
+     e.log(tr(e.cfg.lang(), "log.settled", player.Result))
+     return
+    }
+    e.setReplayScan("settle_error", name, err.Error())
+    e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", err.Error()))
+    return
+   }
+   if bestCode != "parse_error" {
+    bestCode, bestFile, bestDetail = "player_not_found", name, err.Error()
+   }
+  } else {
+   bestCode, bestFile, bestDetail = "parse_error", name, err.Error()
+  }
+  if err != nil && (err.Error() != *lastError || time.Since(*lastLog) > time.Minute) {
+   e.report("warning", "replay_process", tr(e.cfg.lang(), "log.process_error", name, err.Error()))
+   *lastError = err.Error()
+   *lastLog = time.Now()
+  }
+ }
+ if !eligible {
+  e.setReplayScan("too_old", filepath.Base(recent[0].Path), "")
+  return
+ }
+ e.setReplayScan(bestCode, bestFile, bestDetail)
+}
+
+// recheckReplay only evaluates completed replay files. It never creates a new
+// Prediction and refuses stale UI requests for a different active game.
+func (e *Engine) recheckReplay(ctx context.Context, expectedID string, expectedStartedAt int64) (ReplayScan, error) {
+ e.actionMu.Lock()
+ defer e.actionMu.Unlock()
+ e.mu.Lock()
+ s := e.state
+ e.mu.Unlock()
+ if s.Active == nil || s.Active.ID != expectedID || s.Active.StartedAt != expectedStartedAt || expectedID == "" {
+  return ReplayScan{}, errors.New(tr(e.cfg.lang(), "manual.stale"))
+ }
+ lastError := ""
+ lastLog := time.Time{}
+ e.scanReplay(ctx, &s, time.Now(), &lastError, &lastLog)
+ e.mu.Lock()
+ status := e.scan
+ e.mu.Unlock()
+ return status, nil
+}
