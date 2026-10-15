@@ -627,6 +627,7 @@ func (e *Engine) doCreate(ctx context.Context, s *State) error {
 		e.log(tr(e.cfg.lang(), "log.prediction_created", p.ID))
 	}
 	s.Active = p
+ e.setReplayScan("waiting_replay", "", "")
 	return e.updateAndSave(*s)
 }
 func (e *Engine) doSettle(ctx context.Context, s *State, outcome string, source string) error {
@@ -745,9 +746,11 @@ func (e *Engine) watch(ctx context.Context) {
 		}
 	}
 	started := time.Now()
-	lastError := ""
-	lastLog := time.Time{}
-	ticker := time.NewTicker(4 * time.Second)
+ lastError := ""
+ lastLog := time.Time{}
+ // Immediately check any persisted active Prediction on monitoring restart.
+ e.scanTick(ctx, started, &lastError, &lastLog)
+ ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
