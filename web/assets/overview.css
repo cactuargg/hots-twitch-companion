@@ -42,3 +42,44 @@
  .overview-detail{align-items:flex-start;flex-direction:column}
  .overview-detail>span{white-space:normal;overflow-wrap:anywhere}
 }
+
+
+/* Header, command and summary: one screen at desktop and readable at high DPI. */
+.overview-command{padding:24px 26px}
+.overview-heading{margin:11px 0 8px;min-width:0}
+.overview-heading h2{font-size:clamp(22px,3vw,27px);overflow-wrap:anywhere}
+.overview-description{margin-bottom:20px;font-size:13px;line-height:1.6}
+.overview-command-actions{gap:12px}
+.overview-command-actions .overview-toggle{min-height:44px;min-width:168px}
+.overview-command-actions .overview-toggle.is-stop{
+ background:var(--surface-raised);color:var(--ink);border-color:#566178
+}
+.overview-command-actions .overview-toggle.is-stop:hover:not(:disabled){
+ background:var(--surface-hover);border-color:#7685a0
+}
+.overview-command-actions .overview-toggle.is-stop:focus-visible{
+ outline:2px solid var(--accent)
+}
+.section-heading{margin:25px 0 11px}
+.summary-row{min-height:50px;padding:14px 20px;font-size:13px}
+.summary-value{min-width:0}
+.summary-value strong,.summary-row>strong{min-width:0;overflow-wrap:anywhere}
+.overview-detail{padding-top:15px}
+@media(max-width:720px){
+ .overview-command{padding:20px}
+ .overview-command-actions .overview-toggle{min-width:144px}
+ .summary-row{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);padding:13px 15px}
+}
+@media(max-width:520px){
+ .overview-command{padding:18px 16px}
+ .overview-command-actions{align-items:stretch;flex-direction:column}
+ .overview-command-actions .overview-toggle{width:100%;min-width:0}
+ .mode-indicator{justify-content:flex-start}
+ .overview-description{margin-bottom:17px}
+ .section-heading{margin-top:22px}
+}
+@media(max-width:410px){
+ .summary-row{grid-template-columns:minmax(0,1fr);gap:4px;min-height:0}
+ .summary-value,.summary-row>strong{text-align:left;justify-content:flex-start}
+ .overview-detail .text-action{align-self:flex-start}
+}

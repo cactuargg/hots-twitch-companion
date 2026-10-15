@@ -25,7 +25,7 @@ func launchDesktop(url string) error {
 		if stat, err := os.Stat(path); err != nil || stat.IsDir() {
 			continue
 		}
-		cmd := exec.Command(path, "--app="+url, "--window-size=1440,950", "--no-first-run")
+		cmd := exec.Command(path, "--app="+url, "--window-size=1024,800", "--no-first-run")
 		if err := cmd.Start(); err == nil {
 			go cmd.Wait()
 			return nil

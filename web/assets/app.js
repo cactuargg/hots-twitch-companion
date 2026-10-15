@@ -26,6 +26,18 @@ function renderSettingsDraft(){
   }
 }
 
+function setActionBusy(name, busy){
+  if(typeof document==='undefined'||!document.querySelectorAll)return;
+  for(const button of document.querySelectorAll('[data-action]')){
+    if(button.dataset.action==='quit')continue;
+    button.disabled=!!busy;
+    // Mark just the activated control as pending; other disabled controls are not loading.
+    if(!busy)button.removeAttribute('aria-busy');
+    else if(button.dataset.action===name&&button.classList?.contains('btn'))
+      button.setAttribute('aria-busy','true');
+  }
+}
+
 function render(s){
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
@@ -71,7 +83,9 @@ function render(s){
   if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
   warning.hidden=!shouldWarn;
   $('start-label').textContent=needsSetup&&!running?t('minimal.configure'):t(running?'start.stop':'start.start');
-  document.querySelector('.overview-toggle').dataset.action=needsSetup&&!running?'wizard':'toggle';
+  const mainButton=document.querySelector('.overview-toggle');
+  mainButton.dataset.action=needsSetup&&!running?'wizard':'toggle';
+  mainButton.classList.toggle('is-stop',running);
   $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
   $('settings-connect-label').textContent=t(connected?'minimal.settings.reconnect':'twitch.connect');
   renderSettingsDraft();
@@ -94,7 +108,7 @@ async function save(over={}){
  const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
  state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();renderSettingsDraft();toast(t('toast.saved'));await loadStatus();return x;
 }
-async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;try{switch(name){
+async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
  case 'save':await save();break;
  case 'auth':{
    if(!$('clientId').value.trim()){
@@ -138,7 +152,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
     await checkReplayRoot();
     break;
   case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
- }}catch(e){toast(e.message||t('toast.request_error'),true)}finally{state.busy=false}}
+ }}catch(e){toast(e.message||t('toast.request_error'),true)}finally{state.busy=false;setActionBusy(name,false)}}
 
 async function checkReplayRoot(){
   const box=$('root-check-result');box.hidden=false;box.replaceChildren(line(t('root.checking'),'empty-mini'));

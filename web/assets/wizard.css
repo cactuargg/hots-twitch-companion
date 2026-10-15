@@ -100,3 +100,32 @@
 .wizard-locale button:hover{color:var(--ink)}
 .wizard-locale button.active{background:var(--surface-hover);color:var(--ink)}
 @media(max-width:440px){.wizard-head-tools{gap:9px}.wizard-head h2{font-size:18px}}
+
+
+/* Reflow the wizard header and actions at 125–150% Windows scaling. */
+.wizard{max-width:calc(100vw - 20px);min-width:0}
+.wizard-head{gap:12px;min-width:0}
+.wizard-head>div:first-child{min-width:0}
+.wizard-head h2{overflow-wrap:anywhere}
+.wizard-head-tools{flex-shrink:0}
+.wizard-foot{gap:11px}
+.wiz-nav{min-width:0}
+.wizard-body section{min-width:0}
+@media(max-width:520px){
+ .wizard-head{padding:17px 16px 14px}
+ .wizard-body{padding:9px 16px 17px}
+ .wizard-foot{padding:12px 16px 16px}
+ .wizard-head-tools{gap:9px}
+ .wizard-head h2{font-size:18px}
+ .wiz-nav .btn-primary{min-width:110px}
+}
+@media(max-width:380px){
+ .wizard-head{align-items:flex-start;flex-wrap:wrap}
+ .wizard-head-tools{margin-left:0;width:100%;justify-content:space-between}
+ .wizard-foot{flex-wrap:wrap}
+ .wizard-foot>[data-wiz="skip"]{flex-basis:100%;text-align:left;justify-content:flex-start}
+ .wiz-nav{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .wiz-nav .btn{width:100%;min-width:0}
+ .wizard-ready>div{align-items:flex-start;flex-direction:column;gap:4px}
+ .wizard-ready strong{text-align:left}
+}

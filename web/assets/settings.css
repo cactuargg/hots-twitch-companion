@@ -56,3 +56,35 @@
  .settings-savebar .form-buttons{justify-content:stretch}
  .settings-savebar .btn{flex:1}
 }
+
+
+/* Settings remain usable when 150% UI scaling reduces the effective width. */
+.settings-stack{gap:12px}
+.settings-card{padding:20px 22px}
+.settings-card h2{margin-bottom:12px}
+.settings-language{margin:-7px 0 16px}
+.settings-card>input[type=text],.settings-advanced-group input[type=text],.settings-card>select{
+ max-width:100%;min-width:0
+}
+.settings-card-heading .settings-status{min-width:0;overflow-wrap:anywhere}
+.settings-savebar{bottom:8px}
+.settings-savebar .btn{min-height:44px}
+.settings-real-mode{min-width:0}
+.settings-real-mode span{min-width:0}
+.settings-inline-details summary{display:block;min-height:44px;align-content:center}
+@media(max-width:720px){
+ .settings-card{padding:18px}
+ .settings-language{margin:0 0 16px}
+ .settings-savebar{bottom:0}
+}
+@media(max-width:520px){
+ .settings-language{justify-content:space-between}
+ .settings-savebar{display:flex;align-items:stretch;gap:9px;margin-inline:0;padding:12px}
+ .settings-savebar .form-buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}
+ .settings-savebar .btn{width:100%;min-width:0;white-space:normal;line-height:1.3}
+ .settings-advanced .secondary-details-body{padding:4px 16px 14px}
+ .settings-advanced-group{min-width:0;padding-block:19px}
+}
+@media(max-width:360px){
+ .settings-savebar .form-buttons{grid-template-columns:minmax(0,1fr)}
+}
