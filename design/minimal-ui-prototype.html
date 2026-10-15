@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>HotS Twitch Companion — минималистичный прототип</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c1019;
+      --surface: #141b29;
+      --surface-raised: #1a2232;
+      --surface-hover: #202a3d;
+      --border: #293446;
+      --text: #f1f4fc;
+      --muted: #9daac1;
+      --muted-strong: #c6d0e2;
+      --accent: #9a9bf8;
+      --accent-hover: #b4b5ff;
+      --accent-tint: #242942;
+      --good: #72d6b5;
+      --good-bg: #152d2c;
+      --danger: #ff9da9;
+      --danger-bg: #39212d;
+      --warning: #e8c48e;
+      --warning-bg: #322c27;
+      --radius: 12px;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg); font-size: 14px; }
+    button, input, select, summary { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 3px;
+    }
+    [hidden] { display: none !important; }
+    .preview-controls {
+      background: #101725; border-bottom: 1px solid var(--border); color: var(--muted);
+      display: flex; gap: 18px; justify-content: center; align-items: center; padding: 11px 24px; flex-wrap: wrap;
+    }
+    .preview-note { font-size: 12px; line-height: 1.5; }
+    .preview-note strong { color: var(--accent); font-weight: 700; }
+    .preview-picker { display: flex; align-items: center; gap: 9px; }
+    .preview-picker label { color: var(--muted-strong); font-size: 12px; }
+    .preview-picker select {
+      background: var(--surface); border: 1px solid #43516a; color: var(--text);
+      padding: 7px 33px 7px 10px; border-radius: 7px; min-height: 35px;
+    }
+    .app { width: min(100%, 1080px); margin: 0 auto; padding: 0 38px 58px; }
+    .app-header { height: 84px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 17px; letter-spacing: -.45px; white-space: nowrap; }
+    .brand-mark { width: 29px; height: 29px; border-radius: 9px; display: grid; place-items: center; background: #2f315f; color: #d6d5ff; font-size: 17px; font-weight: 800; }
+    .brand-sub { color: var(--muted); font-weight: 500; }
+    .top-status { display: flex; gap: 8px; align-items: center; color: var(--muted-strong); font-size: 12px; white-space: nowrap; }
+    .dot { display: inline-block; background: #71829d; width: 8px; height: 8px; border-radius: 100%; flex: none; }
+    .dot.good { background: var(--good); }
+    .dot.warning { background: var(--warning); }
+    .dot.danger { background: var(--danger); }
+    .tabs { display: flex; gap: 24px; align-items: stretch; height: 60px; border-bottom: 1px solid var(--border); }
+    .tab { color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 0 2px; font-weight: 550; }
+    .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+    .tab:hover { color: var(--text); }
+    main { max-width: 800px; margin: 45px auto 0; }
+    h1 { margin: 0; font-size: clamp(26px, 3.4vw, 34px); letter-spacing: -1px; line-height: 1.2; font-weight: 700; }
+    h2 { font-size: 16px; margin: 0 0 15px; font-weight: 650; letter-spacing: -.2px; }
+    p { line-height: 1.58; }
+    .page-intro { margin: 10px 0 30px; color: var(--muted); }
+    .primary-surface { padding: 30px 32px 28px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius); }
+    .hero-label { font-size: 11px; font-weight: 650; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; }
+    .hero-heading { display: flex; align-items: center; gap: 11px; margin: 13px 0 11px; }
+    .hero-heading h2 { font-size: clamp(23px, 3vw, 30px); margin: 0; letter-spacing: -.6px; line-height: 1.3; }
+    .hero-heading .dot { width: 10px; height: 10px; }
+    .hero-copy { font-size: 14px; color: var(--muted-strong); max-width: 570px; margin: 0 0 27px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .button { min-height: 43px; padding: 0 17px; border-radius: 8px; border: 1px solid var(--border); color: var(--text); background: var(--surface-raised); font-weight: 600; }
+    .button:hover { background: var(--surface-hover); }
+    .button.primary { background: var(--accent); border-color: var(--accent); color: #0d1024; }
+    .button.primary:hover { background: var(--accent-hover); }
+    .button.quiet { color: var(--muted-strong); background: transparent; }
+    .button.quiet:hover { color: var(--text); background: var(--surface-hover); }
+    .mode-indicator { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+    .mode-indicator .mode-bullet { width: 7px; height: 7px; background: #abb3ff; border-radius: 100%; }
+    .mode-indicator.live { color: var(--warning); }
+    .mode-indicator.live .mode-bullet { background: var(--warning); }
+    .mode-indicator.warning { color: var(--danger); }
+    .mode-indicator.warning .mode-bullet { background: var(--danger); }
+    .section-heading { color: var(--muted); font-weight: 650; font-size: 12px; letter-spacing: .2px; margin: 34px 0 13px; }
+    .summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .summary-row { display: grid; grid-template-columns: 1fr minmax(0,1.3fr); gap: 14px; align-items: center; padding: 17px 22px; min-height: 57px; }
+    .summary-row + .summary-row { border-top: 1px solid var(--border); }
+    .summary-row .name { color: var(--muted); }
+    .summary-row .value { text-align: right; min-width: 0; overflow-wrap: anywhere; display: flex; justify-content: flex-end; align-items: center; gap: 9px; }
+    .summary-row .value strong { font-weight: 580; }
+    .outcome { color: var(--good); font-weight: 650; }
+    .muted { color: var(--muted); }
+    .alert { margin-top: 18px; border: 1px solid #675047; background: var(--warning-bg); padding: 13px 16px; border-radius: 9px; color: #f6dab2; font-size: 13px; line-height: 1.55; }
+    .alert.error { border-color: #754356; background: var(--danger-bg); color: #ffd3d9; }
+    .detail { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 20px; color: var(--muted); font-size: 12px; }
+    .detail a { color: var(--muted-strong); text-decoration: none; }
+    .detail a:hover { color: var(--accent); }
+    .panel { padding: 25px 26px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+    .panel + .panel { margin-top: 14px; }
+    .panel p { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+    .list { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+    .list-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 17px 20px; align-items: center; }
+    .list-row + .list-row { border-top: 1px solid var(--border); }
+    .list-row strong { display: block; font-size: 14px; font-weight: 610; }
+    .list-row small { display: block; color: var(--muted); margin-top: 5px; font-size: 12px; }
+    .outcome.lose { color: var(--danger); }
+    .field { margin-top: 21px; }
+    .field label { display: block; font-size: 13px; margin-bottom: 8px; color: var(--muted-strong); }
+    .field input { width: 100%; max-width: 460px; background: #101726; border: 1px solid #344157; border-radius: 8px; min-height: 43px; padding: 10px 13px; color: var(--text); }
+    .field-help { font-size: 12px; color: var(--muted); margin: 7px 0 0; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .settings-row .connected { color: var(--good); font-size: 12px; }
+    details { border: 1px solid var(--border); border-radius: var(--radius); margin-top: 14px; background: var(--surface); }
+    details > summary { list-style: none; cursor: pointer; padding: 18px 24px; font-weight: 600; }
+    details > summary::after { content: "+"; float: right; color: var(--muted); font-weight: 400; font-size: 18px; }
+    details[open] > summary::after { content: "−"; }
+    details[open] > summary { border-bottom: 1px solid var(--border); }
+    details > .details-inner { padding: 5px 24px 25px; }
+    .prototype-footer { max-width: 800px; margin: 36px auto 0; text-align: center; font-size: 12px; color: #7e90ad; line-height: 1.6; }
+    @media (max-width: 720px) {
+      .app { padding: 0 18px 34px; }
+      .app-header { height: 70px; gap: 10px; }
+      .brand { font-size: 15px; }
+      .brand-sub { display: none; }
+      .tabs { height: 54px; gap: 23px; }
+      main { margin-top: 27px; }
+      .primary-surface { padding: 22px 20px; }
+      .hero-heading h2 { font-size: 23px; }
+      .summary-row { padding: 15px 16px; grid-template-columns: 1fr 1.4fr; font-size: 13px; }
+      .preview-controls { justify-content: flex-start; gap: 9px; padding: 9px 18px; }
+      .panel { padding: 21px 19px; }
+    }
+    @media (max-width: 410px) {
+      .top-status { font-size: 0; }
+      .top-status .dot { width: 9px; height: 9px; }
+      .summary-row { grid-template-columns: 1fr; gap: 6px; }
+      .summary-row .value { justify-content: flex-start; text-align: left; }
+      .mode-indicator { flex-basis: 100%; }
+      .brand { font-size: 13px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <aside class="preview-controls" aria-label="Управление прототипом">
+    <div class="preview-note"><strong>Прототип UX</strong> · демонстрационные данные, Twitch и HotS не подключены</div>
+    <div class="preview-picker">
+      <label for="demo-state">Сценарий</label>
+      <select id="demo-state">
+        <option value="watching">Ожидание матча</option>
+        <option value="off">Мониторинг остановлен</option>
+        <option value="tracking">Матч обнаружен</option>
+        <option value="awaiting">Ожидание реплея</option>
+        <option value="issue">Ошибка</option>
+        <option value="setup">Первый запуск</option>
+        <option value="live">Реальный режим</option>
+      </select>
+    </div>
+  </aside>
+
+  <div class="app">
+    <header class="app-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">H</span><span>HotS <span class="brand-sub">Twitch Companion</span></span></div>
+      <div class="top-status"><span class="dot good" id="top-dot" aria-hidden="true"></span><span id="top-text">Twitch подключён</span></div>
+    </header>
+    <nav class="tabs" role="tablist" aria-label="Разделы">
+      <button type="button" class="tab" role="tab" id="tab-dashboard" aria-selected="true" aria-controls="page-dashboard" tabindex="0" data-page="dashboard">Главная</button>
+      <button type="button" class="tab" role="tab" id="tab-history" aria-selected="false" aria-controls="page-history" tabindex="-1" data-page="history">История</button>
+      <button type="button" class="tab" role="tab" id="tab-settings" aria-selected="false" aria-controls="page-settings" tabindex="-1" data-page="settings">Настройки</button>
+    </nav>
+    <main>
+      <section id="page-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
+        <h1>Главная</h1>
+        <p class="page-intro">Автоматические Predictions для Heroes of the Storm</p>
+        <div class="primary-surface">
+          <div class="hero-label">Автоматизация</div>
+          <div class="hero-heading"><span class="dot good" id="hero-dot" aria-hidden="true"></span><h2 id="hero-title" aria-live="polite">Ожидание матча</h2></div>
+          <p class="hero-copy" id="hero-desc">Мониторинг работает. Следующий матч будет обнаружен автоматически.</p>
+          <div class="hero-actions">
+            <button class="button quiet" type="button" id="primary-action">Остановить мониторинг</button>
+            <span class="mode-indicator" id="mode-indicator"><span class="mode-bullet"></span><span id="mode-text">Симуляция · без баллов зрителей</span></span>
+          </div>
+          <div class="alert" id="hero-alert" hidden></div>
+        </div>
+        <h2 class="section-heading">КРАТКОЕ СОСТОЯНИЕ</h2>
+        <div class="summary">
+          <div class="summary-row"><span class="name">Twitch</span><span class="value"><span class="dot good" id="twitch-dot" aria-hidden="true"></span><strong id="twitch-value">@streamer</strong></span></div>
+          <div class="summary-row"><span class="name">Prediction</span><span class="value"><strong id="prediction-value">Ожидает следующего матча</strong></span></div>
+          <div class="summary-row"><span class="name">Последний матч</span><span class="value"><strong id="last-match">Dragon Shire</strong><span class="outcome" id="last-outcome">Победа</span></span></div>
+        </div>
+        <div class="detail"><span id="latest-event">Последнее событие: мониторинг запущен</span><a href="#history" data-link-page="history">История матчей →</a></div>
+      </section>
+      <section id="page-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <h1>История</h1>
+        <p class="page-intro">Последние результаты. Детали реплея и диагностика доступны по необходимости.</p>
+        <div class="list">
+          <div class="list-row"><div><strong>Dragon Shire</strong><small>Сегодня, 20:15 · реплей обработан</small></div><span class="outcome">Победа</span></div>
+          <div class="list-row"><div><strong>Towers of Doom</strong><small>Сегодня, 19:42 · реплей обработан</small></div><span class="outcome lose">Поражение</span></div>
+          <div class="list-row"><div><strong>Cursed Hollow</strong><small>Вчера, 22:31 · реплей обработан</small></div><span class="outcome">Победа</span></div>
+        </div>
+        <details><summary>Диагностика и журнал событий</summary><div class="details-inner"><p class="muted">В реальном приложении здесь будут фильтры, сообщения об ошибках и технические детали. Это отдельная секция, а не вкладка главной навигации.</p></div></details>
+      </section>
+      <section id="page-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+        <h1>Настройки</h1>
+        <p class="page-intro">Основные параметры на одном экране. Остальные — в расширенном разделе.</p>
+        <div class="panel">
+          <div class="settings-row"><h2 style="margin:0">Twitch</h2><span class="connected">Подключён · @streamer</span></div>
+          <p>Прогнозы будут создаваться на подключённом канале.</p>
+          <div style="margin-top:16px"><button type="button" class="button" id="demo-connect">Настроить подключение</button></div>
+        </div>
+        <div class="panel">
+          <h2>Heroes of the Storm</h2>
+          <div class="field"><label for="player-name">Игрок</label><input id="player-name" value="PlayerName" autocomplete="off"><p class="field-help">Обычно определяется по последнему реплею.</p></div>
+        </div>
+        <div class="panel">
+          <h2>Prediction</h2>
+          <div class="settings-row"><span>Заголовок и исходы</span><span class="muted">Победа в HotS? · Да / Нет</span></div>
+          <p>Время приёма ставок: 2 минуты</p>
+        </div>
+        <details><summary>Расширенные настройки</summary><div class="details-inner"><p>Client ID, Toon Handle, папка реплеев, тексты Prediction, диагностика подключения и переключение реального режима.</p><p>Технические настройки не удаляются — они просто перестают отвлекать на главной странице.</p></div></details>
+      </section>
+    </main>
+    <footer class="prototype-footer">HotS Twitch Companion · направление минималистичного интерфейса · прототип без реальных операций</footer>
+  </div>
+
+  <script>
+    'use strict';
+    // This file is a self-contained UX demonstration, not the production app.
+    const scenarios = Object.freeze({
+      watching: {title:'Ожидание матча',desc:'Мониторинг работает. Следующий матч будет обнаружен автоматически.',button:'Остановить мониторинг',tone:'good',mode:'sim',twitch:'@streamer',prediction:'Ожидает следующего матча',event:'Последнее событие: мониторинг запущен'},
+      off: {title:'Мониторинг остановлен',desc:'Автоматизация выключена. Predictions не будут создаваться до запуска.',button:'Запустить мониторинг',tone:'neutral',mode:'sim',twitch:'@streamer',prediction:'Не активен',event:'Последнее событие: мониторинг остановлен'},
+      tracking: {title:'Матч обнаружен',desc:'HotS запущен, Prediction создан в режиме симуляции. Ожидаем результат.',button:'Остановить мониторинг',tone:'good',mode:'sim',twitch:'@streamer',prediction:'Симуляция активна',event:'Последнее событие: обнаружен новый матч'},
+      awaiting: {title:'Ожидание результата',desc:'Приём ставок завершён по расчётному времени. Ищем итоговый реплей матча.',button:'Остановить мониторинг',tone:'warning',mode:'sim',twitch:'@streamer',prediction:'Ожидается результат',event:'Последнее событие: ожидаем реплей'},
+      issue: {title:'Требуется действие',desc:'Не удалось определить игрока в последнем реплее.',button:'Проверить настройки',tone:'danger',mode:'sim',twitch:'@streamer',prediction:'Не завершён',event:'Последнее событие: игрок не найден',alert:'Проверь ник или Toon Handle. Реальный Prediction не будет считаться успешно завершённым без подтверждения Twitch.'},
+      setup: {title:'Завершите настройку',desc:'Выберите игрока и подключите Twitch для автоматической работы. Симуляция доступна без подключения.',button:'Открыть настройки',tone:'warning',mode:'sim',twitch:'Не подключён',prediction:'Не настроен',event:'Последнее событие: ожидается настройка'},
+      live: {title:'Ожидание матча',desc:'Мониторинг включён. Для следующего матча будут создаваться реальные Twitch Predictions.',button:'Остановить мониторинг',tone:'good',mode:'live',twitch:'@streamer',prediction:'Ожидает следующего матча',event:'Последнее событие: реальный режим включён',alert:'Реальный режим: результаты влияют на баллы зрителей. Убедись, что выбран правильный игрок.'}
+    });
+    const $ = id => document.getElementById(id);
+    let currentScenario = 'watching';
+    function renderScenario(key) {
+      const state = scenarios[key];
+      if (!state) return;
+      currentScenario = key;
+      $('demo-state').value = key;
+      $('hero-title').textContent = state.title;
+      $('hero-desc').textContent = state.desc;
+      $('primary-action').textContent = state.button;
+      $('primary-action').className = 'button ' + (['off','setup','issue'].includes(key) ? 'primary' : 'quiet');
+      $('hero-dot').className = 'dot' + (state.tone === 'neutral' ? '' : ' ' + (state.tone === 'warning' ? 'warning' : state.tone === 'danger' ? 'danger' : 'good'));
+      $('top-dot').className = state.twitch === 'Не подключён' ? 'dot' : 'dot good';
+      $('twitch-dot').className = $('top-dot').className;
+      $('top-text').textContent = state.twitch === 'Не подключён' ? 'Twitch не подключён' : 'Twitch подключён';
+      $('twitch-value').textContent = state.twitch;
+      $('prediction-value').textContent = state.prediction;
+      $('latest-event').textContent = state.event;
+      $('mode-indicator').className = 'mode-indicator' + (state.mode === 'live' ? ' live' : '') + (key === 'issue' ? ' warning' : '');
+      $('mode-text').textContent = state.mode === 'live' ? 'Реальные баллы зрителей' : 'Симуляция · без баллов зрителей';
+      $('hero-alert').hidden = !state.alert;
+      $('hero-alert').textContent = state.alert || '';
+      $('hero-alert').className = 'alert' + (state.tone === 'danger' ? ' error' : '');
+      $('last-match').textContent = key === 'setup' ? 'Пока нет матчей' : 'Dragon Shire';
+      $('last-outcome').hidden = key === 'setup';
+    }
+    function showPage(key, focus = false) {
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      for (const tab of tabs) {
+        const active = tab.dataset.page === key;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        $(tab.getAttribute('aria-controls')).hidden = !active;
+        if (active && focus) tab.focus();
+      }
+    }
+    document.querySelectorAll('[role="tab"]').forEach((tab) => {
+      tab.addEventListener('click', () => showPage(tab.dataset.page));
+      tab.addEventListener('keydown', event => {
+        const tabs = [...document.querySelectorAll('[role="tab"]')];
+        const index = tabs.indexOf(tab);
+        if (!['ArrowRight','ArrowLeft','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+          (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        showPage(tabs[next].dataset.page, true);
+      });
+    });
+    $('demo-state').addEventListener('change', event => { renderScenario(event.target.value); showPage('dashboard'); });
+    $('primary-action').addEventListener('click', () => {
+      if (['issue','setup'].includes(currentScenario)) { showPage('settings'); return; }
+      renderScenario(currentScenario === 'off' ? 'watching' : 'off');
+    });
+    $('demo-connect').addEventListener('click', () => renderScenario('setup'));
+    document.querySelectorAll('[data-link-page]').forEach(el => el.addEventListener('click', event => {
+      event.preventDefault(); showPage(el.dataset.linkPage);
+    }));
+    renderScenario('watching');
+  </script>
+</body>
+</html>
