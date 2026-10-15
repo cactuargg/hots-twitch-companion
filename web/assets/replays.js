@@ -81,15 +81,8 @@ function showReplays(items){
   state.replays=Array.isArray(items)?items:[];
   const keys=new Set(state.replays.map(r=>(r.file||'')+'|'+(r.modified||'')));
   for(const key of state.expandedReplays)if(!keys.has(key))state.expandedReplays.delete(key);
-  const box=$('recent-list');box.replaceChildren();
-  if(!state.replays.length)box.append(line(t('replays.empty.recent'),'empty-mini'));
-  for(const r of state.replays.slice(0,3)){
-    const el=document.createElement('div');el.className='recent-item';
-    const img=document.createElement('img');img.className='recent-img';img.src=mapPic(r.map);img.alt='';
-    const desc=document.createElement('div');desc.className='recent-text';
-    desc.append(Object.assign(document.createElement('b'),{textContent:r.map||r.file}));
-    desc.append(Object.assign(document.createElement('small'),{textContent:relative(r.modified)}));
-    el.append(img,desc,resultBadge(r.result));box.append(el);
-  }
-  renderHistory();renderPlayerPickers();
+  renderHistory();
+  renderPlayerPickers();
+  // A new replay can arrive between status polls. Update the compact summary immediately.
+  if(state.status)render(state.status);
 }
