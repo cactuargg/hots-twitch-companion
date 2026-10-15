@@ -4,6 +4,16 @@ Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface.
 
 The app watches local Heroes of the Storm files, and when a match starts it creates a **Twitch Prediction** ("HotS win?"). When the match ends, the replay is parsed, the tracked player's win/loss is determined, and the Prediction resolves automatically.
 
+## Automatic and manual Prediction settlement
+
+You no longer have to wait for the full Twitch betting window when a HotS game ends early. The app checks for completed replay files every four seconds and waits for the replay file to be stable for approximately eight seconds before parsing it. The previous mandatory 75-second delay is gone. The result still comes from a completed replay, **not by reading the game's screen or memory**, so settlement occurs after HotS has saved the replay.
+
+While a Prediction is pending, Home shows **Win / Loss / Cancel**. These are available even with monitoring stopped. On **live Twitch Predictions**, Win or Loss immediately distributes viewer points, and Cancel refunds them. Every live action requires confirmation. Simulation does not call Twitch. Buttons disappear once a decision is successful.
+
+If you already finished the Prediction through Twitch while the app still shows it as active, use **Sync with Twitch**. The app verifies the exact Prediction ID and clears the local state only if Twitch reports `RESOLVED` or `CANCELED`. It will not silently forget an `ACTIVE` or `LOCKED` Prediction. The API checks both the prediction ID and creation time before applying an action, preventing stale UI clicks from affecting the next match.
+
+**Important:** manual actions only affect the Prediction currently tracked by this app, not arbitrary Predictions on the broadcaster's channel. Auto-settlement requires monitoring to remain running; manual controls stay available after stopping it.
+
 ## Key features
 
 - **English and Russian interface** — switch language from Settings or the setup wizard. Backend log and error messages follow the selected language.
