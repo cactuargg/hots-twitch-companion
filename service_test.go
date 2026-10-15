@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoopbackDashboardAuthorization(t *testing.T) {
@@ -286,5 +287,72 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	}
 	if !bytes.Equal(fixture, before) {
 		t.Fatal("game replay modified")
+	}
+}
+
+
+func TestDashboardPhases(t *testing.T) {
+	for _, tt := range []struct {
+		hasToken, validated, pending bool
+		want string
+	}{
+		{false, false, false, "disconnected"},
+		{false, false, true, "authorizing"},
+		{true, false, false, "unverified"},
+		{true, true, false, "connected"},
+		{true, true, true, "authorizing"},
+	} {
+		if got := connectionPhase(tt.hasToken, tt.validated, tt.pending); got != tt.want {
+			t.Fatalf("connectionPhase(%v,%v,%v) = %q, want %q", tt.hasToken, tt.validated, tt.pending, got, tt.want)
+		}
+	}
+	for _, tt := range []struct {
+		running, active bool
+		want string
+	}{
+		{false, false, "off"},
+		{false, true, "off"},
+		{true, false, "watching"},
+		{true, true, "tracking"},
+	} {
+		if got := monitorPhase(tt.running, tt.active); got != tt.want {
+			t.Fatalf("monitorPhase(%v,%v) = %q, want %q", tt.running, tt.active, got, tt.want)
+		}
+	}
+	now := time.Unix(1_700_000_000, 0)
+	if phase, seconds := predictionPhase(nil, 2, now); phase != "none" || seconds != 0 {
+		t.Fatalf("no prediction: %s %d", phase, seconds)
+	}
+	p := &Prediction{StartedAt: now.Add(-30 * time.Second).UnixMilli(), DryRun: true}
+	if phase, seconds := predictionPhase(p, 2, now); phase != "simulation" || seconds != 0 {
+		t.Fatalf("simulation: %s %d", phase, seconds)
+	}
+	p.DryRun = false
+	if phase, seconds := predictionPhase(p, 2, now); phase != "window_estimate" || seconds != 90 {
+		t.Fatalf("window estimate: %s %d", phase, seconds)
+	}
+	if phase, seconds := predictionPhase(p, 2, now.Add(100*time.Second)); phase != "awaiting_result" || seconds != 0 {
+		t.Fatalf("expired window: %s %d", phase, seconds)
+	}
+}
+
+func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
+	dir := t.TempDir()
+	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
+	d, err := newDashboard(p, Config{})
+	if err != nil { t.Fatal(err) }
+	d.engine.twitch.mu.Lock()
+	d.engine.twitch.token.AccessToken = "not-validated"
+	d.engine.twitch.mu.Unlock()
+	st := d.status()
+	if st["connected"] != false || st["twitchPhase"] != "unverified" {
+		t.Fatalf("token should not mean a verified connection: %#v", st)
+	}
+	d.engine.twitch.mu.Lock()
+	d.engine.twitch.login = "demo"
+	d.engine.twitch.mu.Unlock()
+	st = d.status()
+	if st["connected"] != true || st["twitchPhase"] != "connected" {
+		t.Fatalf("verified connection not reflected: %#v", st)
 	}
 }
