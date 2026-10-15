@@ -78,7 +78,7 @@ func TestRecheckAPIRequiresActivePredictionIdentity(t *testing.T){
  d:=manualDashboard(t,Config{PlayerName:"Проверка"})
  prediction:=&Prediction{ID:"SIMULATION",DryRun:true,StartedAt:now.Add(-20*time.Second).UnixMilli()}
  if err:=d.engine.updateAndSave(State{Active:prediction});err!=nil {t.Fatal(err)}
- for _,tc:=range []struct{stamp int64,allow bool,want int}{
+ for _,tc:=range []struct{stamp int64; allow bool; want int}{
   {prediction.StartedAt,false,403},
   {prediction.StartedAt-1,true,400},
   {prediction.StartedAt,true,200},
