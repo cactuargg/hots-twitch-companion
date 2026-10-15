@@ -1,6 +1,7 @@
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'nav.sections':'Application sections',
   'history.search':'Search by map, filename or player','history.all':'All results',
   'history.count':'Showing {shown} of {total} recent matches','history.filtered.empty':'No matches fit the current filters.',
   'history.playerUnknown':'Selected player not identified. Check the nickname and Toon Handle in Settings.',
@@ -125,6 +126,7 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'nav.sections':'Разделы приложения',
   'history.search':'Поиск по карте, файлу или игроку','history.all':'Все результаты',
   'history.count':'Показано {shown} из {total} последних матчей','history.filtered.empty':'По текущим фильтрам матчей нет.',
   'history.playerUnknown':'Выбранный игрок не определён. Проверь ник и Toon Handle в настройках.',
@@ -263,6 +265,7 @@ function applyI18n(){
   for (const el of document.querySelectorAll('[data-i18n-placeholder]')) el.placeholder = t(el.dataset.i18nPlaceholder);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = t(el.dataset.i18nTitle);
   for (const el of document.querySelectorAll('[data-i18n-alt]')) el.alt = t(el.dataset.i18nAlt);
+  for (const el of document.querySelectorAll('[data-i18n-aria-label]')) el.setAttribute('aria-label',t(el.dataset.i18nAriaLabel));
   for (const o of $('predictionWindow').querySelectorAll('option')) o.textContent = o.value + ' ' + t('unit.min');
   for (const b of document.querySelectorAll('[data-wiz-lang]')) b.classList.toggle('active', b.dataset.wizLang === lang);
   $('lang').value = lang;
