@@ -19,7 +19,7 @@ The first-run wizard now has **three focused steps**: (1) choose a HotS player f
 
 Twitch Client ID and manual replay validation live in expandable details, rather than lengthy instructions. The final step has one primary **Start simulation** action, with **Finish without starting** as a secondary choice. The app persists `realMode=false` before asking the engine to start; it will not silently switch an already-running live monitor. If starting fails, the wizard remains open, without marking the setup complete.
 
-Existing Go API endpoints, Twitch OAuth, and configuration file format are unchanged. Language remains selectable in Settings.
+Existing Go API endpoints, Twitch OAuth, and configuration file format are unchanged. A compact EN/RU switch remains available in the wizard header and in Settings.
 
 ## Simplified settings
 
