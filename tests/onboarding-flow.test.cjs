@@ -82,6 +82,7 @@ test('Wizard has only three focused steps, optional Twitch and one final primary
 test('Player selection is required for next, but replay parsing is optional',async()=>{
  const {ctx,$,calls}=setup();
  ctx.openWizard();
+ $('wz-player').value='';
  assert.equal($('wizard').hidden,false);
  assert.equal(await ctx.wizNext(),false);
  assert.equal($('wz-player').focused,true);
