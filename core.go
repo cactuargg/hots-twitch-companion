@@ -525,6 +525,7 @@ func findLobby() (string, string, time.Time, error) {
 
 type Engine struct {
 	mu      sync.Mutex
+	actionMu sync.Mutex
 	p       paths
 	cfg     Config
 	twitch  *Twitch
@@ -634,6 +635,60 @@ func (e *Engine) doSettle(ctx context.Context, s *State, outcome string, source 
 	s.Active = nil
 	return e.updateAndSave(*s)
 }
+// manualOutcome is serialized with the replay scanner. The caller supplies the
+// exact active prediction identity so a delayed click can never settle a newer game.
+func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, expectedStartedAt int64) error {
+ if outcome != "win" && outcome != "loss" && outcome != "cancel" && outcome != "sync" {
+  return errors.New(tr(e.cfg.lang(), "manual.invalid"))
+ }
+ if expectedID == "" || expectedStartedAt <= 0 {
+  return errors.New(tr(e.cfg.lang(), "manual.stale"))
+ }
+ e.actionMu.Lock()
+ defer e.actionMu.Unlock()
+ e.mu.Lock()
+ s := e.state
+ e.mu.Unlock()
+ if s.Active == nil {
+  return errors.New(tr(e.cfg.lang(), "settle.none_active"))
+ }
+ if s.Active.ID != expectedID || s.Active.StartedAt != expectedStartedAt {
+  return errors.New(tr(e.cfg.lang(), "manual.stale"))
+ }
+ if outcome == "sync" {
+  if s.Active.DryRun {
+   return errors.New(tr(e.cfg.lang(), "manual.sync_simulation"))
+  }
+  remote, err := e.twitch.prediction(ctx, s.Active.BroadcasterID, s.Active.ID)
+  if err != nil { return err }
+  for _, p := range remote.Data {
+   if p.ID != s.Active.ID { continue }
+   if p.Status != "RESOLVED" && p.Status != "CANCELED" {
+    return errors.New(tr(e.cfg.lang(), "manual.still_open"))
+   }
+   result := "cancel"
+   if p.Status == "RESOLVED" {
+    if p.WinningOutcomeID == s.Active.WinID { result = "win" } else if p.WinningOutcomeID == s.Active.LossID { result = "loss" } else {
+     result = "external"
+    }
+   }
+   s.LastSettlementAt = time.Now().UnixMilli()
+   s.LastResult = result + " (Twitch)"
+   s.Active = nil
+   if err := e.updateAndSave(s); err != nil { return err }
+   e.report("info", "prediction_synced", tr(e.cfg.lang(), "manual.synced", p.Status))
+   return nil
+  }
+  return errors.New(tr(e.cfg.lang(), "manual.remote_missing"))
+ }
+ if err := e.doSettle(ctx, &s, outcome, "manual"); err != nil {
+  e.report("error", "prediction_settle", tr(e.cfg.lang(), "manual.failed", err.Error()))
+  return err
+ }
+ e.report("info", "prediction_manual", tr(e.cfg.lang(), "manual.completed", outcome))
+ return nil
+}
+
 func (e *Engine) start() error {
 	e.mu.Lock()
 	if e.running {
@@ -694,60 +749,70 @@ func (e *Engine) watch(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-		}
-		now := time.Now()
-		path, key, modified, err := findLobby()
-		if err == nil && key != s.LastLobbyKey && now.Sub(modified) > 2500*time.Millisecond && now.Sub(modified) < 120*time.Second {
-			// Only react to a new/changed lobby *after* watch began.
-			if !modified.Before(started.Add(-2 * time.Second)) {
-				if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
-					if er := e.doCreate(ctx, &s); er != nil {
-						e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
-						continue
-					}
-					e.log(tr(e.cfg.lang(), "log.new_game", filepath.Base(filepath.Dir(path))))
-				} else {
-					e.log(tr(e.cfg.lang(), "log.skip_lobby"))
-				}
-			}
-			s.LastLobbyKey = key
-			_ = e.updateAndSave(s)
-		}
-		if s.Active == nil {
-			continue
-		}
-		age := now.Sub(time.UnixMilli(s.Active.StartedAt))
-		if age > 100*time.Minute {
-			e.report("warning", "prediction_timeout", tr(e.cfg.lang(), "log.timeout_cancel"))
-			if er := e.doSettle(ctx, &s, "cancel", "timeout"); er != nil {
-				e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", er.Error()))
-			}
-			continue
-		}
-		if age < 75*time.Second {
-			continue
-		}
-		for _, f := range replaysAfter(e.cfg, time.UnixMilli(s.Active.StartedAt+1500), 8) {
-			if now.Sub(f.Modified) < 8*time.Second || f.Size < 100 {
-				continue
-			}
-			replay, er := parseReplay(f.Path)
-			if er == nil {
-				var p Player
-				p, er = findOutcome(replay, e.cfg.PlayerName, e.cfg.PlayerToonHandle, e.cfg.lang())
-				if er == nil {
-					e.log(tr(e.cfg.lang(), "log.result", p.Name, p.Result, replay.Map))
-					if er = e.doSettle(ctx, &s, p.Result, f.Path); er == nil {
-						e.log(tr(e.cfg.lang(), "log.settled", p.Result))
-						break
-					}
-				}
-			}
-			if er != nil && (er.Error() != lastError || time.Since(lastLog) > time.Minute) {
-				e.report("warning", "replay_process", tr(e.cfg.lang(), "log.process_error", filepath.Base(f.Path), er.Error()))
-				lastError = er.Error()
-				lastLog = time.Now()
-			}
+			e.scanTick(ctx, started, &lastError, &lastLog)
 		}
 	}
 }
+
+// scanTick and manualOutcome share actionMu so a manual decision cannot race
+// the replay scanner or accidentally restore a previously settled prediction.
+func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *string, lastLog *time.Time) {
+ e.actionMu.Lock()
+ defer e.actionMu.Unlock()
+ if ctx.Err() != nil { return }
+ e.mu.Lock()
+ s := e.state
+ e.mu.Unlock()
+	now := time.Now()
+	path, key, modified, err := findLobby()
+	if err == nil && key != s.LastLobbyKey && now.Sub(modified) > 2500*time.Millisecond && now.Sub(modified) < 120*time.Second {
+		// Only react to a new/changed lobby *after* watch began.
+		if !modified.Before(started.Add(-2 * time.Second)) {
+			if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
+				if er := e.doCreate(ctx, &s); er != nil {
+					e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
+					continue
+				}
+				e.log(tr(e.cfg.lang(), "log.new_game", filepath.Base(filepath.Dir(path))))
+			} else {
+				e.log(tr(e.cfg.lang(), "log.skip_lobby"))
+			}
+		}
+		s.LastLobbyKey = key
+		_ = e.updateAndSave(s)
+	}
+	if s.Active == nil {
+		return
+	}
+	age := now.Sub(time.UnixMilli(s.Active.StartedAt))
+	if age > 100*time.Minute {
+		e.report("warning", "prediction_timeout", tr(e.cfg.lang(), "log.timeout_cancel"))
+		if er := e.doSettle(ctx, &s, "cancel", "timeout"); er != nil {
+			e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", er.Error()))
+		}
+		return
+	}
+	for _, f := range replaysAfter(e.cfg, time.UnixMilli(s.Active.StartedAt+1500), 8) {
+		if now.Sub(f.Modified) < 8*time.Second || f.Size < 100 {
+			continue
+		}
+		replay, er := parseReplay(f.Path)
+		if er == nil {
+			var p Player
+			p, er = findOutcome(replay, e.cfg.PlayerName, e.cfg.PlayerToonHandle, e.cfg.lang())
+			if er == nil {
+				e.log(tr(e.cfg.lang(), "log.result", p.Name, p.Result, replay.Map))
+				if er = e.doSettle(ctx, &s, p.Result, f.Path); er == nil {
+					e.log(tr(e.cfg.lang(), "log.settled", p.Result))
+					break
+				}
+			}
+		}
+		if er != nil && (er.Error() != *lastError || time.Since(*lastLog) > time.Minute) {
+			e.report("warning", "replay_process", tr(e.cfg.lang(), "log.process_error", filepath.Base(f.Path), er.Error()))
+			*lastError = er.Error()
+			*lastLog = time.Now()
+		}
+	}
+	}
+
