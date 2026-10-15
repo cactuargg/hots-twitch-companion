@@ -1,13 +1,30 @@
 'use strict';
 const base = new URL('./', location.href).pathname;
 const $ = id => document.getElementById(id);
-const state = { status: null, config: null, replays: [], expandedReplays: new Set(), hasUnsaved: false, busy: false };
+const state = { status: null, config: null, replays: [], logs: [], expandedReplays: new Set(), hasUnsaved: false, busy: false };
 const code = { authUrl: 'https://www.twitch.tv/activate' };
 let toastTimer;
 
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'history.search':'Search by map, filename or player','history.all':'All results',
+  'history.count':'Showing {shown} of {total} recent matches','history.filtered.empty':'No matches fit the current filters.',
+  'history.playerUnknown':'Selected player not identified. Check the nickname and Toon Handle in Settings.',
+  'history.openSettings':'Review player settings','history.parseError':'Replay could not be read. Try another replay and check the replay folder.',
+  'logs.search':'Search events','logs.filter.all':'All events','logs.filter.error':'Errors','logs.filter.warning':'Warnings','logs.filter.info':'Info',
+  'logs.count':'Showing {shown} of {total} events','logs.filtered.empty':'No events match these filters.',
+  'logs.lifetime':'The event log is held in memory for this app session (up to 150 entries).',
+  'logs.severity.info':'INFO','logs.severity.warning':'WARNING','logs.severity.error':'ERROR',
+  'diag.help.twitch_auth':'Check the Twitch login in Settings, then reconnect if required.',
+  'diag.help.token_store':'The Twitch token could not be stored securely. Check Windows profile permissions.',
+  'diag.help.prediction_create':'Check broadcaster access, channel permissions and any Prediction already running on Twitch.',
+  'diag.help.prediction_settle':'Check the live Prediction state on Twitch. Do not assume viewer points were distributed.',
+  'diag.help.prediction_timeout':'No matching replay was found before the timeout. Check replay folder and player identity.',
+  'diag.help.replay_process':'Check the player name / Toon Handle and the latest replay in Match History.',
+  'diag.help.player_not_found':'Choose your HotS identity from a recent replay in Settings.',
+  'diag.help.replay_check':'Check that the replay folder exists and contains completed matches.',
+  'diag.help.local_server':'Restart the application and check local security software if the interface is inaccessible.',
   'onboarding.players.title':'Choose player from a replay',
   'onboarding.players.help':'Pick your account from the latest readable replay. The name and Toon Handle will be filled in; save to apply.',
   'onboarding.players.none':'No readable replay with players found yet. You can enter your name manually.',
@@ -115,6 +132,23 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'history.search':'Поиск по карте, файлу или игроку','history.all':'Все результаты',
+  'history.count':'Показано {shown} из {total} последних матчей','history.filtered.empty':'По текущим фильтрам матчей нет.',
+  'history.playerUnknown':'Выбранный игрок не определён. Проверь ник и Toon Handle в настройках.',
+  'history.openSettings':'Проверить настройки игрока','history.parseError':'Не удалось прочитать реплей. Попробуй другой и проверь папку записей.',
+  'logs.search':'Поиск событий','logs.filter.all':'Все события','logs.filter.error':'Ошибки','logs.filter.warning':'Предупреждения','logs.filter.info':'Информация',
+  'logs.count':'Показано {shown} из {total} событий','logs.filtered.empty':'По текущим фильтрам событий нет.',
+  'logs.lifetime':'Журнал хранится в памяти только до закрытия программы (до 150 записей).',
+  'logs.severity.info':'ИНФО','logs.severity.warning':'ВНИМАНИЕ','logs.severity.error':'ОШИБКА',
+  'diag.help.twitch_auth':'Проверь авторизацию Twitch в настройках и при необходимости подключись заново.',
+  'diag.help.token_store':'Не удалось безопасно сохранить Twitch-токен. Проверь права профиля Windows.',
+  'diag.help.prediction_create':'Проверь права канала, авторизацию и отсутствие другого активного Prediction на Twitch.',
+  'diag.help.prediction_settle':'Проверь состояние Prediction непосредственно на Twitch. Не считай баллы автоматически распределёнными.',
+  'diag.help.prediction_timeout':'Реплей не появился до тайм-аута. Проверь папку реплеев и выбранного игрока.',
+  'diag.help.replay_process':'Проверь ник / Toon Handle и последний реплей в истории матчей.',
+  'diag.help.player_not_found':'Выбери свой аккаунт из последнего реплея в настройках.',
+  'diag.help.replay_check':'Проверь существование папки и наличие завершённых матчей.',
+  'diag.help.local_server':'Перезапусти приложение и проверь локальную защиту Windows, если интерфейс недоступен.',
   'onboarding.players.title':'Выбрать игрока из реплея',
   'onboarding.players.help':'Выбери свой аккаунт из последнего доступного реплея. Ник и Toon Handle заполнятся автоматически; для применения сохрани настройки.',
   'onboarding.players.none':'Реплей с данными игроков пока не найден. Можно ввести ник вручную.',
@@ -367,7 +401,20 @@ function playerRow(p, selected){
 }
 function matchDetail(r){
   const box=document.createElement('div');box.className='match-detail';
-  if(r.error){box.append(line(t('match.error')+': '+r.error,'empty-mini'));return box;}
+  if(r.error){
+    box.append(line(t('match.error')+': '+r.error,'empty-mini'));
+    box.append(line(t('history.parseError'),'match-diagnostic'));
+    return box;
+  }
+  if(r.selectionError){
+    const warning=document.createElement('div');warning.className='match-diagnostic';
+    warning.append(line(t('history.playerUnknown')));
+    warning.append(line(r.selectionError,'match-diagnostic-detail'));
+    const settings=document.createElement('button');settings.type='button';settings.className='text-action';
+    settings.textContent=t('history.openSettings');
+    settings.addEventListener('click',()=>go('settings'));
+    warning.append(settings);box.append(warning);
+  }
   const head=Object.assign(document.createElement('div'),{className:'match-detail-head'});
   head.append(Object.assign(document.createElement('b'),{textContent:r.map||r.file}));
   head.append(Object.assign(document.createElement('small'),{textContent:(r.file||'')+' · '+(r.modified?new Date(r.modified).toLocaleString(lang==='ru'?'ru-RU':'en-US'):'')}));
@@ -378,28 +425,36 @@ function matchDetail(r){
   box.append(list);
   return box;
 }
-function showReplays(items){
-  state.replays=Array.isArray(items)?items:[];
-  const replayKey=r=>(r.file||'')+'|'+(r.modified||'');
-  const keys=new Set(state.replays.map(replayKey));
-  for(const key of state.expandedReplays)if(!keys.has(key))state.expandedReplays.delete(key);
-  const box=$('recent-list'),full=$('full-replays');box.replaceChildren();full.replaceChildren();
-  if(!state.replays.length){box.append(line(t('replays.empty.recent'),'empty-mini'));full.append(line(t('replays.empty.full'),'empty-mini'));renderPlayerPickers();return}
-  state.replays.slice(0,3).forEach((r,i)=>{
-    const el=document.createElement('div');el.className='recent-item';
-    const img=document.createElement('img');img.className='recent-img';img.src=mapPic(r.map);img.alt='';
-    const desc=document.createElement('div');desc.className='recent-text';
-    desc.append(Object.assign(document.createElement('b'),{textContent:r.map||r.file}));
-    desc.append(Object.assign(document.createElement('small'),{textContent:relative(r.modified)}));
-    el.append(img,desc,resultBadge(r.result));box.append(el);
+
+function selectReplays(items,query,outcome){
+  const needle=String(query||'').trim().toLocaleLowerCase();
+  return (Array.isArray(items)?items:[]).filter(r=>{
+    if(outcome&&outcome!=='all'&&r.result!==outcome)return false;
+    if(!needle)return true;
+    return [r.map,r.file,r.selected,...(r.players||[]).map(p=>p.name)].join(' ').toLocaleLowerCase().includes(needle);
   });
-  state.replays.forEach((r,i)=>{
-    const key=replayKey(r),opened=state.expandedReplays.has(key);
+}
+function selectEvents(items,level,query){
+  const needle=String(query||'').trim().toLocaleLowerCase();
+  return (Array.isArray(items)?items:[]).filter(ev=>{
+    if(level&&level!=='all'&&(ev.level||'info')!==level)return false;
+    return !needle||String(ev.message||'').toLocaleLowerCase().includes(needle);
+  });
+}
+function renderHistory(){
+  const full=$('full-replays'),items=selectReplays(state.replays,$('history-search').value,$('history-filter').value);
+  full.replaceChildren();
+  $('history-summary').textContent=t('history.count',{shown:items.length,total:state.replays.length});
+  if(!items.length){
+    full.append(line(state.replays.length?t('history.filtered.empty'):t('replays.empty.full'),'empty-mini'));
+    return;
+  }
+  items.forEach((r,i)=>{
+    const key=(r.file||'')+'|'+(r.modified||''),opened=state.expandedReplays.has(key);
     const item=document.createElement('div');item.className='match-item'+(opened?' open':'');
     const head=document.createElement('button');head.type='button';head.className='match-head';
     const detailId='replay-detail-'+i;
-    head.setAttribute('aria-expanded',String(opened));
-    head.setAttribute('aria-controls',detailId);
+    head.setAttribute('aria-expanded',String(opened));head.setAttribute('aria-controls',detailId);
     const title=document.createElement('span');title.className='match-title';title.textContent=r.map||r.file;
     const sub=document.createElement('small');sub.textContent=(r.file||'')+' · '+relative(r.modified);
     head.append(title,sub,resultBadge(r.result),Object.assign(document.createElement('span'),{className:'chev'}));
@@ -408,16 +463,61 @@ function showReplays(items){
     head.addEventListener('click',()=>{
       const open=!state.expandedReplays.has(key);
       if(open)state.expandedReplays.add(key);else state.expandedReplays.delete(key);
-      item.classList.toggle('open',open);
-      detail.hidden=!open;
+      item.classList.toggle('open',open);detail.hidden=!open;
       head.setAttribute('aria-expanded',String(open));
     });
-    item.append(head,detail);
-    full.append(item);
+    item.append(head,detail);full.append(item);
   });
-  renderPlayerPickers();
 }
-function showLogs(logs){const arr=Array.isArray(logs)?logs:[];for(const id of ['log-preview','full-log']){const el=$(id);el.replaceChildren();const filtered=id==='log-preview'?arr.slice(-7):arr;if(!filtered.length){el.append(line(id==='log-preview'?t('logs.empty'):t('logs.empty.full'),'empty-mini'));continue}for(const entry of filtered){const row=document.createElement('div');row.className='log-row';const time=Object.assign(document.createElement('span'),{className:'log-time',textContent:(entry.time||'').slice(0,8)});const ico=Object.assign(document.createElement('span'),{className:'log-icon',textContent:entry.message&&/(Ошибка|Не удалось|error|fail|expired|invalid)/i.test(entry.message)?'!':'◆'});const msg=Object.assign(document.createElement('span'),{className:'log-msg',textContent:entry.message||''});row.append(time,ico,msg);el.append(row)}}}
+function showReplays(items){
+  state.replays=Array.isArray(items)?items:[];
+  const keys=new Set(state.replays.map(r=>(r.file||'')+'|'+(r.modified||'')));
+  for(const key of state.expandedReplays)if(!keys.has(key))state.expandedReplays.delete(key);
+  const box=$('recent-list');box.replaceChildren();
+  if(!state.replays.length)box.append(line(t('replays.empty.recent'),'empty-mini'));
+  for(const r of state.replays.slice(0,3)){
+    const el=document.createElement('div');el.className='recent-item';
+    const img=document.createElement('img');img.className='recent-img';img.src=mapPic(r.map);img.alt='';
+    const desc=document.createElement('div');desc.className='recent-text';
+    desc.append(Object.assign(document.createElement('b'),{textContent:r.map||r.file}));
+    desc.append(Object.assign(document.createElement('small'),{textContent:relative(r.modified)}));
+    el.append(img,desc,resultBadge(r.result));box.append(el);
+  }
+  renderHistory();renderPlayerPickers();
+}
+function diagnosticLevel(entry){
+  return ['info','warning','error'].includes(entry.level)?entry.level:'info';
+}
+function diagnosticHelp(entry){
+  const known=['twitch_auth','token_store','prediction_create','prediction_settle','prediction_timeout',
+    'replay_process','player_not_found','replay_check','local_server'];
+  return known.includes(entry.code)?t('diag.help.'+entry.code):'';
+}
+function createLogRow(entry){
+  const level=diagnosticLevel(entry);
+  const row=document.createElement('div');row.className='log-row diagnostic-'+level;
+  const time=Object.assign(document.createElement('span'),{className:'log-time',textContent:(entry.time||'').slice(0,8)});
+  const ico=Object.assign(document.createElement('span'),{className:'log-icon',textContent:level==='error'?'!':level==='warning'?'△':'◆'});
+  const content=document.createElement('div');content.className='log-content';
+  content.append(line(entry.message||'','log-msg'));
+  const help=diagnosticHelp(entry);
+  if(help)content.append(line(help,'log-help'));
+  row.append(time,ico,content);return row;
+}
+function showLogs(logs){
+  state.logs=Array.isArray(logs)?logs:[];
+  const preview=$('log-preview'),full=$('full-log'),scroll=full.scrollTop;
+  preview.replaceChildren();
+  const recent=state.logs.slice(-7);
+  if(!recent.length)preview.append(line(t('logs.empty'),'empty-mini'));
+  else for(const entry of recent)preview.append(createLogRow(entry));
+  const events=selectEvents(state.logs,$('log-filter').value,$('log-search').value);
+  $('log-summary').textContent=t('logs.count',{shown:events.length,total:state.logs.length});
+  full.replaceChildren();
+  if(!events.length)full.append(line(state.logs.length?t('logs.filtered.empty'):t('logs.empty.full'),'empty-mini'));
+  else for(const entry of events)full.append(createLogRow(entry));
+  full.scrollTop=scroll;
+}
 function monitoringView(st) {
  const phase=st.monitorPhase || (st.running?(st.active?'tracking':'watching'):'off');
  const prediction=st.predictionPhase || (st.active?(st.activeDryRun?'simulation':'awaiting_result'):'none');
@@ -622,6 +722,8 @@ window.addEventListener('DOMContentLoaded',async()=>{
     });
   }
  $('lang').addEventListener('change',()=>setLang($('lang').value));
+ for(const id of ['history-search','history-filter'])$(id).addEventListener(id==='history-search'?'input':'change',renderHistory);
+ for(const id of ['log-search','log-filter'])$(id).addEventListener(id==='log-search'?'input':'change',()=>showLogs(state.logs));
   $('wz-player').addEventListener('input',renderPlayerPickers);
   $('playerName').addEventListener('input',renderPlayerPickers);
   $('toonHandle').addEventListener('input',renderPlayerPickers);

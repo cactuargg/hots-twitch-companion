@@ -27,6 +27,14 @@ Twitch still requires a **Public** application Client ID that you provide yourse
 
 CI also checks the frontend JavaScript syntax and runs dependency-free Node.js onboarding tests; end users do not need Node.js installed.
 
+## Match history and diagnostics
+
+**Match History** searches across the most recent 12 saved replays by map, filename or player, and filters by Win / Loss / Unknown. An unreadable replay is different from a readable replay where the configured player cannot be identified. In the latter case the expanded card shows an explanation and a link to player Settings.
+
+**Event Log** now categorizes failures as Info, Warning or Error using structured backend event metadata, not translated text. Filter by severity and search within recent events; known errors offer actionable hints (for example Twitch authorization, Prediction creation/settlement, missing replays). The preview on Overview still shows the seven most recent events.
+
+The event log remains **in memory only**, with a limit of 150 entries; it is not a persistent audit log and it does not guarantee Twitch's live remote Prediction state. Replay history displays the most recent 12 parsed replays, not a complete match archive.
+
 ## Getting started
 
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
