@@ -1,7 +1,7 @@
 'use strict';
 const base = new URL('./', location.href).pathname;
 const $ = id => document.getElementById(id);
-const state = { status: null, config: null, replays: [], hasUnsaved: false, busy: false };
+const state = { status: null, config: null, replays: [], expandedReplays: new Set(), hasUnsaved: false, busy: false };
 const code = { authUrl: 'https://www.twitch.tv/activate' };
 let toastTimer;
 
@@ -19,6 +19,10 @@ const I18N = {
   'replays.eyebrow':'MATCH HISTORY','replays.title':'Match History','replays.sub':'Click a match to see its details and players.',
   'replays.refresh':'Refresh','replays.h2':'Saved matches','replays.check':'Check latest replay',
   'match.players':'Players','match.you':'YOU','match.error':'Could not parse this replay',
+   'replay.no_selected':'Replay decoded, but the configured player was not found. Check your player name or Toon Handle.',
+   'toast.replay_no_player':'Replay decoded, but your player was not identified: {err}',
+   'wiz.sim_only':'Real Predictions are enabled. Disable real mode in Settings before starting simulation.',
+   'prediction.title':'HotS win?','prediction.win':'Win','prediction.loss':'Loss',
   'automation.start':'Start monitoring','automation.stop':'Stop','automation.how':'How it works',
   'automation.step1.pre':'A new ','automation.step2':'A “HotS win?” prediction opens (betting window {min} min)',
   'automation.step3':'Once the replay appears, the selected player’s result is read',
@@ -97,6 +101,10 @@ const I18N = {
   'replays.eyebrow':'ИСТОРИЯ МАТЧЕЙ','replays.title':'История матчей','replays.sub':'Нажми на матч, чтобы увидеть данные игры и игроков.',
   'replays.refresh':'Обновить','replays.h2':'Сохранённые матчи','replays.check':'Проверить последний реплей',
   'match.players':'Игроки','match.you':'ВЫ','match.error':'Не удалось разобрать этот реплей',
+   'replay.no_selected':'Реплей прочитан, но выбранный игрок не найден. Проверь ник или Toon Handle.',
+   'toast.replay_no_player':'Реплей прочитан, но твой игрок не определён: {err}',
+   'wiz.sim_only':'Включены реальные Predictions. Отключи реальный режим в настройках перед запуском симуляции.',
+   'prediction.title':'Победа в HotS?','prediction.win':'Победа','prediction.loss':'Поражение',
   'automation.start':'Запустить мониторинг','automation.stop':'Остановить','automation.how':'Как это работает',
   'automation.step1.pre':'Появился новый ','automation.step2':'Создаётся прогноз «Победа в HotS?» (приём ставок — {min} мин)',
   'automation.step3':'После появления реплея считывается результат выбранного игрока',
@@ -184,17 +192,29 @@ function applyI18n(){
 }
 async function setLang(l){
   if (l === lang) return;
+  const previous = lang;
   lang = l;
-  try { localStorage.setItem('hots-lang', l); } catch (e) { /* private mode */ }
   applyI18n();
   render(state.status);
   showReplays(state.replays);
   if (state.config) {
+    // Persist only language; draft Settings inputs must not be saved on a language switch.
     try {
-      const x = await save({lang: l});
-      $('predictionWindow').value = String(x.config.predictionWindowMin || 2);
-    } catch (e) { toast(e.message, true); }
+      const x = await api('config', 'POST', {
+        ...state.config, lang: l, confirmedRealMode: !!state.config.realMode
+      });
+      state.config = x.config;
+      applyI18n();
+    } catch (e) {
+      lang = previous;
+      applyI18n();
+      render(state.status);
+      showReplays(state.replays);
+      toast(e.message, true);
+      return;
+    }
   }
+  try { localStorage.setItem('hots-lang', l); } catch (e) { /* private mode */ }
 }
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
@@ -213,7 +233,13 @@ function go(view){document.querySelectorAll('.view').forEach(v=>v.classList.togg
 function line(text,cls){const d=document.createElement('div');d.className=cls||'';d.textContent=text;return d}
 function relative(iso){if(!iso)return '';const ms=Date.now()-new Date(iso).getTime();if(!Number.isFinite(ms))return '';const min=Math.round(ms/60000);if(min<2)return t('rel.now');if(min<60)return t('rel.min',{n:min});if(min<1440)return t('rel.hour',{n:Math.round(min/60)});return new Date(iso).toLocaleDateString(lang==='ru'?'ru-RU':'en-US')}
 function resultBadge(result){const span=document.createElement('span');span.className='outcome-pill '+(result==='win'?'win':result==='loss'?'loss':'unknown');span.textContent=result==='win'?t('badge.win'):result==='loss'?t('badge.loss'):t('badge.unknown');return span}
-const mapPic=i=>['./assets/map-towers.webp','./assets/map-hollow.webp','./assets/map-dragon.webp'][i%3];
+function mapPic(name){
+  const map=String(name||'').toLowerCase();
+  if(map.includes('towers of doom'))return './assets/map-towers.webp';
+  if(map.includes('cursed hollow'))return './assets/map-hollow.webp';
+  if(map.includes('dragon shire'))return './assets/map-dragon.webp';
+  return './assets/battleground.webp'; // Unknown maps use neutral artwork.
+}
 
 function playerRow(p, selected){
   const row=document.createElement('div');row.className='player-row'+(selected?' you':'');
@@ -238,25 +264,39 @@ function matchDetail(r){
 }
 function showReplays(items){
   state.replays=Array.isArray(items)?items:[];
+  const replayKey=r=>(r.file||'')+'|'+(r.modified||'');
+  const keys=new Set(state.replays.map(replayKey));
+  for(const key of state.expandedReplays)if(!keys.has(key))state.expandedReplays.delete(key);
   const box=$('recent-list'),full=$('full-replays');box.replaceChildren();full.replaceChildren();
   if(!state.replays.length){box.append(line(t('replays.empty.recent'),'empty-mini'));full.append(line(t('replays.empty.full'),'empty-mini'));return}
   state.replays.slice(0,3).forEach((r,i)=>{
     const el=document.createElement('div');el.className='recent-item';
-    const img=document.createElement('img');img.className='recent-img';img.src=mapPic(i);img.alt='';
+    const img=document.createElement('img');img.className='recent-img';img.src=mapPic(r.map);img.alt='';
     const desc=document.createElement('div');desc.className='recent-text';
     desc.append(Object.assign(document.createElement('b'),{textContent:r.map||r.file}));
     desc.append(Object.assign(document.createElement('small'),{textContent:relative(r.modified)}));
     el.append(img,desc,resultBadge(r.result));box.append(el);
   });
-  state.replays.forEach(r=>{
-    const item=document.createElement('div');item.className='match-item';
+  state.replays.forEach((r,i)=>{
+    const key=replayKey(r),opened=state.expandedReplays.has(key);
+    const item=document.createElement('div');item.className='match-item'+(opened?' open':'');
     const head=document.createElement('button');head.type='button';head.className='match-head';
+    const detailId='replay-detail-'+i;
+    head.setAttribute('aria-expanded',String(opened));
+    head.setAttribute('aria-controls',detailId);
     const title=document.createElement('span');title.className='match-title';title.textContent=r.map||r.file;
     const sub=document.createElement('small');sub.textContent=(r.file||'')+' · '+relative(r.modified);
     head.append(title,sub,resultBadge(r.result),Object.assign(document.createElement('span'),{className:'chev'}));
     head.querySelector('.chev').innerHTML='<svg><use href="#i-chev"/></svg>';
-    head.addEventListener('click',()=>{const open=item.classList.toggle('open');item.querySelector('.match-detail').hidden=!open;});
-    item.append(head,matchDetail(r));
+    const detail=matchDetail(r);detail.id=detailId;detail.hidden=!opened;
+    head.addEventListener('click',()=>{
+      const open=!state.expandedReplays.has(key);
+      if(open)state.expandedReplays.add(key);else state.expandedReplays.delete(key);
+      item.classList.toggle('open',open);
+      detail.hidden=!open;
+      head.setAttribute('aria-expanded',String(open));
+    });
+    item.append(head,detail);
     full.append(item);
   });
 }
@@ -300,39 +340,46 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'auth':{if(state.hasUnsaved)await save();if(!$('clientId').value.trim()){go('settings');toast(t('toast.need_client'),true);break}const x=await api('auth','POST',{});if(x.code){go('settings');$('auth-progress').hidden=false;$('auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'))}break}
  case 'activate':window.open(code.authUrl,'_blank','noopener,noreferrer');break;
  case 'developer':window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');break;
- case 'replay':{await api('replay/check','POST',{});toast(t('toast.replay_ok'));await reloadReplays();const first=document.querySelector('#full-replays .match-item');if(first){first.classList.add('open');const d=first.querySelector('.match-detail');if(d)d.hidden=false;}break}
+ case 'replay':{
+    const result=await api('replay/check','POST',{});
+    if(result.selected)toast(t('toast.replay_ok'));
+    else{toast(t('toast.replay_no_player',{err:result.playerError||t('replay.no_selected')}),true);go('replays');}
+    await reloadReplays();
+    const first=document.querySelector('#full-replays .match-head');
+    if(first&&first.getAttribute('aria-expanded')!=='true')first.click();
+    break;
+  }
  case 'start':if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'));await loadStatus();break;
  case 'stop':await api('automation/stop','POST',{});toast(t('toast.stopping'));await loadStatus();break;
  case 'toggle':if(state.status?.running){await api('automation/stop','POST',{});toast(t('toast.stopping'))}else{if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'))}await loadStatus();break;
  case 'refresh-replays':await reloadReplays();toast(t('toast.refreshed'));break;
  case 'wizard':openWizard();break;
- case 'check-root':{
-   const box=$('root-check-result');box.hidden=false;box.replaceChildren(line(t('root.checking'),'empty-mini'));
-   try{
-     const x=await api('replayroot/check','POST',{path:$('replayRoot').value.trim()});
-     box.replaceChildren();
-     for(const en of (x.entries||[])){
-       const row=document.createElement('button');row.type='button';
-       row.className='root-entry'+(en.exists?' ok':' bad');
-       const mark=Object.assign(document.createElement('b'),{textContent:en.exists?'✓':'✗'});
-       const info=Object.assign(document.createElement('span'),{className:'root-path',textContent:en.path});
-       const cnt=Object.assign(document.createElement('small'),{textContent:en.exists?t('root.found',{n:en.replays}):t('root.none')});
-       row.title=t('root.use');
-       row.append(mark,info,cnt);
-       row.addEventListener('click',()=>{$('replayRoot').value=en.path;state.hasUnsaved=true;});
-       box.append(row);
-     }
-   }catch(e){box.replaceChildren(line(e.message,'empty-mini'));}
-   break;
- }
- case 'reset-root':{
-   $('replayRoot').value='';state.hasUnsaved=true;
-   $('root-check-result').hidden=true;
-   action('check-root');
-   break;
- }
- case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
+ case 'check-root':await checkReplayRoot();break;
+  case 'reset-root':
+    $('replayRoot').value='';state.hasUnsaved=true;
+    await checkReplayRoot();
+    break;
+  case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
  }}catch(e){toast(e.message||t('toast.request_error'),true)}finally{state.busy=false}}
+
+async function checkReplayRoot(){
+  const box=$('root-check-result');box.hidden=false;box.replaceChildren(line(t('root.checking'),'empty-mini'));
+  try{
+    const x=await api('replayroot/check','POST',{path:$('replayRoot').value.trim()});
+    box.replaceChildren();
+    for(const en of (x.entries||[])){
+      const row=document.createElement('button');row.type='button';
+      row.className='root-entry'+(en.exists?' ok':' bad');
+      const mark=Object.assign(document.createElement('b'),{textContent:en.exists?'✓':'✗'});
+      const info=Object.assign(document.createElement('span'),{className:'root-path',textContent:en.path});
+      const cnt=Object.assign(document.createElement('small'),{textContent:en.exists?t('root.found',{n:en.replays}):t('root.none')});
+      row.title=t('root.use');
+      row.append(mark,info,cnt);
+      row.addEventListener('click',()=>{$('replayRoot').value=en.path;state.hasUnsaved=true;});
+      box.append(row);
+    }
+  }catch(e){box.replaceChildren(line(e.message,'empty-mini'));}
+}
 
 /* ── setup wizard ────────────────────────────────────────────────────── */
 const wiz={step:0,max:2};
@@ -374,8 +421,9 @@ async function wizardAction(kind){
       const res=$('wz-test-result');res.hidden=false;res.textContent='…';
       $('playerName').value=$('wz-player').value.trim();await save();
       const x=await api('replay/check','POST',{});
+      if(!x.selected)throw Error(x.playerError||t('replay.no_selected'));
       res.className='wiz-result ok';
-      res.textContent=x.selected?t('wiz.p.ok',{res:x.selected.name+' → '+x.selected.result,map:x.map}):t('replay.no_selected');
+      res.textContent=t('wiz.p.ok',{res:x.selected.name+' → '+x.selected.result,map:x.map});
       await reloadReplays();
     }else if(kind==='console'){window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');}
     else if(kind==='auth'){
@@ -385,7 +433,9 @@ async function wizardAction(kind){
       if(x.code){const box=$('wz-auth-box');box.hidden=false;$('wz-auth-code').textContent=x.code;code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';toast(t('toast.auth_code'));}
     }else if(kind==='activate'){window.open(code.authUrl,'_blank','noopener,noreferrer');}
     else if(kind==='start'){
-      $('playerName').value=$('wz-player').value.trim();await save();
+      // Wizard simulation must never create real channel-point predictions.
+      if(state.config?.realMode || $('realMode').checked){toast(t('wiz.sim_only'),true);return;}
+      $('playerName').value=$('wz-player').value.trim();await save({realMode:false});
       await api('automation/start','POST',{});toast(t('toast.started'));await loadStatus();
     }
   }catch(e){

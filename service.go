@@ -317,6 +317,7 @@ func (d *dashboard) checkReplay() (map[string]any, error) {
 	res := map[string]any{"file": filepath.Base(list[0].Path), "map": r.Map, "players": players}
 	selected, err := findOutcome(r, cfg.PlayerName, cfg.PlayerToonHandle, cfg.lang())
 	if err != nil {
+		res["playerError"] = err.Error()
 		d.log(d.tr("log.replay_no_player", err.Error()))
 	} else {
 		res["selected"] = playerSummary{Name: selected.Name, ToonHandle: selected.ToonHandle, Result: selected.Result}

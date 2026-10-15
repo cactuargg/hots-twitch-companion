@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -257,6 +258,27 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	}
 	if len(x.Replays[0].Players) != 2 || x.Replays[0].Selected != "Проверка" {
 		t.Fatalf("game data not exposed: %+v", x.Replays[0])
+	}
+	// A parsed replay is not a successful player test if the configured identity is absent.
+	missing, err := newDashboard(p, Config{PlayerName: "NotPresent", ReplayRoot: rp})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest("POST", "http://127.0.0.1:12345/secret/api/replay/check", bytes.NewReader([]byte("{}")))
+	request.Host = "127.0.0.1:12345"
+	request.Header.Set("X-Companion", "1")
+	request.Header.Set("Origin", "http://127.0.0.1:12345")
+	response := httptest.NewRecorder()
+	missing.routes("127.0.0.1:12345", "secret").ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("replay check returned %d: %s", response.Code, response.Body.String())
+	}
+	var checked map[string]json.RawMessage
+	if err := json.Unmarshal(response.Body.Bytes(), &checked); err != nil {
+		t.Fatal(err)
+	}
+	if string(checked["selected"]) != "" || len(checked["playerError"]) == 0 {
+		t.Fatalf("missing-player check must report playerError without selected player: %s", response.Body.String())
 	}
 	before, err := os.ReadFile(name)
 	if err != nil {
