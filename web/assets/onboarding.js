@@ -92,7 +92,8 @@ function renderWizard(){
     dot.className='dot'+(i===wiz.step?' on':'')+(i<wiz.step?' done':'');
     dots.append(dot);
   }
-  $('wiz-progress').textContent=t('onboarding.simple.progress',{step:wiz.step+1,total:wiz.max+1});
+  const progress=t('onboarding.simple.progress',{step:wiz.step+1,total:wiz.max+1});
+  if($('wiz-progress').textContent!==progress)$('wiz-progress').textContent=progress;
   document.querySelector('[data-wiz="back"]').disabled=wiz.step===0||wiz.busy;
   $('wiz-next').textContent=t(wiz.step===wiz.max?'onboarding.simple.start':'wiz.next');
   $('wiz-skip').textContent=t(wiz.step===wiz.max?'onboarding.simple.finishLater':'onboarding.simple.later');
