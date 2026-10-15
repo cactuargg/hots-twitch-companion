@@ -1,6 +1,18 @@
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'replay.scan.checking':'Checking saved replay files',
+  'replay.scan.paused':'Monitoring is paused. Automatic settlement will not run.',
+  'replay.scan.no_replays':'No replay files found in the configured folder.',
+  'replay.scan.waiting_replay':'Waiting for a completed replay created after this Prediction.',
+  'replay.scan.too_old':'A replay is visible, but its file timestamp predates this Prediction. It was not used.',
+  'replay.scan.writing':'Waiting for the new replay file to finish being written.',
+  'replay.scan.parse_error':'The replay was found but could not be decoded.',
+  'replay.scan.player_not_found':'Replay found, but the selected player or match outcome could not be identified.',
+  'replay.scan.settle_error':'Match result found, but Twitch settlement failed. Check the event log.',
+  'replay.scan.settled':'Prediction result was applied.',
+  'replay.scan.retry':'Check result again',
+  'replay.scan.rechecked':'Replay checked; see the diagnostic message.',
   'manual.title':'Manual Prediction controls',
   'manual.description':'If the result was not detected, choose an outcome or cancel the prediction.',
   'manual.description.real':'An active Twitch Prediction is waiting. Select the correct match result or cancel and refund viewers.',
@@ -189,6 +201,18 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'replay.scan.checking':'Проверяем сохранённые реплеи',
+  'replay.scan.paused':'Мониторинг остановлен. Автоматическое завершение не выполняется.',
+  'replay.scan.no_replays':'В выбранной папке реплеи не найдены.',
+  'replay.scan.waiting_replay':'Ожидаем завершённый реплей, созданный после начала Prediction.',
+  'replay.scan.too_old':'Реплей есть в истории, но его время изменения раньше Prediction. Автоматически не используем его.',
+  'replay.scan.writing':'Ждём завершения записи нового реплея.',
+  'replay.scan.parse_error':'Реплей найден, но не удалось прочитать его данные.',
+  'replay.scan.player_not_found':'Реплей есть, но выбранный игрок или исход матча не определён.',
+  'replay.scan.settle_error':'Результат найден, но Twitch не завершил Prediction. Проверь журнал.',
+  'replay.scan.settled':'Prediction завершён успешно.',
+  'replay.scan.retry':'Перепроверить результат',
+  'replay.scan.rechecked':'Реплеи перепроверены. Результат проверки показан выше.',
   'manual.title':'Ручное завершение Prediction',
   'manual.description':'Если результат не определился автоматически, выбери исход или отмени прогноз.',
   'manual.description.real':'На Twitch есть незавершённый Prediction. Выбери результат матча или отмени его с возвратом баллов.',
