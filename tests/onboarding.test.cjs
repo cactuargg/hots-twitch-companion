@@ -101,3 +101,48 @@ test('both screens contain picker, preview, and OAuth copy controls', () => {
   assert.ok(html.includes('data-action="copy-code"'));
   assert.ok(html.includes('data-wiz="copy-code"'));
 });
+
+
+test('History filters match map, filenames, players, and outcomes', () => {
+  const sandbox = {};
+  vm.runInNewContext(section('function selectReplays(', 'function renderHistory('), sandbox);
+  const replays = [
+    { file: 'Dragon.StormReplay', map: 'Dragon Shire', result: 'win', players: [{name:'Cactuar'}] },
+    { file: 'Garden.StormReplay', map: 'Garden of Terror', result: 'loss', players: [{name:'Other'}] },
+    { file: 'Broken.StormReplay', map: '', result: 'unknown', players: [] },
+  ];
+  assert.equal(sandbox.selectReplays(replays, '', 'all').length, 3);
+  assert.equal(sandbox.selectReplays(replays, 'dragon', 'win').length, 1);
+  assert.equal(sandbox.selectReplays(replays, 'cactuar', 'win').length, 1);
+  assert.equal(sandbox.selectReplays(replays, 'garden', 'win').length, 0);
+  assert.equal(sandbox.selectReplays(replays, '', 'unknown').length, 1);
+  assert.equal(sandbox.selectReplays(replays, 'broken', 'unknown').length, 1);
+});
+
+test('Diagnostic filters use explicit severity instead of localized keywords', () => {
+  const sandbox = {
+    t: key => key,
+  };
+  vm.runInNewContext(section('function selectReplays(', 'function renderHistory(') +
+    '\n' + section('function diagnosticLevel(', 'function createLogRow('), sandbox);
+  const events = [
+    { time:'10:00:01', level:'error', code:'prediction_create', message:'Prediction rejected' },
+    { time:'10:00:02', level:'warning', code:'player_not_found', message:'Игрок не найден' },
+    { time:'10:00:03', level:'info', message:'fail-safe simulation enabled' },
+    { time:'10:00:04', message:'legacy event' },
+  ];
+  assert.equal(sandbox.selectEvents(events, 'error', '').length, 1);
+  assert.equal(sandbox.selectEvents(events, 'warning', '').length, 1);
+  assert.equal(sandbox.selectEvents(events, 'info', '').length, 2);
+  assert.equal(sandbox.selectEvents(events, 'all', 'игрок').length, 1);
+  assert.equal(sandbox.diagnosticLevel(events[3]), 'info');
+  assert.equal(sandbox.diagnosticHelp(events[0]), 'diag.help.prediction_create');
+  assert.equal(sandbox.diagnosticHelp(events[3]), '');
+});
+
+test('History and diagnostic filter controls exist', () => {
+  for(const id of ['history-search','history-filter','history-summary','full-replays',
+                    'log-search','log-filter','log-summary','full-log']){
+    assert.ok(html.includes('id="' + id + '"'), 'Missing filter or results: ' + id);
+  }
+});
