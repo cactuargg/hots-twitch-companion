@@ -146,7 +146,7 @@ func predictionPhase(p *Prediction, windowMinutes int, now time.Time) (string, i
 func (d *dashboard) status() map[string]any {
 	e := d.engine
 	e.mu.Lock()
-	running, config, s := e.running, e.cfg, e.state
+	running, config, s, scan := e.running, e.cfg, e.state, e.scan
 	tw := e.twitch
 	e.mu.Unlock()
 	tw.mu.Lock()
@@ -177,6 +177,7 @@ func (d *dashboard) status() map[string]any {
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
   "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
+  "replayScan": scan,
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
 }
 func (d *dashboard) config() Config {
@@ -594,6 +595,21 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			}
 			jsonOutput(w, 200, v)
 			return
+		case "prediction/recheck":
+   var body struct {
+    ID string `json:"id"`
+    StartedAt int64 `json:"startedAt"`
+   }
+   if err := readJSONRequest(r, &body); err != nil {
+    requestError(w, err)
+    return
+   }
+   ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
+   defer cancel()
+   scan, err := d.engine.recheckReplay(ctx, body.ID, body.StartedAt)
+   if err != nil { requestError(w, err); return }
+   jsonOutput(w, 200, map[string]any{"ok":true, "scan":scan})
+   return
 		case "prediction/manual":
    var body struct {
     Outcome string `json:"outcome"`
