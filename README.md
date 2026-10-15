@@ -13,6 +13,10 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 - **Simulation mode by default** — full pipeline runs without touching real channel points until you explicitly enable real Predictions.
 - Read-only MPQ replay parser (zlib/BZip2) written from public file-format documentation — no DLL injection, hooks, drivers, or game-memory access.
 
+## Dashboard status model
+
+Overview now puts **Start/Stop monitoring** and **Check latest replay** above the secondary cards. Its monitoring, Twitch connection, and Prediction statuses are separate. A stored OAuth token is shown as *Needs verification* until Twitch validates it. The estimated betting-window countdown is derived from local timestamps and configuration; it **does not confirm** the current remote Twitch Prediction status.
+
 ## Getting started
 
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
