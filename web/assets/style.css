@@ -64,3 +64,16 @@
 .wizard-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px 20px;border-top:1px solid #2c4d8c}
 .wiz-nav{display:flex;gap:10px}
 .wizard-foot .btn-primary{margin:0}
+.wizard-body .form-buttons{margin-top:16px;flex-wrap:wrap}
+.wizard-body .field-hint{margin-top:12px}
+.wizard-body .separation{margin:18px 0}
+.root-actions{margin-top:12px}
+.root-check{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.root-entry{display:flex;align-items:center;gap:12px;width:100%;border:1px solid #2c4d8c;background:#0a1a36;color:var(--ink);padding:10px 13px;border-radius:6px;font:inherit;font-size:12px;text-align:left;cursor:pointer}
+.root-entry:hover{background:#122649}
+.root-entry b{flex-shrink:0}
+.root-entry.ok b{color:var(--green)}
+.root-entry.bad{opacity:.75}
+.root-entry.bad b{color:var(--red)}
+.root-path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c6d7ef}
+.root-entry small{color:var(--muted);flex-shrink:0}

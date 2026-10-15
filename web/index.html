@@ -49,17 +49,25 @@
         <h2>Heroes of the Storm</h2>
         <label for="playerName" data-i18n="settings.player">Ник игрока</label><input id="playerName" type="text" placeholder="Ник из реплея" maxlength="160" data-i18n-placeholder="settings.player.ph"/>
         <label for="toonHandle" data-i18n="settings.toon">Toon Handle (необязательно)</label><input id="toonHandle" type="text" placeholder="Точный идентификатор игрока" maxlength="240" data-i18n-placeholder="settings.toon.ph"/>
+        <small class="field-hint" data-i18n="settings.toon.hint">Не BattleTag. Уникальный ID аккаунта Blizzard из реплея (например 2-Hero-1-123456). Нужен только если ник не уникален; скопируй его из «Истории матчей» рядом со своим ником.</small>
         <label for="replayRoot" data-i18n="settings.root">Папка с реплеями (можно оставить пустой)</label><input id="replayRoot" type="text" placeholder="Поиск в Documents / Heroes of the Storm" maxlength="1000" data-i18n-placeholder="settings.root.ph"/>
+        <small class="field-hint" data-i18n="settings.root.hint">Пусто — стандартные папки Documents и OneDrive/Documents (Heroes of the Storm). Введи свой путь и проверь его кнопкой ниже.</small>
+        <div class="form-buttons root-actions"><button type="button" class="btn btn-outline" data-action="check-root"><svg><use href="#i-refresh"/></svg> <span data-i18n="root.check">Проверить папку</span></button><button type="button" class="btn btn-outline" data-action="reset-root"><span data-i18n="root.reset">Стандартная папка</span></button></div>
+        <div id="root-check-result" class="root-check" hidden></div>
         <div class="separation"></div>
         <h2 data-i18n="settings.mode">Режим работы</h2>
         <label for="predictionWindow" data-i18n="settings.window">Длительность Prediction</label><select id="predictionWindow"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option></select><small class="field-hint" data-i18n="settings.window.hint">Время приёма ставок, как в интерфейсе Twitch Predictions (1–30 минут).</small>
+        <label for="predTitle" data-i18n="settings.predTitle">Заголовок Prediction</label><input id="predTitle" type="text" maxlength="45" data-i18n-placeholder="prediction.title"/>
+        <label for="predWin" data-i18n="settings.predWin">Вариант победы</label><input id="predWin" type="text" maxlength="25" data-i18n-placeholder="prediction.win"/>
+        <label for="predLoss" data-i18n="settings.predLoss">Вариант поражения</label><input id="predLoss" type="text" maxlength="25" data-i18n-placeholder="prediction.loss"/>
+        <small class="field-hint" data-i18n="settings.predHint">Оставь поля пустыми — используются значения по умолчанию для выбранного языка.</small>
         <div class="separation"></div>
         <label class="check-row"><input id="realMode" type="checkbox"/><span><strong data-i18n="settings.real">Разрешить реальные Twitch Predictions</strong><small data-i18n="settings.real.sub">Только после проверки парсера: реальные баллы зрителей будут распределяться автоматически.</small></span></label>
         <div class="form-buttons"><button class="btn btn-primary short" data-action="save"><svg><use href="#i-settings"/></svg> <span data-i18n="settings.save">Сохранить настройки</span></button><button class="btn btn-outline" data-action="wizard"><svg><use href="#i-wand"/></svg> <span data-i18n="settings.wizard">Мастер настройки</span></button></div>
       </div></section>
       <section class="view" id="view-logs"><div class="view-heading"><div><div class="eyebrow" data-i18n="logs.eyebrow">ДИАГНОСТИКА</div><h1 data-i18n="logs.title">Журнал событий</h1><p data-i18n="logs.sub">Только локальные события и результаты API без секретных токенов.</p></div></div><div class="content-panel"><div class="full-log" id="full-log"></div></div></section>
     </main>
-    <footer class="footer"><div class="footer-safe"><svg><use href="#i-shield"/></svg><div><strong id="footer-mode">…</strong><span id="footer-detail">…</span></div></div><div class="footer-right"><span>HotS Twitch Companion v0.4.2</span><span class="sep">|</span><span id="footer-status">…</span><button class="quit" data-action="quit" title="Закрыть приложение" data-i18n-title="footer.quit.title" data-i18n="footer.quit">Выход</button></div></footer>
+    <footer class="footer"><div class="footer-safe"><svg><use href="#i-shield"/></svg><div><strong id="footer-mode">…</strong><span id="footer-detail">…</span></div></div><div class="footer-right"><span>HotS Twitch Companion v0.5</span><span class="sep">|</span><span id="footer-status">…</span><button class="quit" data-action="quit" title="Закрыть приложение" data-i18n-title="footer.quit.title" data-i18n="footer.quit">Выход</button></div></footer>
   </div>
 
   <div class="wizard-backdrop" id="wizard" hidden>
@@ -74,9 +82,7 @@
           <h3 data-i18n="wiz.lang.h">Выбери язык</h3>
           <p class="secondary" data-i18n="wiz.lang.sub">Интерфейс и сообщения приложения переключаются сразу.</p>
           <div class="wiz-lang-row"><button type="button" class="btn btn-outline" data-wiz-lang="en">English</button><button type="button" class="btn btn-outline" data-wiz-lang="ru">Русский</button></div>
-          <p class="secondary" data-i18n="wiz.intro">Мастер за несколько шагов подключит приложение к игре и твоему каналу: ник игрока, Twitch и автоматизация. Всё это позже можно изменить в «Настройках».</p>
-        </section>
-        <section data-step="1">
+          <div class="separation"></div>
           <h3 data-i18n="wiz.p.h">Твой игрок в HotS</h3>
           <p class="secondary" data-i18n="wiz.p.sub">Введи точный ник, под которым играешь — он должен совпадать с именем в реплеях. Если ник не уникален, позже укажи Toon Handle в настройках.</p>
           <label for="wz-player" data-i18n="settings.player">Ник игрока</label>
@@ -85,7 +91,7 @@
           <div class="wiz-result" id="wz-test-result" hidden></div>
           <p class="field-hint" data-i18n="wiz.p.hint">Ожидаемый результат: твой ник и «Победа» или «Поражение». Если реплеев нет — сыграй одну игру и повтори.</p>
         </section>
-        <section data-step="2">
+        <section data-step="1">
           <h3 data-i18n="wiz.t.h">Подключение Twitch</h3>
           <p class="secondary" data-i18n="wiz.t.sub">В Twitch Developer Console создай приложение типа «Public», скопируй Client ID (секрет не нужен) и вставь сюда.</p>
           <label for="wz-client">Twitch Client ID</label>
@@ -94,14 +100,12 @@
           <div class="wiz-result" id="wz-auth-box" hidden><strong><span data-i18n="auth.label">Код для авторизации:</span> <span id="wz-auth-code">—</span></strong><span id="wz-auth-info" data-i18n="wiz.t.pending">Ожидаем подтверждения Twitch…</span><button type="button" class="btn btn-outline" data-wiz="activate"><span data-i18n="auth.activate">Открыть Twitch Activate ↗</span></button></div>
           <p class="field-hint" data-i18n="wiz.t.hint">Ожидаемый результат: появится код, ты подтвердишь доступ на странице Twitch, и статус станет «Twitch подключён».</p>
         </section>
-        <section data-step="3">
+        <section data-step="2">
           <h3 data-i18n="wiz.a.h">Автоматизация</h3>
           <p class="secondary" data-i18n="wiz.a.sub">Во время игры приложение следит за файлами HotS, создаёт Prediction «Победа в HotS?» и завершает его по результату матча. По умолчанию включён режим симуляции — реальные баллы зрителей не затрагиваются.</p>
-          <p class="secondary" data-i18n="wiz.a.duration">Длительность приёма ставок настраивается в «Настройках» (1–30 минут).</p>
+          <p class="secondary" data-i18n="wiz.a.duration">Длительность приёма ставок и тексты Prediction настраиваются в «Настройках» (1–30 минут).</p>
           <div class="form-buttons"><button type="button" class="btn btn-primary short" data-wiz="start"><svg><use href="#i-lightning"/></svg> <span data-i18n="wiz.a.btn">Запустить мониторинг (симуляция)</span></button></div>
-        </section>
-        <section data-step="4">
-          <h3 data-i18n="wiz.f.h">Готово!</h3>
+          <div class="separation"></div>
           <ul class="wiz-checklist">
             <li id="wz-ch-player"><span data-i18n="wiz.f.player">Игрок</span><b>…</b></li>
             <li id="wz-ch-twitch"><span data-i18n="wiz.f.twitch">Twitch</span><b>…</b></li>

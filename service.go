@@ -12,10 +12,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 //go:embed web/* web/assets/*
@@ -166,6 +168,58 @@ func playersFromReplay(r Replay) []playerSummary {
 		out = append(out, playerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Result: p.Result})
 	}
 	return out
+}
+
+type replayRootEntry struct {
+	Path    string `json:"path"`
+	Exists  bool   `json:"exists"`
+	Replays int    `json:"replays"`
+	Custom  bool   `json:"custom"`
+}
+
+func countStormReplays(root string) int {
+	count := 0
+	visited := 0
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return filepath.SkipDir
+		}
+		visited++
+		if visited > 20000 {
+			return filepath.SkipAll
+		}
+		if !d.IsDir() && strings.HasSuffix(strings.ToLower(d.Name()), ".stormreplay") {
+			count++
+		}
+		return nil
+	})
+	return count
+}
+
+// checkReplayRoot verifies a candidate folder (or the defaults when empty)
+// so the UI can confirm the path before saving.
+func (d *dashboard) checkReplayRoot(custom string) (map[string]any, error) {
+	custom = strings.TrimSpace(custom)
+	if len(custom) > 1000 {
+		return nil, errors.New(d.tr("config.too_long"))
+	}
+	var roots []string
+	isCustom := custom != ""
+	if isCustom {
+		roots = []string{custom}
+	} else {
+		roots = replayRoots(d.config())
+	}
+	entries := make([]replayRootEntry, 0, len(roots))
+	for _, root := range roots {
+		entry := replayRootEntry{Path: root, Custom: isCustom}
+		if st, err := os.Stat(root); err == nil && st.IsDir() {
+			entry.Exists = true
+			entry.Replays = countStormReplays(root)
+		}
+		entries = append(entries, entry)
+	}
+	return map[string]any{"custom": isCustom, "entries": entries}, nil
 }
 func (d *dashboard) doAuth() (map[string]any, error) {
 	d.mu.Lock()
@@ -396,6 +450,9 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				Lang                string `json:"lang"`
 				PredictionWindowMin int    `json:"predictionWindowMin"`
 				WizardDone          bool   `json:"wizardDone"`
+				PredictionTitle     string `json:"predictionTitle"`
+				PredictionWin       string `json:"predictionWin"`
+				PredictionLoss      string `json:"predictionLoss"`
 			}
 			if err := readJSONRequest(r, &body); err != nil {
 				requestError(w, err)
@@ -413,11 +470,24 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				requestError(w, errors.New(d.tr("config.window_invalid")))
 				return
 			}
+			// Twitch API limits: prediction title 45 chars, outcome titles 25 chars.
+			resolved := Config{Lang: normalizeLang(body.Lang), PredictionTitle: body.PredictionTitle, PredictionWin: body.PredictionWin, PredictionLoss: body.PredictionLoss}
+			_, winTitle, lossTitle := resolved.predictionTexts()
+			if utf8.RuneCountInString(strings.TrimSpace(body.PredictionTitle)) > 45 ||
+				utf8.RuneCountInString(strings.TrimSpace(body.PredictionWin)) > 25 ||
+				utf8.RuneCountInString(strings.TrimSpace(body.PredictionLoss)) > 25 {
+				requestError(w, errors.New(d.tr("config.prediction_len")))
+				return
+			}
+			if strings.EqualFold(winTitle, lossTitle) {
+				requestError(w, errors.New(d.tr("config.prediction_same")))
+				return
+			}
 			if len(body.ClientID) > 160 || len(body.PlayerName) > 160 || len(body.PlayerToonHandle) > 240 || len(body.ReplayRoot) > 1000 {
 				requestError(w, errors.New(d.tr("config.too_long")))
 				return
 			}
-			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin, WizardDone: body.WizardDone}
+			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin, WizardDone: body.WizardDone, PredictionTitle: strings.TrimSpace(body.PredictionTitle), PredictionWin: strings.TrimSpace(body.PredictionWin), PredictionLoss: strings.TrimSpace(body.PredictionLoss)}
 			if err := d.engine.updateConfig(cfg); err != nil {
 				requestError(w, err)
 				return
@@ -438,6 +508,21 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			v, err := d.checkReplay()
 			if err != nil {
 				d.log(d.tr("log.replay_check_error", err.Error()))
+				requestError(w, err)
+				return
+			}
+			jsonOutput(w, 200, v)
+			return
+		case "replayroot/check":
+			var body struct {
+				Path string `json:"path"`
+			}
+			if err := readJSONRequest(r, &body); err != nil {
+				requestError(w, err)
+				return
+			}
+			v, err := d.checkReplayRoot(body.Path)
+			if err != nil {
 				requestError(w, err)
 				return
 			}

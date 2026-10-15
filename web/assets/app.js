@@ -31,6 +31,12 @@ const I18N = {
   'settings.root':'Replays folder (can stay empty)','settings.root.ph':'Searches Documents / Heroes of the Storm',
   'settings.mode':'Operation mode','settings.window':'Prediction duration',
   'settings.window.hint':'Betting window, same as the Twitch Predictions interface (1–30 minutes).',
+  'settings.predTitle':'Prediction title','settings.predWin':'Win outcome title','settings.predLoss':'Loss outcome title',
+  'settings.predHint':'Leave the fields empty to use the defaults for the selected language.',
+  'settings.toon.hint':'Not a BattleTag. It is the unique Blizzard account ID from replays (e.g. 2-Hero-1-123456). Only needed when the nickname is not unique — copy it from Match History next to your name.',
+  'settings.root.hint':'Empty = default folders Documents and OneDrive/Documents (Heroes of the Storm). Type your own path and verify it with the button below.',
+  'root.check':'Check folder','root.reset':'Use default folder','root.checking':'Checking…',
+  'root.found':'{n} replays','root.none':'folder not found','root.use':'Click to use this folder',
   'settings.real':'Allow real Twitch Predictions','settings.real.sub':'Only after verifying the parser: real viewer points will be distributed automatically.',
   'settings.save':'Save settings','settings.wizard':'Setup wizard',
   'footer.quit':'Exit','footer.quit.title':'Close the app','unit.min':'min',
@@ -64,7 +70,6 @@ const I18N = {
   'confirm.quit':'Close HotS Twitch Companion? Monitoring will be stopped.',
   'quit.message':'HotS Twitch Companion has exited. You can close this window.',
   'wiz.eyebrow':'INITIAL SETUP','wiz.title':'Setup wizard',
-  'wiz.intro':'This wizard connects the app to your game and channel in a few steps: player name, Twitch and automation. Everything can be changed later in Settings.',
   'wiz.lang.h':'Choose language','wiz.lang.sub':'The interface and app messages switch immediately.',
   'wiz.p.h':'Your HotS identity','wiz.p.sub':'Enter the exact nickname you play with — it must match the name stored in replays. If the nickname is not unique, set a Toon Handle later in Settings.',
   'wiz.p.btn':'Check last replay','wiz.p.ok':'Recognized player: {res} (map: {map})','wiz.p.fail':'{err}',
@@ -104,6 +109,12 @@ const I18N = {
   'settings.root':'Папка с реплеями (можно оставить пустой)','settings.root.ph':'Поиск в Documents / Heroes of the Storm',
   'settings.mode':'Режим работы','settings.window':'Длительность Prediction',
   'settings.window.hint':'Время приёма ставок, как в интерфейсе Twitch Predictions (1–30 минут).',
+  'settings.predTitle':'Заголовок Prediction','settings.predWin':'Вариант победы','settings.predLoss':'Вариант поражения',
+  'settings.predHint':'Оставь поля пустыми — используются значения по умолчанию для выбранного языка.',
+  'settings.toon.hint':'Не BattleTag. Это уникальный ID аккаунта Blizzard из реплея (например 2-Hero-1-123456). Нужен, только если ник не уникален — скопируй его из «Истории матчей» рядом со своим ником.',
+  'settings.root.hint':'Пусто — стандартные папки Documents и OneDrive/Documents (Heroes of the Storm). Введи свой путь и проверь его кнопкой ниже.',
+  'root.check':'Проверить папку','root.reset':'Стандартная папка','root.checking':'Проверяем…',
+  'root.found':'{n} реплеев','root.none':'папка не найдена','root.use':'Нажми, чтобы использовать эту папку',
   'settings.real':'Разрешить реальные Twitch Predictions','settings.real.sub':'Только после проверки парсера: реальные баллы зрителей будут распределяться автоматически.',
   'settings.save':'Сохранить настройки','settings.wizard':'Мастер настройки',
   'footer.quit':'Выход','footer.quit.title':'Закрыть приложение','unit.min':'мин',
@@ -137,7 +148,6 @@ const I18N = {
   'confirm.quit':'Закрыть HotS Twitch Companion? Мониторинг будет остановлен.',
   'quit.message':'HotS Twitch Companion завершён. Это окно можно закрыть.',
   'wiz.eyebrow':'ПЕРВОНАЧАЛЬНАЯ НАСТРОЙКА','wiz.title':'Мастер настройки',
-  'wiz.intro':'Мастер за несколько шагов подключит приложение к игре и твоему каналу: ник игрока, Twitch и автоматизация. Всё это позже можно изменить в «Настройках».',
   'wiz.lang.h':'Выбери язык','wiz.lang.sub':'Интерфейс и сообщения приложения переключаются сразу.',
   'wiz.p.h':'Твой игрок в HotS','wiz.p.sub':'Введи точный ник, под которым играешь — он должен совпадать с именем в реплеях. Если ник не уникален, позже укажи Toon Handle в настройках.',
   'wiz.p.btn':'Проверить последний реплей','wiz.p.ok':'Игрок распознан: {res} (карта: {map})','wiz.p.fail':'{err}',
@@ -197,8 +207,8 @@ async function api(route, method='GET', data){
  try{const r=await fetch(base+'api/'+route,options);const x=await r.json();if(!r.ok||x.error)throw Error(x.error||'HTTP '+r.status);return x}
  finally{clearTimeout(timeout)}
 }
-function getInputs(){return {clientId:$('clientId').value.trim(),playerName:$('playerName').value.trim(),playerToonHandle:$('toonHandle').value.trim(),replayRoot:$('replayRoot').value.trim(),realMode:$('realMode').checked,lang:$('lang').value,predictionWindowMin:parseInt($('predictionWindow').value,10)||2,wizardDone:!!(state.config&&state.config.wizardDone)}}
-function setInputs(c){$('clientId').value=c.clientId||'';$('playerName').value=c.playerName||'';$('toonHandle').value=c.playerToonHandle||'';$('replayRoot').value=c.replayRoot||'';$('realMode').checked=!!c.realMode;$('lang').value=c.lang||lang;$('predictionWindow').value=String(c.predictionWindowMin||2);state.hasUnsaved=false;}
+function getInputs(){return {clientId:$('clientId').value.trim(),playerName:$('playerName').value.trim(),playerToonHandle:$('toonHandle').value.trim(),replayRoot:$('replayRoot').value.trim(),realMode:$('realMode').checked,lang:$('lang').value,predictionWindowMin:parseInt($('predictionWindow').value,10)||2,wizardDone:!!(state.config&&state.config.wizardDone),predictionTitle:$('predTitle').value.trim(),predictionWin:$('predWin').value.trim(),predictionLoss:$('predLoss').value.trim()}}
+function setInputs(c){$('clientId').value=c.clientId||'';$('playerName').value=c.playerName||'';$('toonHandle').value=c.playerToonHandle||'';$('replayRoot').value=c.replayRoot||'';$('realMode').checked=!!c.realMode;$('lang').value=c.lang||lang;$('predictionWindow').value=String(c.predictionWindowMin||2);$('predTitle').value=c.predictionTitle||'';$('predWin').value=c.predictionWin||'';$('predLoss').value=c.predictionLoss||'';state.hasUnsaved=false;}
 function go(view){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+view));document.querySelectorAll('.tab').forEach(n=>n.classList.toggle('active',n.dataset.view===view));}
 function line(text,cls){const d=document.createElement('div');d.className=cls||'';d.textContent=text;return d}
 function relative(iso){if(!iso)return '';const ms=Date.now()-new Date(iso).getTime();if(!Number.isFinite(ms))return '';const min=Math.round(ms/60000);if(min<2)return t('rel.now');if(min<60)return t('rel.min',{n:min});if(min<1440)return t('rel.hour',{n:Math.round(min/60)});return new Date(iso).toLocaleDateString(lang==='ru'?'ru-RU':'en-US')}
@@ -296,11 +306,36 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'toggle':if(state.status?.running){await api('automation/stop','POST',{});toast(t('toast.stopping'))}else{if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'))}await loadStatus();break;
  case 'refresh-replays':await reloadReplays();toast(t('toast.refreshed'));break;
  case 'wizard':openWizard();break;
+ case 'check-root':{
+   const box=$('root-check-result');box.hidden=false;box.replaceChildren(line(t('root.checking'),'empty-mini'));
+   try{
+     const x=await api('replayroot/check','POST',{path:$('replayRoot').value.trim()});
+     box.replaceChildren();
+     for(const en of (x.entries||[])){
+       const row=document.createElement('button');row.type='button';
+       row.className='root-entry'+(en.exists?' ok':' bad');
+       const mark=Object.assign(document.createElement('b'),{textContent:en.exists?'✓':'✗'});
+       const info=Object.assign(document.createElement('span'),{className:'root-path',textContent:en.path});
+       const cnt=Object.assign(document.createElement('small'),{textContent:en.exists?t('root.found',{n:en.replays}):t('root.none')});
+       row.title=t('root.use');
+       row.append(mark,info,cnt);
+       row.addEventListener('click',()=>{$('replayRoot').value=en.path;state.hasUnsaved=true;});
+       box.append(row);
+     }
+   }catch(e){box.replaceChildren(line(e.message,'empty-mini'));}
+   break;
+ }
+ case 'reset-root':{
+   $('replayRoot').value='';state.hasUnsaved=true;
+   $('root-check-result').hidden=true;
+   action('check-root');
+   break;
+ }
  case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
  }}catch(e){toast(e.message||t('toast.request_error'),true)}finally{state.busy=false}}
 
 /* ── setup wizard ────────────────────────────────────────────────────── */
-const wiz={step:0,max:4};
+const wiz={step:0,max:2};
 function openWizard(){
   wiz.step=0;
   $('wz-player').value=$('playerName').value;
@@ -328,8 +363,8 @@ function renderWizard(){
   set('wz-ch-monitor',!!st.running);
 }
 async function wizNext(){
-  if(wiz.step===1){$('playerName').value=$('wz-player').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
-  if(wiz.step===2){$('clientId').value=$('wz-client').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
+  if(wiz.step===0){$('playerName').value=$('wz-player').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
+  if(wiz.step===1){$('clientId').value=$('wz-client').value.trim();try{await save();}catch(e){toast(e.message,true);return false;}}
   if(wiz.step===wiz.max){try{await save({wizardDone:true});}catch(e){toast(e.message,true);}closeWizard();return true;}
   wiz.step++;renderWizard();return true;
 }
@@ -367,7 +402,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
  document.querySelector('[data-wiz="next"]').addEventListener('click',wizNext);
  document.querySelector('[data-wiz="back"]').addEventListener('click',()=>{if(wiz.step>0){wiz.step--;renderWizard();}});
  document.querySelector('[data-wiz="skip"]').addEventListener('click',async()=>{try{await save({wizardDone:true});}catch(e){/* keep wizard re-runnable */}closeWizard();});
- for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow']){$(id).addEventListener('input',()=>state.hasUnsaved=true);$(id).addEventListener('change',()=>state.hasUnsaved=true);}
+ for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){$(id).addEventListener('input',()=>state.hasUnsaved=true);$(id).addEventListener('change',()=>state.hasUnsaved=true);}
  $('lang').addEventListener('change',()=>setLang($('lang').value));
  applyI18n();
  render(null);

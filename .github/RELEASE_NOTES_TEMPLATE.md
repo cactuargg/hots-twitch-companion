@@ -4,7 +4,9 @@ Portable Windows x64 app that automatically runs Twitch Predictions based on you
 
 ## What's new
 
-- **Setup wizard** on first launch: language, HotS player name (with a safe replay test), Twitch connection and automation — each step explains what is expected; re-run it from Settings.
+- **Setup wizard** on first launch in three steps: language + player name (with a safe replay test), Twitch connection, automation with a final checklist; re-run it from Settings.
+- **Customizable Prediction texts** — title and outcome names in Settings, localized defaults when empty; Twitch length limits (45/25 chars) validated.
+- **Replays folder check** — verify the folder and count replays before saving; one-click reset to the default folder.
 - **Simplified navigation**: horizontal tabs — Overview, Match History, Settings, Logs. The old Automation and Twitch tabs were merged into Overview and Settings.
 - **Match History**: click any match to expand full game data — map, date and all players with results, your entry highlighted.
 - **English and Russian interface** with live switching; language is configured in Settings and the wizard.

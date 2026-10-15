@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -114,6 +115,86 @@ func TestConfigLanguageAndPredictionWindow(t *testing.T) {
 	}
 	if c = d.config(); !c.WizardDone {
 		t.Fatal("wizardDone not saved")
+	}
+}
+
+func TestPredictionTextsAndReplayRootCheck(t *testing.T) {
+	dir := t.TempDir()
+	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
+	rp := filepath.Join(dir, "replays")
+	if err := os.MkdirAll(rp, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(rp, "a.StormReplay"), []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	d, err := newDashboard(p, Config{PlayerName: "Demo", ReplayRoot: rp})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := d.routes("127.0.0.1:12345", "secret")
+	post := func(route string, body map[string]any) (int, map[string]any) {
+		payload, _ := json.Marshal(body)
+		r := httptest.NewRequest("POST", "http://127.0.0.1:12345/secret/api/"+route, bytes.NewReader(payload))
+		r.Host = "127.0.0.1:12345"
+		r.Header.Set("X-Companion", "1")
+		r.Header.Set("Origin", "http://127.0.0.1:12345")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return w.Code, out
+	}
+	// Custom prediction texts round-trip.
+	if got, _ := post("config", map[string]any{"playerName": "Demo", "realMode": false, "predictionTitle": "Win?", "predictionWin": "Yes", "predictionLoss": "No"}); got != 200 {
+		t.Fatalf("custom prediction texts rejected: %d", got)
+	}
+	c := d.config()
+	if c.PredictionTitle != "Win?" || c.PredictionWin != "Yes" || c.PredictionLoss != "No" {
+		t.Fatalf("prediction texts not saved: %+v", c)
+	}
+	if title, win, loss := c.predictionTexts(); title != "Win?" || win != "Yes" || loss != "No" {
+		t.Fatalf("resolved texts wrong: %q %q %q", title, win, loss)
+	}
+	// Length limits (Twitch: 45 title, 25 outcomes).
+	long := strings.Repeat("й", 46)
+	if got, out := post("config", map[string]any{"playerName": "Demo", "realMode": false, "predictionTitle": long}); got != 400 {
+		t.Fatalf("oversize title accepted: %d %v", got, out)
+	}
+	if got, _ := post("config", map[string]any{"playerName": "Demo", "realMode": false, "predictionWin": "Same", "predictionLoss": "same"}); got != 400 {
+		t.Fatal("equal outcomes accepted")
+	}
+	// Defaults resolve via the message catalog when empty.
+	if title, win, loss := (Config{Lang: "en"}).predictionTexts(); title != "HotS win?" || win != "Win" || loss != "Loss" {
+		t.Fatalf("english defaults wrong: %q %q %q", title, win, loss)
+	}
+	// Replay root check: explicit path from the input field.
+	got, out := post("replayroot/check", map[string]any{"path": rp})
+	if got != 200 {
+		t.Fatalf("replayroot check returned %d", got)
+	}
+	entries, _ := out["entries"].([]any)
+	if len(entries) != 1 {
+		t.Fatalf("expected one entry, got %v", out)
+	}
+	entry, _ := entries[0].(map[string]any)
+	if entry["path"] != rp || entry["exists"] != true || entry["replays"] != float64(1) {
+		t.Fatalf("root entry wrong: %v", entry)
+	}
+	// Empty path checks the default folders (Documents / OneDrive).
+	got, out = post("replayroot/check", map[string]any{"path": ""})
+	if got != 200 || out["custom"] != false {
+		t.Fatalf("default check wrong: %d %v", got, out)
+	}
+	// Non-existing path is reported as missing.
+	got, out = post("replayroot/check", map[string]any{"path": filepath.Join(dir, "missing")})
+	if got != 200 {
+		t.Fatalf("missing root check returned %d", got)
+	}
+	entries, _ = out["entries"].([]any)
+	entry, _ = entries[0].(map[string]any)
+	if entry["exists"] != false {
+		t.Fatalf("missing root reported as existing: %v", entry)
 	}
 }
 

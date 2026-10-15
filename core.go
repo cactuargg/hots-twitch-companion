@@ -30,6 +30,9 @@ type Config struct {
 	Lang                string `json:"lang"`
 	PredictionWindowMin int    `json:"predictionWindowMin"`
 	WizardDone          bool   `json:"wizardDone"`
+	PredictionTitle     string `json:"predictionTitle"`
+	PredictionWin       string `json:"predictionWin"`
+	PredictionLoss      string `json:"predictionLoss"`
 }
 
 const defaultPredictionWindow = 2
@@ -46,6 +49,23 @@ func (c Config) predictionWindowMinutes() int {
 		return maxPredictionWindow
 	}
 	return c.PredictionWindowMin
+}
+
+// Prediction texts with user overrides; empty fields fall back to localized defaults.
+func (c Config) predictionTexts() (title, win, loss string) {
+	title = strings.TrimSpace(c.PredictionTitle)
+	win = strings.TrimSpace(c.PredictionWin)
+	loss = strings.TrimSpace(c.PredictionLoss)
+	if title == "" {
+		title = tr(c.lang(), "prediction.title")
+	}
+	if win == "" {
+		win = tr(c.lang(), "prediction.win")
+	}
+	if loss == "" {
+		loss = tr(c.lang(), "prediction.loss")
+	}
+	return title, win, loss
 }
 type Token struct {
 	AccessToken  string `json:"access_token"`
@@ -358,7 +378,7 @@ func (t *Twitch) prediction(ctx context.Context, broadcaster, id string) (*apiRe
 	e := t.req(ctx, "GET", route, nil, &d)
 	return &d, e
 }
-func (t *Twitch) create(ctx context.Context, windowMinutes int) (*Prediction, error) {
+func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
 	me, e := t.identity(ctx)
 	if e != nil {
 		return nil, e
@@ -372,7 +392,6 @@ func (t *Twitch) create(ctx context.Context, windowMinutes int) (*Prediction, er
 			return nil, errors.New(tr(t.lang, "twitch.prediction_exists"))
 		}
 	}
-	title, winTitle, lossTitle := tr(t.lang, "prediction.title"), tr(t.lang, "prediction.win"), tr(t.lang, "prediction.loss")
 	var d apiResponse
 	e = t.req(ctx, "POST", "/predictions", map[string]any{"broadcaster_id": me.UserID, "title": title, "outcomes": []map[string]string{{"title": winTitle}, {"title": lossTitle}}, "prediction_window": windowMinutes * 60}, &d)
 	if e != nil {
@@ -539,7 +558,10 @@ func (e *Engine) safeLiveChange(cfg Config) bool {
 		cfg.PlayerToonHandle == e.cfg.PlayerToonHandle &&
 		cfg.ReplayRoot == e.cfg.ReplayRoot &&
 		cfg.RealMode == e.cfg.RealMode &&
-		cfg.PredictionWindowMin == e.cfg.PredictionWindowMin
+		cfg.PredictionWindowMin == e.cfg.PredictionWindowMin &&
+		cfg.PredictionTitle == e.cfg.PredictionTitle &&
+		cfg.PredictionWin == e.cfg.PredictionWin &&
+		cfg.PredictionLoss == e.cfg.PredictionLoss
 }
 func (e *Engine) updateConfig(cfg Config) error {
 	e.mu.Lock()
@@ -577,7 +599,8 @@ func (e *Engine) doCreate(ctx context.Context, s *State) error {
 		p = &Prediction{ID: "SIMULATION", DryRun: true, StartedAt: time.Now().UnixMilli()}
 		e.log(tr(e.cfg.lang(), "log.sim_created"))
 	} else {
-		p, er = e.twitch.create(ctx, e.cfg.predictionWindowMinutes())
+		title, winTitle, lossTitle := e.cfg.predictionTexts()
+		p, er = e.twitch.create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
 		if er != nil {
 			return er
 		}
