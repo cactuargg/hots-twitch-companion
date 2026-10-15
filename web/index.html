@@ -49,6 +49,18 @@
           <div class="summary-row"><span>Prediction</span><strong id="overview-prediction">…</strong></div>
           <div class="summary-row"><span data-i18n="minimal.lastmatch">Последний матч</span><div class="summary-value"><strong id="overview-last-map">…</strong><span class="outcome-pill unknown" id="overview-last-outcome">…</span></div></div>
         </div>
+        <section class="prediction-manual" id="prediction-manual" hidden aria-labelledby="prediction-manual-title">
+          <div class="prediction-manual-head">
+            <h2 id="prediction-manual-title" data-i18n="manual.title">Ручное завершение Prediction</h2>
+            <p id="prediction-manual-description" data-i18n="manual.description">Если результат не определился автоматически, выбери исход или отмени прогноз.</p>
+          </div>
+          <div class="prediction-manual-buttons">
+            <button type="button" class="btn btn-outline" data-action="manual-win" data-i18n="manual.win">Победа</button>
+            <button type="button" class="btn btn-outline" data-action="manual-loss" data-i18n="manual.loss">Поражение</button>
+            <button type="button" class="btn btn-outline manual-cancel" data-action="manual-cancel" data-i18n="manual.cancel">Отменить и вернуть баллы</button>
+          </div>
+          <button type="button" class="text-action" id="prediction-sync" data-action="manual-sync" data-i18n="manual.sync" hidden>Сверить состояние с Twitch</button>
+        </section>
         <div class="overview-detail"><span id="overview-latest-event">…</span><button type="button" class="text-action" data-goto="replays" data-i18n="minimal.openHistory">История матчей →</button></div>
       </section>
       <section class="view" id="view-replays" role="tabpanel" aria-labelledby="tab-replays"><div class="view-heading"><div><div class="eyebrow" data-i18n="replays.eyebrow">ИСТОРИЯ МАТЧЕЙ</div><h1 data-i18n="minimal.history">История</h1><p data-i18n="minimal.history.sub">Последние матчи. Нажми на результат, чтобы увидеть игроков.</p></div><div class="head-actions"><button class="btn btn-outline" data-action="refresh-replays"><svg><use href="#i-refresh"/></svg> <span data-i18n="replays.refresh">Обновить</span></button><button class="btn btn-primary short" data-action="replay"><svg><use href="#i-play"/></svg> <span data-i18n="replays.check">Проверить последний реплей</span></button></div></div><div class="content-panel">

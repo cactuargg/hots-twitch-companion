@@ -59,6 +59,11 @@ function render(s){
   $('overview-twitch-dot').classList.toggle('good',connected);
   $('overview-twitch').textContent=connected&&name?'@'+name:twitchLabel;
   $('overview-prediction').textContent=t('overview.pred.'+view.prediction);
+  // Manual controls remain available even when monitoring is stopped.
+  const manual=$('prediction-manual');
+  manual.hidden=!st.active;
+  $('prediction-sync').hidden=!st.active||!!st.activeDryRun;
+  $('prediction-manual-description').textContent=t(st.activeDryRun?'manual.description.sim':'manual.description.real');
   const replay=state.replays[0];
   $('overview-last-map').textContent=replay?(replay.map||replay.file||'—'):t('minimal.noMatch');
   const outcome=$('overview-last-outcome');
@@ -108,6 +113,22 @@ async function save(over={}){
  const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
  state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();renderSettingsDraft();toast(t('toast.saved'));await loadStatus();return x;
 }
+async function manualPrediction(outcome){
+ const st=state.status||{};
+ if(!st.active||!st.activePredictionId||!st.activePredictionStartedAt)
+   throw Error(t('manual.stale'));
+ const isReal=!st.activeDryRun;
+ if(outcome!=='sync'&&isReal){
+   const prompt=t('manual.confirm.'+outcome);
+   if(!confirm(prompt))return false;
+ }
+ await api('prediction/manual','POST',{
+   outcome,id:st.activePredictionId,startedAt:st.activePredictionStartedAt
+ });
+ toast(t('manual.success.'+outcome));
+ await loadStatus();
+ return true;
+}
 async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
  case 'save':await save();break;
  case 'auth':{
@@ -144,6 +165,10 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'start':if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'));await loadStatus();break;
  case 'stop':await api('automation/stop','POST',{});toast(t('toast.stopping'));await loadStatus();break;
  case 'toggle':if(state.status?.running){await api('automation/stop','POST',{});toast(t('toast.stopping'))}else{if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'))}await loadStatus();break;
+ case 'manual-win':await manualPrediction('win');break;
+ case 'manual-loss':await manualPrediction('loss');break;
+ case 'manual-cancel':await manualPrediction('cancel');break;
+ case 'manual-sync':await manualPrediction('sync');break;
  case 'refresh-replays':await reloadReplays();toast(t('toast.refreshed'));break;
  case 'wizard':openWizard();break;
  case 'check-root':await checkReplayRoot();break;
