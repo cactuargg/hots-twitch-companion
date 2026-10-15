@@ -25,3 +25,17 @@
 .match-diagnostic .text-action{display:block;margin-top:9px;font-size:12px}
 @media(max-width:500px){.diagnostics-toolbar{flex-direction:column}
  .diagnostics-toolbar input,.diagnostics-toolbar select{width:100%;flex:auto}}
+
+
+/* Long localized logs and paths must wrap, never force a horizontal page scroll. */
+.log-row,.log-content,.diagnostics-toolbar,.match-diagnostic{min-width:0}
+.log-msg,.log-help,.match-diagnostic-detail{overflow-wrap:anywhere}
+@media(max-width:720px){
+ .diagnostics-toolbar input,.diagnostics-toolbar select{min-width:0}
+ .log-row{gap:8px}
+}
+@media(max-width:520px){
+ .diagnostics-toolbar{gap:8px}
+ .diagnostics-toolbar input,.diagnostics-toolbar select{width:100%;flex:0 0 auto}
+ .log-row{padding:9px 4px}
+}
