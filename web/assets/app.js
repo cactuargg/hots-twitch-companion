@@ -64,6 +64,15 @@ function render(s){
   manual.hidden=!st.active;
   $('prediction-sync').hidden=!st.active||!!st.activeDryRun;
   $('prediction-manual-description').textContent=t(st.activeDryRun?'manual.description.sim':'manual.description.real');
+  const scan=st.replayScan||{};
+  const reason=st.running?(scan.code||'checking'):'paused';
+  const reasonKey='replay.scan.'+reason;
+  const scanText=t(reasonKey);
+  const detail=scan.detail?String(scan.detail).slice(0,170):'';
+  const filename=scan.file?String(scan.file).slice(0,110):'';
+  const display=[scanText,filename,detail].filter(Boolean).join(' · ');
+  if($('prediction-scan-message').textContent!==display)
+    $('prediction-scan-message').textContent=display;
   const replay=state.replays[0];
   $('overview-last-map').textContent=replay?(replay.map||replay.file||'—'):t('minimal.noMatch');
   const outcome=$('overview-last-outcome');
@@ -165,6 +174,17 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
  case 'start':if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'));await loadStatus();break;
  case 'stop':await api('automation/stop','POST',{});toast(t('toast.stopping'));await loadStatus();break;
  case 'toggle':if(state.status?.running){await api('automation/stop','POST',{});toast(t('toast.stopping'))}else{if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'))}await loadStatus();break;
+ case 'recheck-result':{
+   const st=state.status||{};
+   if(!st.active||!st.activePredictionId||!st.activePredictionStartedAt)
+     throw Error(t('manual.stale'));
+   await api('prediction/recheck','POST',{
+     id:st.activePredictionId,startedAt:st.activePredictionStartedAt
+   });
+   await loadStatus();
+   toast(t('replay.scan.rechecked'));
+   break;
+ }
  case 'manual-win':await manualPrediction('win');break;
  case 'manual-loss':await manualPrediction('loss');break;
  case 'manual-cancel':await manualPrediction('cancel');break;
