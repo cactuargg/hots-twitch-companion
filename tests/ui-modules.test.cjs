@@ -44,7 +44,7 @@ test('Classic scripts evaluate sequentially in one shared browser scope', () => 
 
 test('Keyboard tab navigation updates focus, selected state and visible panel', () => {
   const selected = {};
-  const tabs = ['dashboard','replays','settings','logs'].map(view => {
+  const tabs = ['dashboard','replays','settings'].map(view => {
     const tab = {
       dataset: { view },
       tabIndex: view === 'dashboard' ? 0 : -1,
@@ -55,7 +55,7 @@ test('Keyboard tab navigation updates focus, selected state and visible panel', 
     };
     return tab;
   });
-  const panels = ['dashboard','replays','settings','logs'].map(view => ({
+  const panels = ['dashboard','replays','settings'].map(view => ({
     id: 'view-' + view,
     classList: { toggle: (name, on) => { if(name==='active')selected['panel-'+view] = on; } }
   }));
@@ -75,17 +75,17 @@ test('Keyboard tab navigation updates focus, selected state and visible panel', 
   let prevented = false;
   sandbox.handleTabKeyDown({ key:'ArrowRight', target: tabs[2], preventDefault:()=>{prevented=true;} });
   assert.equal(prevented, true);
-  assert.equal(selected.focus, 'logs');
-  assert.equal(tabs[3].attrs['aria-selected'], 'true');
-  sandbox.handleTabKeyDown({ key:'Home', target: tabs[3], preventDefault:()=>{} });
+  assert.equal(selected.focus, 'dashboard');
+  assert.equal(tabs[0].attrs['aria-selected'], 'true');
+  sandbox.handleTabKeyDown({ key:'Home', target: tabs[0], preventDefault:()=>{} });
   assert.equal(selected.focus, 'dashboard');
   sandbox.handleTabKeyDown({ key:'ArrowLeft', target: tabs[0], preventDefault:()=>{} });
-  assert.equal(selected.focus, 'logs');
+  assert.equal(selected.focus, 'settings');
 });
 
 test('Tabs link to matching labeled panels', () => {
   assert.match(html, /<nav[^>]*role="tablist"/);
-  for (const view of ['dashboard','replays','settings','logs']) {
+  for (const view of ['dashboard','replays','settings']) {
     assert.ok(html.includes('id="tab-' + view + '" data-view="' + view + '" role="tab"'));
     assert.ok(html.includes('aria-controls="view-' + view + '"'));
     assert.ok(html.includes('id="view-' + view + '" role="tabpanel" aria-labelledby="tab-' + view + '"'));
