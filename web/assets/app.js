@@ -11,13 +11,18 @@ function monitoringView(st) {
 }
 function renderSettingsDraft(){
   const status=$('settings-save-status');
-  if(status)status.textContent=t(state.hasUnsaved?'minimal.settings.unsaved':'minimal.settings.saved');
+  if(status){
+    status.textContent=t(state.hasUnsaved?'minimal.settings.unsaved':'minimal.settings.saved');
+    status.classList.toggle('dirty',state.hasUnsaved);
+  }
   const warning=$('settings-real-warning');
   if(warning){
-    const checked=$('realMode').checked;
-    warning.hidden=!checked;
-    warning.textContent=t(state.config?.realMode?'minimal.settings.realActive':'minimal.settings.realPending');
-    $('realMode').closest('.settings-real-mode')?.classList.toggle('active',checked);
+    const checked=$('realMode').checked, enabled=!!state.config?.realMode;
+    warning.hidden=!checked&&!enabled;
+    const key=enabled?(checked?'minimal.settings.realActive':'minimal.settings.realStopPending'):'minimal.settings.realPending';
+    warning.textContent=t(key);
+    const row=$('realMode').closest?.('.settings-real-mode');
+    row?.classList.toggle('active',checked||enabled);
   }
 }
 
