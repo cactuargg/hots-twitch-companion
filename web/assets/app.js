@@ -65,7 +65,9 @@ function render(s){
   $('prediction-sync').hidden=!st.active||!!st.activeDryRun;
   $('prediction-manual-description').textContent=t(st.activeDryRun?'manual.description.sim':'manual.description.real');
   const scan=st.replayScan||{};
-  const reason=st.running?(scan.code||'checking'):'paused';
+  const stale=!!st.running&&!!st.active&&Number(scan.checkedAt)>0&&
+    Date.now()-Number(scan.checkedAt)>20000;
+  const reason=st.running?(stale?'stalled':(scan.code||'checking')):'paused';
   const reasonKey='replay.scan.'+reason;
   const scanText=t(reasonKey);
   const detail=scan.detail?String(scan.detail).slice(0,170):'';
@@ -178,6 +180,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
    const st=state.status||{};
    if(!st.active||!st.activePredictionId||!st.activePredictionStartedAt)
      throw Error(t('manual.stale'));
+   if(!st.activeDryRun&&!confirm(t('replay.scan.confirmReal')))break;
    await api('prediction/recheck','POST',{
      id:st.activePredictionId,startedAt:st.activePredictionStartedAt
    });
