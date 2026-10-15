@@ -8,6 +8,18 @@ let toastTimer;
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'overview.monitor':'HOTS MONITORING','overview.twitch.settings':'Manage Twitch',
+  'overview.state.off':'Monitoring paused','overview.state.watching':'Waiting for a match','overview.state.tracking':'Tracking match result',
+  'overview.detail.off':'Start monitoring to detect the next match. Simulation is safe by default.',
+  'overview.detail.watching':'Watching HotS lobby files for a new match.',
+  'overview.detail.tracking':'Prediction is active. Waiting for a replay with the final result.',
+  'overview.detail.window':'Estimated betting window: about {min} min left. Actual Twitch state is not checked here.',
+  'overview.twitch.disconnected':'Not connected','overview.twitch.authorizing':'Authorizing…',
+  'overview.twitch.unverified':'Needs verification','overview.twitch.connected':'Connected',
+  'overview.pred.none':'No prediction','overview.pred.simulation':'Simulating',
+  'overview.pred.window_estimate':'Betting window (estimated)',
+  'overview.pred.awaiting_result':'Waiting for result',
+  'match.status.tracking':'Tracking match result','match.desc.tracking':'Waiting for the replay to appear; the game may already be over.',
   'nav.dashboard':'Overview','nav.history':'Match History','nav.settings':'Settings','nav.logs':'Logs',
   'dash.eyebrow':'CONTROL CENTER','dash.title':'Overview','dash.sub':'HotS, Twitch connection and automated prediction status.',
   'match.title':'Match status','match.imgalt':'Fantasy battleground',
@@ -90,6 +102,18 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'overview.monitor':'МОНИТОРИНГ HOTS','overview.twitch.settings':'Управление Twitch',
+  'overview.state.off':'Мониторинг выключен','overview.state.watching':'Ожидание матча','overview.state.tracking':'Отслеживаем результат',
+  'overview.detail.off':'Запусти мониторинг, чтобы отслеживать новый матч. По умолчанию работает симуляция.',
+  'overview.detail.watching':'Отслеживаем новые файлы лобби HotS.',
+  'overview.detail.tracking':'Прогноз активен. Ожидаем реплей с итогом матча.',
+  'overview.detail.window':'До расчётного закрытия ставок около {min} мин. Фактическое состояние Twitch здесь не проверяется.',
+  'overview.twitch.disconnected':'Не подключён','overview.twitch.authorizing':'Авторизация…',
+  'overview.twitch.unverified':'Требует проверки','overview.twitch.connected':'Подключён',
+  'overview.pred.none':'Нет прогноза','overview.pred.simulation':'Симуляция',
+  'overview.pred.window_estimate':'Приём ставок (расчётный)',
+  'overview.pred.awaiting_result':'Ожидание результата',
+  'match.status.tracking':'Отслеживаем результат','match.desc.tracking':'Ожидаем появления реплея. Матч уже мог завершиться.',
   'nav.dashboard':'Обзор','nav.history':'История матчей','nav.settings':'Настройки','nav.logs':'Журнал',
   'dash.eyebrow':'ЦЕНТР УПРАВЛЕНИЯ','dash.title':'Обзор','dash.sub':'Состояние HotS, подключения Twitch и автоматических прогнозов.',
   'match.title':'Состояние матча','match.imgalt':'Фэнтезийное поле боя',
@@ -301,29 +325,58 @@ function showReplays(items){
   });
 }
 function showLogs(logs){const arr=Array.isArray(logs)?logs:[];for(const id of ['log-preview','full-log']){const el=$(id);el.replaceChildren();const filtered=id==='log-preview'?arr.slice(-7):arr;if(!filtered.length){el.append(line(id==='log-preview'?t('logs.empty'):t('logs.empty.full'),'empty-mini'));continue}for(const entry of filtered){const row=document.createElement('div');row.className='log-row';const time=Object.assign(document.createElement('span'),{className:'log-time',textContent:(entry.time||'').slice(0,8)});const ico=Object.assign(document.createElement('span'),{className:'log-icon',textContent:entry.message&&/(Ошибка|Не удалось|error|fail|expired|invalid)/i.test(entry.message)?'!':'◆'});const msg=Object.assign(document.createElement('span'),{className:'log-msg',textContent:entry.message||''});row.append(time,ico,msg);el.append(row)}}}
+function monitoringView(st) {
+ const phase=st.monitorPhase || (st.running?(st.active?'tracking':'watching'):'off');
+ const prediction=st.predictionPhase || (st.active?(st.activeDryRun?'simulation':'awaiting_result'):'none');
+ const twitch=st.twitchPhase || (st.connected?'connected':'disconnected');
+ let detail=t('overview.detail.'+phase);
+ if(prediction==='window_estimate'){
+   const minutes=Math.max(1,Math.ceil((st.predictionWindowSecondsLeft||0)/60));
+   detail=t('overview.detail.window',{min:minutes});
+ }
+ return {phase,prediction,twitch,title:t('overview.state.'+phase),detail};
+}
 function render(s){
  if(s)state.status=s;
  const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
- const connected=!!st.connected;const running=!!st.running;const active=!!st.active;const name=st.channel||'';const simulation=!st.realMode;
- $('top-connection').classList.toggle('connected',connected);$('top-connected-text').textContent=connected?t('top.connected'):t('top.disconnected');
- $('dash-channel').textContent=connected?(name?'@'+name:t('dash.channel.authorized')):t('dash.channel.none');$('channel-pill').textContent=connected?'CONNECTED':'OFFLINE';$('channel-pill').classList.toggle('online',connected);
+ const running=!!st.running, active=!!st.active, simulation=!st.realMode, name=st.channel||'';
+ const view=monitoringView(st), connected=view.twitch==='connected';
+ const twitchLabel=t('overview.twitch.'+view.twitch), predictionLabel=t('overview.pred.'+view.prediction);
+ $('top-connection').classList.toggle('connected',connected);
+ $('top-connection').classList.toggle('connecting',view.twitch==='authorizing'||view.twitch==='unverified');
+ $('top-connected-text').textContent=connected?t('top.connected'):twitchLabel;
+ // Keep the announced heading unchanged between polling updates unless the phase changes.
+ if($('overview-state-title').textContent!==view.title)$('overview-state-title').textContent=view.title;
+ $('overview-state-detail').textContent=view.detail;
+ $('overview-player').textContent=st.playerName||st.playerToonHandle||t('dash.player.empty');
+ $('overview-twitch').textContent=connected&&name?'@'+name:twitchLabel;
+ $('overview-prediction').textContent=predictionLabel;
+ $('overview-beacon').classList.toggle('on',running);
+ $('overview-beacon').classList.toggle('tracking',view.phase==='tracking');
+ $('overview-safety').classList.toggle('is-real',!simulation);
+ $('dash-channel').textContent=connected?(name?'@'+name:t('dash.channel.authorized')):twitchLabel;
+ $('channel-pill').textContent=twitchLabel;
+ $('channel-pill').classList.toggle('online',connected);
  $('dash-player').textContent=st.playerName||st.playerToonHandle||t('dash.player.empty');
- $('dash-prediction').textContent=active?(st.activeDryRun?t('dash.prediction.sim'):t('dash.prediction.active')):t('dash.prediction.none');
+ $('dash-prediction').textContent=predictionLabel;
  $('dash-result').textContent=st.lastResult||t('dash.result.none');
- $('match-status').textContent=active?t('match.status.active'):running?t('match.status.waiting'):t('match.status.off');
- $('match-description').textContent=active?t('match.desc.active'):running?t('match.desc.waiting'):t('match.desc.off');
+ $('match-status').textContent=view.phase==='tracking'?t('match.status.tracking'):running?t('match.status.waiting'):t('match.status.off');
+ $('match-description').textContent=view.phase==='tracking'?t('match.desc.tracking'):running?t('match.desc.waiting'):t('match.desc.off');
  $('match-mini').textContent=active?t('match.mini.active'):running?t('match.mini.running'):t('match.mini.waiting');
- $('prediction-state').textContent=active?t('pred.state.active'):t('pred.state.inactive');
+ $('prediction-state').textContent=predictionLabel;
  $('prediction-help').textContent=active?t('pred.help.active'):simulation?t('pred.help.sim'):t('pred.help.wait');
- $('watch-tag').classList.toggle('on',running);$('watch-tag').innerHTML='<span class="pulse-dot"></span> '+t(running?'watch.on':'watch.off');
+ $('watch-tag').classList.toggle('on',running);
+ $('watch-tag').innerHTML='<span class="pulse-dot"></span> '+t(running?'watch.on':'watch.off');
  $('start-label').textContent=running?t('start.stop'):t('start.start');
  $('automation-mode').textContent=simulation?t('mode.sim'):t('mode.real');
  $('automation-mode-detail').textContent=simulation?t('mode.sim.detail'):t('mode.real.detail');
  $('footer-mode').textContent=simulation?t('footer.mode.sim'):t('footer.mode.real');
  $('footer-detail').textContent=simulation?t('footer.detail.sim'):t('footer.detail.real');
  $('footer-status').textContent=running?t('footer.status.on'):t('footer.status.off');
- $('twitch-info').textContent=connected?t('twitch.info.on',{name}):t('twitch.info.off');
- if(st.authCode){$('auth-progress').hidden=false;$('auth-code').textContent=st.authCode;$('auth-info').textContent=st.authStatus||t('auth.info.default')}else if(st.authPending){$('auth-progress').hidden=false;$('auth-info').textContent=t('auth.info.pending');}else{$('auth-progress').hidden=true}
+ $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
+ if(st.authCode){$('auth-progress').hidden=false;$('auth-code').textContent=st.authCode;$('auth-info').textContent=st.authStatus||t('auth.info.default')}
+ else if(st.authPending){$('auth-progress').hidden=false;$('auth-info').textContent=t('auth.info.pending')}
+ else{$('auth-progress').hidden=true}
  showLogs(st.logs);
  if(!$('wizard').hidden)renderWizard();
 }

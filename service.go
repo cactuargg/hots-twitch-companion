@@ -90,6 +90,48 @@ func (d *dashboard) log(s string) {
 		d.logs = d.logs[len(d.logs)-150:]
 	}
 }
+
+// User-facing phases derived from persisted engine state. These describe what we
+// know locally, not a live verification of Twitch's current Prediction status.
+func connectionPhase(hasToken, validated, pending bool) string {
+	if pending {
+		return "authorizing"
+	}
+	if !hasToken {
+		return "disconnected"
+	}
+	if validated {
+		return "connected"
+	}
+	return "unverified"
+}
+
+func monitorPhase(running, tracking bool) string {
+	if !running {
+		return "off"
+	}
+	if tracking {
+		return "tracking"
+	}
+	return "watching"
+}
+
+func predictionPhase(p *Prediction, windowMinutes int, now time.Time) (string, int) {
+	if p == nil {
+		return "none", 0
+	}
+	if p.DryRun {
+		return "simulation", 0
+	}
+	// The betting window is an estimate: remote Twitch status is not polled here.
+	deadline := time.UnixMilli(p.StartedAt).Add(time.Duration(windowMinutes) * time.Minute)
+	remaining := deadline.Sub(now)
+	if remaining <= 0 {
+		return "awaiting_result", 0
+	}
+	return "window_estimate", int((remaining + time.Second - 1) / time.Second)
+}
+
 func (d *dashboard) status() map[string]any {
 	e := d.engine
 	e.mu.Lock()
@@ -98,8 +140,10 @@ func (d *dashboard) status() map[string]any {
 	e.mu.Unlock()
 	tw.mu.Lock()
 	// The encrypted DPAPI file is never sent to the UI.
-	connected := tw.token.AccessToken != ""
+	hasToken := tw.token.AccessToken != ""
 	channel := tw.login
+	validated := channel != ""
+	connected := hasToken && validated
 	tw.mu.Unlock()
 	d.mu.Lock()
 	logs := append([]event{}, d.logs...)
@@ -110,7 +154,11 @@ func (d *dashboard) status() map[string]any {
 	if active {
 		activeDry = s.Active.DryRun
 	}
+	phase, secondsLeft := predictionPhase(s.Active, config.predictionWindowMinutes(), time.Now())
 	return map[string]any{"running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
+		"twitchPhase": connectionPhase(hasToken, validated, authPending),
+		"monitorPhase": monitorPhase(running, active),
+		"predictionPhase": phase, "predictionWindowSecondsLeft": secondsLeft,
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
