@@ -531,7 +531,8 @@ type Engine struct {
 	state   State
 	running bool
 	stop    context.CancelFunc
-	log     func(string)
+	log      func(string)
+	logEvent func(level, code, message string)
 }
 
 func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
@@ -544,6 +545,16 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 		return nil, e
 	}
 	return &Engine{p: p, cfg: cfg, state: s, twitch: t, log: log}, nil
+}
+
+// report sends a structured diagnostic when the dashboard is attached, while
+// preserving the plain logger for CLI tests and other engine callers.
+func (e *Engine) report(level, code, message string) {
+	if e.logEvent != nil {
+		e.logEvent(level, code, message)
+		return
+	}
+	e.log(message)
 }
 
 // safeLiveChange reports whether cfg differs from the stored config only by
@@ -666,7 +677,7 @@ func (e *Engine) watch(ctx context.Context) {
 	e.log(tr(lang, "log.watch_started", tr(lang, map[bool]string{true: "mode.real", false: "mode.simulation"}[e.cfg.RealMode])))
 	if e.cfg.RealMode {
 		if _, err := e.twitch.identity(ctx); err != nil {
-			e.log("Twitch: " + err.Error())
+			e.report("error", "twitch_auth", "Twitch: " + err.Error())
 			return
 		}
 	}
@@ -691,7 +702,7 @@ func (e *Engine) watch(ctx context.Context) {
 			if !modified.Before(started.Add(-2 * time.Second)) {
 				if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
 					if er := e.doCreate(ctx, &s); er != nil {
-						e.log(tr(e.cfg.lang(), "log.create_error", er.Error()))
+						e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
 						continue
 					}
 					e.log(tr(e.cfg.lang(), "log.new_game", filepath.Base(filepath.Dir(path))))
@@ -707,9 +718,9 @@ func (e *Engine) watch(ctx context.Context) {
 		}
 		age := now.Sub(time.UnixMilli(s.Active.StartedAt))
 		if age > 100*time.Minute {
-			e.log(tr(e.cfg.lang(), "log.timeout_cancel"))
+			e.report("warning", "prediction_timeout", tr(e.cfg.lang(), "log.timeout_cancel"))
 			if er := e.doSettle(ctx, &s, "cancel", "timeout"); er != nil {
-				e.log(tr(e.cfg.lang(), "log.cancel_error", er.Error()))
+				e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", er.Error()))
 			}
 			continue
 		}
@@ -733,7 +744,7 @@ func (e *Engine) watch(ctx context.Context) {
 				}
 			}
 			if er != nil && (er.Error() != lastError || time.Since(lastLog) > time.Minute) {
-				e.log(tr(e.cfg.lang(), "log.process_error", filepath.Base(f.Path), er.Error()))
+				e.report("warning", "replay_process", tr(e.cfg.lang(), "log.process_error", filepath.Base(f.Path), er.Error()))
 				lastError = er.Error()
 				lastLog = time.Now()
 			}
