@@ -247,7 +247,7 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	// All standalone JS/CSS modules must be embedded and served by the secure local server.
 	for _, asset := range []string{
 		"core.js", "i18n.js", "replays.js", "diagnostics.js", "onboarding.js", "app.js",
-		"style.css", "wizard.css", "overview.css", "onboarding.css", "diagnostics.css",
+		"style.css", "wizard.css", "overview.css", "onboarding.css", "diagnostics.css", "settings.css",
 	} {
 		res := get("/secret/assets/"+asset, false)
 		if res.Code != http.StatusOK || res.Body.Len() == 0 {
