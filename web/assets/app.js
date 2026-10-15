@@ -110,6 +110,7 @@ async function checkReplayRoot(){
 
 window.addEventListener('DOMContentLoaded',async()=>{
  document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.view)));
+ $('nav').addEventListener('keydown',handleTabKeyDown);
  document.querySelectorAll('[data-goto]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.goto)));
  document.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',()=>action(el.dataset.action)));
  document.querySelectorAll('[data-wiz]').forEach(el=>el.addEventListener('click',()=>wizardAction(el.dataset.wiz)));
