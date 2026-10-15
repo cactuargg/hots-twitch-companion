@@ -101,3 +101,14 @@
  .prediction-manual-buttons .btn{min-width:0;white-space:normal}
  .prediction-manual-buttons .manual-cancel{grid-column:1/-1}
 }
+
+
+/* Pending Prediction: readable reason why the completed replay has not settled. */
+.prediction-scan-feedback{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 16px;
+  padding:12px 14px;margin:11px 0 16px;background:var(--surface-raised);
+  border:1px solid var(--border);border-radius:8px}
+.prediction-scan-feedback span{font-size:12px;color:var(--muted-strong);line-height:1.5;flex:1 1 220px;
+  min-width:0;overflow-wrap:anywhere}
+.prediction-scan-feedback .text-action{font-size:12px;flex-shrink:0;text-align:left}
+@media(max-width:520px){.prediction-scan-feedback{flex-direction:column;gap:5px}
+.prediction-scan-feedback .text-action{align-self:flex-start}}
