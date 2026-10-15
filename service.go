@@ -26,6 +26,8 @@ var interfaceFiles embed.FS
 type event struct {
 	Time    string `json:"time"`
 	Message string `json:"message"`
+	Level   string `json:"level"`
+	Code    string `json:"code,omitempty"`
 }
 type replaySummary struct {
 	File     string          `json:"file"`
@@ -34,7 +36,8 @@ type replaySummary struct {
 	Modified string          `json:"modified"`
 	Players  []playerSummary `json:"players,omitempty"`
 	Selected string          `json:"selected,omitempty"`
-	Error    string          `json:"error,omitempty"`
+	Error          string          `json:"error,omitempty"`
+	SelectionError string          `json:"selectionError,omitempty"`
 }
 type playerSummary struct {
 	Name       string `json:"name"`
@@ -63,6 +66,7 @@ func newDashboard(p paths, c Config) (*dashboard, error) {
 		return nil, err
 	}
 	d.engine = e
+	e.logEvent = d.logEvent
 	// Verify restored tokens in the background; do not block the dashboard on network.
 	if e.twitch.token.AccessToken != "" {
 		go func() {
@@ -71,7 +75,7 @@ func newDashboard(p paths, c Config) (*dashboard, error) {
 			if who, err := e.twitch.identity(ctx); err == nil {
 				d.log(tr(c.lang(), "log.twitch_connected", who.Login))
 			} else {
-				d.log(tr(c.lang(), "log.token_check", err.Error()))
+				d.logEvent("warning", "twitch_auth", tr(c.lang(), "log.token_check", err.Error()))
 			}
 		}()
 	}
@@ -83,9 +87,16 @@ func (d *dashboard) tr(key string, args ...any) string {
 	return tr(d.config().Lang, key, args...)
 }
 func (d *dashboard) log(s string) {
+	d.logEvent("info", "", s)
+}
+
+func (d *dashboard) logEvent(level, code, message string) {
+	if level != "warning" && level != "error" {
+		level = "info"
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.logs = append(d.logs, event{Time: time.Now().Format("15:04:05"), Message: s})
+	d.logs = append(d.logs, event{Time: time.Now().Format("15:04:05"), Level: level, Code: code, Message: message})
 	if len(d.logs) > 150 {
 		d.logs = d.logs[len(d.logs)-150:]
 	}
@@ -177,7 +188,7 @@ func (d *dashboard) currentReplays() []replaySummary {
 	}
 	d.mu.Unlock()
 	config := d.config()
-	files := replaysAfter(config, time.Time{}, 6)
+	files := replaysAfter(config, time.Time{}, 12)
 	res := make([]replaySummary, 0, len(files))
 	for _, file := range files {
 		s := replaySummary{File: filepath.Base(file.Path), Modified: file.Modified.Format(time.RFC3339)}
@@ -194,6 +205,7 @@ func (d *dashboard) currentReplays() []replaySummary {
 				s.Selected = p.Name
 			} else {
 				s.Result = "unknown"
+				s.SelectionError = er.Error()
 			}
 		}
 		res = append(res, s)
@@ -315,7 +327,7 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 		defer cancel()
 		tok, err := pollDevice(ctx, config.ClientID, config.lang(), code, d.log)
 		if err != nil {
-			d.log(d.tr("log.auth_error", err.Error()))
+			d.logEvent("error", "twitch_auth", d.tr("log.auth_error", err.Error()))
 			d.mu.Lock()
 			d.authPending = false
 			d.authCode = ""
@@ -330,7 +342,7 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 		err = t.saveToken(tok)
 		t.mu.Unlock()
 		if err != nil {
-			d.log(d.tr("log.token_protect_error", err.Error()))
+			d.logEvent("error", "token_store", d.tr("log.token_protect_error", err.Error()))
 			d.mu.Lock()
 			d.authPending = false
 			d.authCode = ""
@@ -339,7 +351,7 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 		}
 		me, err := t.identity(ctx)
 		if err != nil {
-			d.log(d.tr("log.identity_failed", err.Error()))
+			d.logEvent("warning", "twitch_auth", d.tr("log.identity_failed", err.Error()))
 		} else {
 			d.log(d.tr("log.twitch_connected", me.Login))
 		}
@@ -366,7 +378,7 @@ func (d *dashboard) checkReplay() (map[string]any, error) {
 	selected, err := findOutcome(r, cfg.PlayerName, cfg.PlayerToonHandle, cfg.lang())
 	if err != nil {
 		res["playerError"] = err.Error()
-		d.log(d.tr("log.replay_no_player", err.Error()))
+		d.logEvent("warning", "player_not_found", d.tr("log.replay_no_player", err.Error()))
 	} else {
 		res["selected"] = playerSummary{Name: selected.Name, ToonHandle: selected.ToonHandle, Result: selected.Result}
 		d.log(d.tr("log.replay_summary", r.Map, selected.Name, selected.Result))
@@ -556,7 +568,7 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 		case "replay/check":
 			v, err := d.checkReplay()
 			if err != nil {
-				d.log(d.tr("log.replay_check_error", err.Error()))
+				d.logEvent("error", "replay_check", d.tr("log.replay_check_error", err.Error()))
 				requestError(w, err)
 				return
 			}
@@ -616,7 +628,7 @@ func (d *dashboard) launch() (string, *http.Server, error) {
 	go func() {
 		e := srv.Serve(ln)
 		if e != nil && !errors.Is(e, http.ErrServerClosed) {
-			d.log(tr(d.config().Lang, "log.http_server", e.Error()))
+			d.logEvent("error", "local_server", tr(d.config().Lang, "log.http_server", e.Error()))
 		}
 	}()
 	return "http://" + addr + "/" + key + "/", srv, nil
