@@ -1,0 +1,54 @@
+# One-time bootstrap: create v0.7.0 from the reviewed main commit.
+# The existing Windows workflow tests, packages and publishes release assets.
+name: Publish v0.7.0 tag
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v0.7.0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm the v0.7.0 tag is not already present
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GH_REPO/git/ref/tags/v0.7.0" >/dev/null 2>&1; then
+            echo "v0.7.0 tag already exists: refusing to retag."
+            exit 1
+          fi
+
+      - name: Create release tag on reviewed main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/$GH_REPO/git/refs" \
+            --raw-field ref="refs/tags/v0.7.0" \
+            --raw-field sha="$TARGET_SHA"
+          echo "Created v0.7.0 at $TARGET_SHA"
+
+      - name: Dispatch tested Windows release on v0.7.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -X POST "repos/$GH_REPO/actions/workflows/windows.yml/dispatches" \
+            -f ref="v0.7.0"
+          echo "Dispatched Windows release build for v0.7.0"

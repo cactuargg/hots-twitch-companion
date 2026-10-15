@@ -1,44 +1,35 @@
 # HotS Twitch Companion __TAG__
 
-A portable Windows x64 app that automatically runs Twitch Predictions based on Heroes of the Storm matches.
+Portable Windows x64 app for automating Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.6
+## What's new in v0.7.0
 
-### Redesigned, minimalist desktop interface
-- Replaced game-themed decorations, large banners, hexagons and glows with a clean dark navy and violet interface.
-- Three clear sections: **Home**, **History** and **Settings**.
-- Home now prioritizes one monitoring status and one Start/Stop action, with compact Twitch, Prediction and latest-match summaries.
-- A smaller **1024×800** initial desktop window and responsive layouts for narrower windows and 125–150% Windows display scaling.
-- Clearer Start vs. Stop styling, pending-action feedback, keyboard navigation, and reduced-motion support.
+### Manual Prediction controls
 
-### Easier setup and settings
-- Simplified first-run wizard: **choose your HotS player → optionally connect Twitch → start a safe simulation**.
-- Select your player from an existing replay to fill nickname and Toon Handle automatically, or enter a nickname manually.
-- Preview Prediction title, outcomes and betting-window duration without creating anything on Twitch.
-- Settings now expose three everyday areas; technical fields stay available under **Advanced settings**.
-- English/Russian switching, improved Client ID guidance, and a copy button for Twitch Device Code.
-- The simulation remains the default: **real viewer channel points are never used without explicitly enabling live mode**.
+- New **Win**, **Loss**, and **Cancel / refund** actions on Home while a Prediction is active.
+- Live outcome actions require confirmation: Win/Loss distribute real viewer channel points, while Cancel returns points to viewers. Simulation never makes Twitch Prediction calls.
+- These controls remain available when automated monitoring is stopped.
+- **Sync with Twitch** reconciles a tracked Prediction that was already resolved/canceled elsewhere. It never silently discards a Prediction that Twitch still reports as ACTIVE or LOCKED.
+- Safeguards check the exact Prediction ID and start time, and serialize manual actions with automatic replay processing to prevent duplicate or stale settlement.
 
-### Match history and troubleshooting
-- Search recent replays by map, filename or player; filter wins, losses and unknown results.
-- Separate unreadable replays from successfully parsed replays where the selected player was not found.
-- Structured event levels and problem-specific guidance for Twitch authorization, Prediction creation/settlement, and replay issues.
-- Diagnostic logs remain in memory for the current run (up to 150 entries); they are not a permanent audit trail.
+### Faster automatic match resolution
 
-### Reliability and maintainability
-- Split the frontend into focused JavaScript and CSS files while keeping everything embedded in a **single Go executable** — no Electron or Node.js needed by end users.
-- Added automated Go/JavaScript UI tests and Windows builds in GitHub Actions.
-- Improved button busy-state handling to prevent conflicting actions and restore controls on failure.
+- Removed the previous **75-second mandatory wait** before checking a finished replay.
+- Once HotS writes a complete replay, the app polls every ~4 seconds and waits approximately 8 seconds for file stability before parsing its result.
+- Twitch Predictions may be resolved before the full betting-window duration has elapsed when the final result is known.
+- The app still gets match results **from completed replay files**, not game memory or screen capture, so resolution depends on HotS saving the replay.
+
+### From v0.6.0
+
+The minimalist navy/purple Windows interface continues to use Home, History, Settings, a guided first-run wizard and read-only replay diagnostics. No Electron or Node.js installation is required: the frontend is embedded in one Go executable.
 
 ## Download
 
 | File | Description |
 |------|-------------|
-| `HotS-Twitch-Companion.exe` | Portable Windows x64 application |
-| `HotS-Twitch-Companion-windows-x64.zip` | EXE, documentation, license, and checksum |
-| `SHA256SUMS.txt` | SHA-256 checksum of the executable |
-
-The ZIP contains the EXE, `README.md`, `README.ru.md`, `LICENSE`, and `SHA256SUMS.txt`.
+| `HotS-Twitch-Companion.exe` | Portable Windows x64 executable |
+| `HotS-Twitch-Companion-windows-x64.zip` | EXE, README files, license and checksum |
+| `SHA256SUMS.txt` | SHA-256 checksum for the executable |
 
 ## SHA-256
 
@@ -46,14 +37,15 @@ The ZIP contains the EXE, `README.md`, `README.ru.md`, `LICENSE`, and `SHA256SUM
 __HASH__  HotS-Twitch-Companion.exe
 ```
 
-## Quick start
+## Usage
 
-1. Download and run `HotS-Twitch-Companion.exe` (no installation; the UI opens in Microsoft Edge app mode, or in the default browser).
-2. Choose your HotS player from a replay or enter the nickname.
-3. Optionally connect Twitch using the **Public** app Client ID and Device Code authorization.
-4. Start a **simulation** and confirm replay detection works before enabling live Predictions in Settings.
+1. Download `HotS-Twitch-Companion.exe` and launch it (Microsoft Edge app-mode window, with fallback to the default browser).
+2. Choose the correct Heroes of the Storm player from a replay, or enter your player name.
+3. Connect Twitch using the Public app Client ID and Device Code flow, if using real Predictions.
+4. Start in **simulation** and verify that a finished match is detected correctly.
+5. On Home, use Win/Loss/Cancel if automatic settlement cannot be completed. **Double-check the result before confirming a live outcome**, since distributed viewer channel points cannot be recovered by undoing the click.
 
-**Important:** Real Predictions can use viewers' Twitch channel points. Check the selected player and Twitch authorization before enabling live mode. Windows UI at high DPI and live Twitch interaction should also be checked manually; automated tests do not cover them.
+**Important:** The manual actions manage only a Prediction tracked by this instance of the app. If Twitch has already finished it, use Sync with Twitch. Windows GUI rendering and real Twitch payout behavior have not been smoke-tested manually in this release workflow; automated tests alone are insufficient for that assurance.
 
 ---
 
