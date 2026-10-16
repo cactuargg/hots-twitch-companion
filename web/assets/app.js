@@ -33,6 +33,13 @@ function render(s){
  if(s?.version)$('app-version').textContent='v'+s.version;
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
+  // The badge opens the release page in the system browser; no in-app update.
+  const upd=$('update-badge');
+  if(upd){
+   const label=st.updateVersion&&st.updateURL?t('update.available',{version:st.updateVersion}):'';
+   upd.hidden=!label;
+   if(label&&upd.textContent!==label)upd.textContent=label;
+  }
   const view=monitoringView(st);
   const running=!!st.running,connected=view.twitch==='connected';
   const name=st.channel||'';
@@ -210,6 +217,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
     $('replayRoot').value='';state.hasUnsaved=true;renderSettingsDraft();
     await checkReplayRoot();
     break;
+  case 'update':if(state.status?.updateURL)openExternalLink(state.status.updateURL);break;
   case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
  }}catch(e){toast(e.message||t('toast.request_error'),true)}finally{state.busy=false;setActionBusy(name,false)}}
 

@@ -114,6 +114,8 @@ p{line-height:1.58}
   padding:17px 0;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
 .quit{border:0;background:transparent;color:var(--muted);font-size:12px;padding:8px}
 .quit:hover{color:var(--ink)}
+.update-badge{border:0;background:transparent;color:var(--muted);font-size:12px;padding:8px;text-decoration:underline dotted;cursor:pointer}
+.update-badge:hover{color:var(--ink)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:70;
   max-width:min(90vw,550px);padding:12px 17px;border:1px solid var(--border);background:var(--surface-raised);
   color:var(--ink);border-radius:9px;opacity:0;visibility:hidden;transition:opacity .15s ease}

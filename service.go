@@ -56,6 +56,7 @@ type dashboard struct {
 	authPending                           bool
 	replays                               []replaySummary
 	replaysAt                             time.Time
+	updateVersion, updateURL              string
 	shutdown                              chan struct{}
 	shutdownOnce                          sync.Once
 	lastActivity                          time.Time
@@ -69,6 +70,8 @@ func newDashboard(p paths, c Config) (*dashboard, error) {
 	}
 	d.engine = e
 	e.logEvent = d.logEvent
+	// Background update check against public GitHub release metadata.
+	go d.watchUpdates()
 	// Verify restored tokens in the background; do not block the dashboard on network.
 	if e.twitch.token.AccessToken != "" {
 		go func() {
@@ -161,6 +164,7 @@ func (d *dashboard) status() map[string]any {
 	d.mu.Lock()
 	logs := append([]event{}, d.logs...)
 	authCode, authStatus, authPending := d.authCode, d.authStatus, d.authPending
+	updateVersion, updateURL := d.updateVersion, d.updateURL
 	d.mu.Unlock()
 	active := s.Active != nil
 	activeDry := false
@@ -183,7 +187,8 @@ func (d *dashboard) status() map[string]any {
   "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
   "pendingOutcome": pendingOutcome,
   "replayScan": scan, "hasTwitchApp": config.twitchClientID() != "",
-		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
+		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs,
+		"updateVersion": updateVersion, "updateURL": updateURL}
 }
 func (d *dashboard) config() Config {
 	d.engine.mu.Lock()
