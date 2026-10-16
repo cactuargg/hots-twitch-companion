@@ -89,6 +89,7 @@ type Prediction struct {
 	LossID        string `json:"lossId"`
 	StartedAt     int64  `json:"startedAt"`
 	DryRun        bool   `json:"dryRun"`
+ Lobby         *LobbySnapshot `json:"lobby,omitempty"`
 }
 type State struct {
 	Active           *Prediction `json:"active"`
@@ -618,7 +619,7 @@ func (e *Engine) updateAndSave(s State) error {
 	e.state = s
 	return saveState(e.p, s)
 }
-func (e *Engine) doCreate(ctx context.Context, s *State) error {
+func (e *Engine) doCreate(ctx context.Context, s *State, lobbyPath string) error {
 	if s.Active != nil {
 		return nil
 	}
@@ -635,7 +636,12 @@ func (e *Engine) doCreate(ctx context.Context, s *State) error {
 		}
 		e.log(tr(e.cfg.lang(), "log.prediction_created", p.ID))
 	}
-	s.Active = p
+	// Capture a fingerprint before the temp battlelobby disappears. It helps
+ // trace the originating match but is not yet proof of replay identity.
+ if snapshot, snapErr := captureLobbySnapshot(lobbyPath); snapErr == nil {
+  p.Lobby = snapshot
+ }
+ s.Active = p
  e.setReplayScan("waiting_replay", "", "")
 	return e.updateAndSave(*s)
 }
@@ -786,7 +792,7 @@ func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *str
 		// Only react to a new/changed lobby *after* watch began.
 		if !modified.Before(started.Add(-2 * time.Second)) {
 			if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
-				if er := e.doCreate(ctx, &s); er != nil {
+				if er := e.doCreate(ctx, &s, path); er != nil {
 					e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
 					return
 				}
@@ -833,7 +839,7 @@ func (e *Engine) scanReplay(ctx context.Context, s *State, now time.Time, lastEr
  eligible := false
  bestCode, bestFile, bestDetail := "waiting_replay", "", ""
  for _, f := range recent {
-  if !f.Modified.After(cutoff) { continue }
+  if !f.Modified.After(cutoff)||!s.Active.Lobby.replayCanFollow(f.Modified) { continue }
   eligible = true
   name := filepath.Base(f.Path)
   if f.Size < 100 || now.Sub(f.Modified) < 8*time.Second {
