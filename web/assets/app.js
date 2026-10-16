@@ -104,7 +104,9 @@ function render(s){
   mainButton.classList.toggle('is-stop',running);
   $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
   $('settings-connect-label').textContent=t(connected?'minimal.settings.reconnect':'twitch.connect');
-  $('twitch-client-hint').textContent=t(st.hasTwitchApp?'minimal.settings.clientOverride':'onboarding.twitch.steps');
+  const clientHintKey=st.hasTwitchApp?'minimal.settings.clientOverride':'onboarding.twitch.steps';
+  $('twitch-client-hint').dataset.i18n=clientHintKey;
+  $('twitch-client-hint').textContent=t(clientHintKey);
   renderSettingsDraft();
   if(st.authCode){
     $('auth-progress').hidden=false;
