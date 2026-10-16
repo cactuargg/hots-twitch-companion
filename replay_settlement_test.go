@@ -38,40 +38,64 @@ func scanFixture(t *testing.T,activeAt time.Time) (*Engine,paths) {
  return e,p
 }
 func TestScanResolvesMatchingReplayEvenAfterElevenNewerUnrelatedFiles(t *testing.T) {
- now:=time.Now()
- e,p:=scanFixture(t,now.Add(-90*time.Second))
- // This was visible in History (12) but excluded from the old settlement scan (8).
- writeScanReplay(t,p.dir,"01-win",now.Add(-40*time.Second),true)
- for i:=0;i<11;i++{
-  name:="distractor-"+string(rune('a'+i))
-  writeScanReplay(t,p.dir,name,now.Add(time.Duration(-30+i)*time.Second),false)
- }
- lastError:="";lastLog:=time.Time{}
- e.scanTick(context.Background(),now.Add(-120*time.Second),&lastError,&lastLog)
- e.mu.Lock();s,scan:=e.state,e.scan;e.mu.Unlock()
- if s.Active!=nil || !strings.HasPrefix(s.LastResult,"win ("){t.Fatalf("visible win was not settled: state=%+v scan=%+v",s,scan)}
- if scan.Code!="settled"||scan.File!="01-win.StormReplay"{t.Fatalf("wrong scan status: %+v",scan)}
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-90*time.Second))
+	// The bound replay is older than History's twelve newest files.
+	writeCorrelationFile(t, p.dir, "01-win", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-90*time.Second), true), lobby), now.Add(-40*time.Second))
+	for i := 0; i < 13; i++ {
+		name := "distractor-" + string(rune('a'+i))
+		writeCorrelationFile(t, p.dir, name, correlationMPQTest(detailsTest(), realARAMLobbyTest(t)), now.Add(time.Duration(-30+i)*time.Second))
+	}
+	lastError := ""
+	lastLog := time.Time{}
+	e.scanTick(context.Background(), now.Add(-120*time.Second), &lastError, &lastLog)
+	e.mu.Lock()
+	s, scan := e.state, e.scan
+	e.mu.Unlock()
+	if s.Active != nil || !strings.HasPrefix(s.LastResult, "win (") {
+		t.Fatalf("visible win was not settled: state=%+v scan=%+v", s, scan)
+	}
+	if scan.Code != "settled" || scan.File != "01-win.StormReplay" {
+		t.Fatalf("wrong scan status: %+v", scan)
+	}
 }
-func TestOldVisibleReplayDoesNotSettleNewerPrediction(t *testing.T){
- now:=time.Now()
- e,p:=scanFixture(t,now.Add(-35*time.Second))
- writeScanReplay(t,p.dir,"old-win",now.Add(-3*time.Minute),true)
- lastError:="";lastLog:=time.Time{}
- e.scanTick(context.Background(),now.Add(-45*time.Second),&lastError,&lastLog)
- e.mu.Lock();s,scan:=e.state,e.scan;e.mu.Unlock()
- if s.Active==nil {t.Fatal("predating match wrongly distributed viewer points")}
- if scan.Code!="too_old" || scan.File!="old-win.StormReplay" {t.Fatalf("wrong diagnostic: %+v",scan)}
+func TestOldVisibleReplayDoesNotSettleNewerPrediction(t *testing.T) {
+	now := time.Now()
+	e, p, _ := boundScanFixture(t, now.Add(-35*time.Second))
+	writeScanReplay(t, p.dir, "old-win", now.Add(-3*time.Minute), true)
+	lastError := ""
+	lastLog := time.Time{}
+	e.scanTick(context.Background(), now.Add(-45*time.Second), &lastError, &lastLog)
+	e.mu.Lock()
+	s, scan := e.state, e.scan
+	e.mu.Unlock()
+	if s.Active == nil {
+		t.Fatal("predating match wrongly distributed viewer points")
+	}
+	if scan.Code != "waiting_replay" {
+		t.Fatalf("wrong diagnostic: %+v", scan)
+	}
 }
-func TestRecheckSettlesCompletedReplayWhileMonitoringStopped(t *testing.T){
- now:=time.Now()
- e,p:=scanFixture(t,now.Add(-55*time.Second))
- writeScanReplay(t,p.dir,"completed-win",now.Add(-18*time.Second),true)
- scan,err:=e.recheckReplay(context.Background(),"SIMULATION",e.state.Active.StartedAt)
- if err!=nil {t.Fatal(err)}
- if scan.Code!="settled" {t.Fatalf("recheck did not settle: %+v",scan)}
- e.mu.Lock();s:=e.state;e.mu.Unlock()
- if s.Active!=nil||!strings.HasPrefix(s.LastResult,"win ("){t.Fatalf("manual recheck did not persist result: %+v",s)}
- if _,err=e.recheckReplay(context.Background(),"SIMULATION",now.Add(-55*time.Second).UnixMilli());err==nil{t.Fatal("stale recheck was accepted")}
+func TestRecheckSettlesCompletedReplayWhileMonitoringStopped(t *testing.T) {
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-55*time.Second))
+	writeCorrelationFile(t, p.dir, "completed-win", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-55*time.Second), true), lobby), now.Add(-18*time.Second))
+	scan, err := e.recheckReplay(context.Background(), "SIMULATION", e.state.Active.StartedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scan.Code != "settled" {
+		t.Fatalf("recheck did not settle: %+v", scan)
+	}
+	e.mu.Lock()
+	s := e.state
+	e.mu.Unlock()
+	if s.Active != nil || !strings.HasPrefix(s.LastResult, "win (") {
+		t.Fatalf("manual recheck did not persist result: %+v", s)
+	}
+	if _, err = e.recheckReplay(context.Background(), "SIMULATION", now.Add(-55*time.Second).UnixMilli()); err == nil {
+		t.Fatal("stale recheck was accepted")
+	}
 }
 func TestRecheckAPIRequiresActivePredictionIdentity(t *testing.T){
  now:=time.Now()

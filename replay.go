@@ -1,7 +1,8 @@
 package main
 
 // Read-only MPQ and Blizzard versioned-data parser, based on public file formats.
-// Only replay.details is read. No game-process access or file modifications.
+// Reads replay.details and replay.server.battlelobby for correlation.
+// No game-process access or file modifications.
 import (
 	"bytes"
 	"compress/bzip2"
@@ -98,7 +99,12 @@ func readMember(filePath, name string) ([]byte, error) {
 	if e != nil {
 		return nil, e
 	}
-	if len(data) < 32 {
+	return readMPQMember(data, name)
+}
+
+// All correlation members are decoded from one immutable, bounded file read.
+func readMPQMember(data []byte, name string) ([]byte, error) {
+	if len(data) < 32 || len(data) > maxReplay {
 		return nil, errors.New("Not a valid MPQ")
 	}
 	start := uint64(0)
@@ -369,8 +375,9 @@ type Player struct {
 	Team       int64  `json:"team"`
 }
 type Replay struct {
-	Map     string   `json:"map"`
-	Players []Player `json:"players"`
+	Map        string   `json:"map"`
+	Players    []Player `json:"players"`
+	RecordedAt int64    `json:"recordedAt,omitempty"`
 }
 
 func asObj(v any) map[int]any { o, _ := v.(map[int]any); return o }
@@ -382,6 +389,10 @@ func parseReplay(path string) (Replay, error) {
 	if e != nil {
 		return Replay{}, e
 	}
+	return parseReplayDetails(raw)
+}
+
+func parseReplayDetails(raw []byte) (Replay, error) {
 	r := vReader{b: raw}
 	v, e := r.read(0)
 	if e != nil {
@@ -396,6 +407,10 @@ func parseReplay(path string) (Replay, error) {
 		return Replay{}, errors.New("Replay player list missing")
 	}
 	result := Replay{Map: asStr(root[1])}
+	// Blizzard m_timeUTC is a Windows FILETIME, independent of file mtime.
+	if ticks := asInt(root[5]); ticks > 116444736000000000 {
+		result.RecordedAt = (ticks - 116444736000000000) / 10000
+	}
 	for _, item := range arr {
 		p := asObj(item)
 		if p == nil {

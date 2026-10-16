@@ -1,0 +1,460 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+)
+
+func realLobbyTest(t *testing.T) []byte {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/battlelobby/replay.server.StormLeague1_89566.battlelobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func bindingTest(t *testing.T, raw []byte, at time.Time) *MatchBinding {
+	t.Helper()
+	lobby, err := parseBattleLobby(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bindPredictionMatch(&LobbySnapshot{Status: "roster_parsed", Parser: "battlelobby-roster-v1", SHA256: contentSHA(raw), ModifiedAt: at.UnixMilli(), Data: &lobby}, "original", lobby.Players[0].ToonHandle)
+}
+
+// Synthetic multi-member MPQ container around real, unmodified lobby bytes.
+func correlationMPQTest(details, lobby []byte) []byte {
+	members := [][]byte{details, lobby}
+	names := []string{"replay.details", "replay.server.battlelobby"}
+	head := make([]byte, 32)
+	copy(head, "MPQ\x1a")
+	binary.LittleEndian.PutUint32(head[4:], 32)
+	binary.LittleEndian.PutUint16(head[14:], 3)
+	binary.LittleEndian.PutUint32(head[16:], 32)
+	binary.LittleEndian.PutUint32(head[20:], 96)
+	binary.LittleEndian.PutUint32(head[24:], 4)
+	binary.LittleEndian.PutUint32(head[28:], 2)
+	hashes := bytes.Repeat([]byte{255}, 64)
+	blocks := make([]byte, 32)
+	payload := []byte{}
+	for i, m := range members {
+		h := hashes[i*16:]
+		binary.LittleEndian.PutUint32(h, hashMPQ(names[i], 1))
+		binary.LittleEndian.PutUint32(h[4:], hashMPQ(names[i], 2))
+		binary.LittleEndian.PutUint32(h[12:], uint32(i))
+		block := blocks[i*16:]
+		binary.LittleEndian.PutUint32(block, uint32(128+len(payload)))
+		binary.LittleEndian.PutUint32(block[4:], uint32(len(m)))
+		binary.LittleEndian.PutUint32(block[8:], uint32(len(m)))
+		binary.LittleEndian.PutUint32(block[12:], 0x81000000)
+		payload = append(payload, m...)
+	}
+	binary.LittleEndian.PutUint32(head[8:], uint32(128+len(payload)))
+	return bytes.Join([][]byte{head, encryptTest(hashes, hashMPQ("(hash table)", 3)), encryptTest(blocks, hashMPQ("(block table)", 3)), payload}, nil)
+}
+
+func correlationDetailsTest(t *testing.T, lobby []byte, clock time.Time, firstTeamWins bool) []byte {
+	t.Helper()
+	l, err := parseBattleLobby(lobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	players := []byte{0}
+	players = append(players, vintTest(10)...)
+	for i, p := range l.Players {
+		if p.Role == "Watc" {
+			continue
+		}
+		parts := strings.Split(p.ToonHandle, "-")
+		id, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		toon := structTest(vintTest(0), intTest(1), vintTest(1), append([]byte{7}, []byte("Hero")...), vintTest(2), intTest(1), vintTest(4), intTest(id))
+		team := int64(i / 5)
+		result := int64(2)
+		if (team == 0) == firstTeamWins {
+			result = 1
+		}
+		player := structTest(vintTest(0), blobTest(fmt.Sprintf("Player%d", i)), vintTest(1), toon, vintTest(5), intTest(team), vintTest(8), intTest(result))
+		players = append(players, player...)
+	}
+	ticks := clock.UnixMilli()*10000 + 116444736000000000
+	return structTest(vintTest(0), players, vintTest(1), blobTest("Test map"), vintTest(5), intTest(ticks))
+}
+
+func writeCorrelationFile(t *testing.T, root, name string, raw []byte, at time.Time) string {
+	t.Helper()
+	path := filepath.Join(root, name+".StormReplay")
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, at, at); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func boundScanFixture(t *testing.T, at time.Time) (*Engine, paths, []byte) {
+	t.Helper()
+	e, p := scanFixture(t, at)
+	raw := realLobbyTest(t)
+	e.state.Active.Match = bindingTest(t, raw, at.Add(-time.Second))
+	e.cfg.PlayerToonHandle = e.state.Active.Match.PlayerToon
+	if err := e.updateAndSave(e.state); err != nil {
+		t.Fatal(err)
+	}
+	return e, p, raw
+}
+
+func TestRealPairedLobbyAndReplay(t *testing.T) {
+	raw := realLobbyTest(t)
+	archive, err := os.ReadFile("testdata/battlelobby/HanamuraSL1_89566.StormReplay")
+	if err != nil {
+		t.Fatal(err)
+	}
+	member, err := readMPQMember(archive, "replay.server.battlelobby")
+	if err != nil || !bytes.Equal(member, raw) {
+		t.Fatalf("real pair is not byte-identical: %v", err)
+	}
+	details, err := readMPQMember(archive, "replay.details")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := parseReplayDetails(details)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replay.RecordedAt != 1674204080951 || replay.Map != "Hanamura Temple" {
+		t.Fatalf("wrong real replay details: %+v", replay)
+	}
+	observed := time.UnixMilli(replay.RecordedAt)
+	now := observed.Add(20 * time.Minute)
+	root := t.TempDir()
+	writeCorrelationFile(t, root, "paired", archive, now.Add(-10*time.Second))
+	p := &Prediction{StartedAt: observed.Add(5 * time.Second).UnixMilli(), Match: bindingTest(t, raw, observed)}
+	result, code, _, detail := correlatePrediction(Config{ReplayRoot: root}, p, now)
+	if result == nil || result.Player.Result != "loss" || code != "" {
+		t.Fatalf("paired match failed: %+v %s %s", result, code, detail)
+	}
+}
+
+func TestCorrelationCandidates(t *testing.T) {
+	now := time.Now()
+	observed := now.Add(-time.Minute)
+	lobby := realLobbyTest(t)
+	valid := correlationMPQTest(correlationDetailsTest(t, lobby, observed, true), lobby)
+	for _, tc := range []struct {
+		name  string
+		code  string
+		files [][]byte
+		fresh bool
+	}{
+		{"unique", "", [][]byte{valid}, false},
+		{"identical copies", "", [][]byte{valid, valid}, false},
+		{"two distinct results", "correlation_ambiguous", [][]byte{valid, correlationMPQTest(correlationDetailsTest(t, lobby, observed, false), lobby)}, false},
+		{"distinct files with same result", "correlation_ambiguous", [][]byte{valid, append(append([]byte(nil), valid...), 0)}, false},
+		{"unreadable second file", "correlation_incomplete", [][]byte{valid, []byte("broken")}, false},
+		{"writing second file", "writing", [][]byte{valid, valid}, true},
+		{"old clock with fresh mtime", "correlation_incomplete", [][]byte{correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-24*time.Hour), true), lobby)}, false},
+		{"future game clock", "correlation_incomplete", [][]byte{correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(time.Hour), true), lobby)}, false},
+		{"missing clock", "correlation_incomplete", [][]byte{correlationMPQTest(detailsTest(), lobby)}, false},
+		{"wrong roster", "correlation_incomplete", [][]byte{correlationMPQTest(correlationDetailsTest(t, realARAMLobbyTest(t), observed, true), lobby)}, false},
+		{"different lobby", "correlation_mismatch", [][]byte{correlationMPQTest(correlationDetailsTest(t, lobby, observed, true), realARAMLobbyTest(t))}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			for i, raw := range tc.files {
+				at := now.Add(-10 * time.Second)
+				if tc.fresh && i == len(tc.files)-1 {
+					at = now
+				}
+				writeCorrelationFile(t, root, fmt.Sprint(i), raw, at)
+			}
+			p := &Prediction{StartedAt: observed.Add(time.Second).UnixMilli(), Match: bindingTest(t, lobby, observed)}
+			result, code, _, detail := correlatePrediction(Config{ReplayRoot: root}, p, now)
+			if code != tc.code || (result != nil) != (tc.code == "") {
+				t.Fatalf("result %+v code %s detail %s", result, code, detail)
+			}
+		})
+	}
+}
+
+func realARAMLobbyTest(t *testing.T) []byte {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func TestBindingIsFrozenAndRepeatedLobbyIsAmbiguous(t *testing.T) {
+	now := time.Now()
+	m := bindingTest(t, realLobbyTest(t), now)
+	p := &Prediction{Match: m}
+	snapshot := m.Lobby
+	frozen := bindPredictionMatch(snapshot, "original", m.PlayerToon)
+	snapshot.Data.Players[0].Hero = "changed"
+	if frozen.Lobby.Data.Players[0].Hero == "changed" {
+		t.Fatal("binding aliases mutable observed roster")
+	}
+	p.Match = frozen
+	next := bindingTest(t, realARAMLobbyTest(t), now.Add(time.Minute)).Lobby
+	got := observeActiveLobby(p, next, "next")
+	if got.Match != frozen || got.Match.Ambiguous {
+		t.Fatal("new match rebound the old Prediction")
+	}
+	got = observeActiveLobby(p, frozen.Lobby, "rewritten")
+	if !got.Match.Ambiguous || p.Match.Ambiguous || got.Match.Lobby != frozen.Lobby {
+		t.Fatal("repeat uncertainty was lost or shared state mutated")
+	}
+}
+
+func TestSameRosterAndSeedAreInsufficient(t *testing.T) {
+	now := time.Now()
+	lobby := realLobbyTest(t)
+	different := append([]byte(nil), lobby...)
+	different[len(different)-1] ^= 1
+	original, err := parseBattleLobby(lobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parseBattleLobby(different)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if original.RandomSeed != parsed.RandomSeed || original.Build != parsed.Build {
+		t.Fatal("test must keep seed and build unchanged")
+	}
+	root := t.TempDir()
+	writeCorrelationFile(t, root, "same-roster", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), true), different), now.Add(-10*time.Second))
+	p := &Prediction{StartedAt: now.Add(-time.Minute).UnixMilli(), Match: bindingTest(t, lobby, now.Add(-time.Minute))}
+	if result, code, _, _ := correlatePrediction(Config{ReplayRoot: root}, p, now); result != nil || code != "correlation_mismatch" {
+		t.Fatalf("weak fallback accepted: %+v %s", result, code)
+	}
+}
+
+func TestInconsistentRosterOrOutcomeCannotPay(t *testing.T) {
+	raw := realLobbyTest(t)
+	lobby, err := parseBattleLobby(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*Replay)
+	}{
+		{"duplicate identity", func(r *Replay) { r.Players[1].ToonHandle = r.Players[0].ToonHandle }},
+		{"unknown outcome", func(r *Replay) { r.Players[0].Result = "unknown" }},
+		{"mixed team outcomes", func(r *Replay) { r.Players[0].Result = "loss" }},
+		{"both teams win", func(r *Replay) {
+			for i := range r.Players {
+				r.Players[i].Result = "win"
+			}
+		}},
+		{"invalid team", func(r *Replay) { r.Players[0].Team = 2 }},
+		{"unbalanced teams", func(r *Replay) { r.Players[0].Team = 1; r.Players[0].Result = "loss" }},
+		{"missing participant", func(r *Replay) { r.Players = r.Players[1:] }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			replay, err := parseReplayDetails(correlationDetailsTest(t, raw, time.Now(), true))
+			if err != nil {
+				t.Fatal(err)
+			}
+			tc.mutate(&replay)
+			if _, err := correlatedOutcome(replay, &lobby, lobby.Players[0].ToonHandle); err == nil {
+				t.Fatal("inconsistent match accepted")
+			}
+		})
+	}
+}
+
+func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-time.Minute))
+	active := e.state.Active
+	active.DryRun = false
+	active.ID = "bound-prediction"
+	active.BroadcasterID = "channel"
+	active.WinID = "winning"
+	active.LossID = "losing"
+	e.twitch.token = Token{AccessToken: "fake-token", ExpiresIn: 3600, SavedAt: now.Unix()}
+	writeCorrelationFile(t, p.dir, "valid", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), true), lobby), now.Add(-10*time.Second))
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	requests := 0
+	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
+		requests++
+		var payload map[string]any
+		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if req.Method != "PATCH" || req.URL.Path != "/helix/predictions" || payload["id"] != "bound-prediction" || payload["broadcaster_id"] != "channel" || payload["winning_outcome_id"] != "winning" || payload["status"] != "RESOLVED" {
+			t.Fatalf("wrong target or outcome: %s %s %+v", req.Method, req.URL, payload)
+		}
+		return manualResponse(`{"data":[]}`), nil
+	})}
+	started := active.StartedAt
+	status, err := e.recheckReplay(context.Background(), active.ID, started)
+	if err != nil || status.Code != "settled" || requests != 1 {
+		t.Fatalf("verified settlement: %+v %v requests=%d", status, err, requests)
+	}
+	if _, err := e.recheckReplay(context.Background(), active.ID, started); err == nil || requests != 1 {
+		t.Fatal("repeated recheck called Twitch twice")
+	}
+}
+
+func TestLegacyAndUnusableBindingsNeverAutoSettle(t *testing.T) {
+	now := time.Now()
+	for _, modify := range []func(*Prediction){
+		func(p *Prediction) { p.Match = nil },
+		func(p *Prediction) { p.Match.PlayerToon = "" },
+		func(p *Prediction) { p.Match.PlayerToon = "different" },
+		func(p *Prediction) { p.Match.Lobby.Status = "parse_error" },
+		func(p *Prediction) { p.Match.Lobby.Data.Custom = true },
+		func(p *Prediction) { p.Match.Lobby.Data.Players[0].Role = "Watc" },
+		func(p *Prediction) { p.Match.Version = 2 },
+		func(p *Prediction) { p.StartedAt = now.Add(-time.Hour).UnixMilli() },
+	} {
+		p := &Prediction{StartedAt: now.UnixMilli(), Match: bindingTest(t, realLobbyTest(t), now)}
+		modify(p)
+		if result, code, _, _ := correlatePrediction(Config{ReplayRoot: t.TempDir()}, p, now); result != nil || code != "correlation_unavailable" {
+			t.Fatalf("unsafe binding accepted: %+v %s", result, code)
+		}
+	}
+}
+
+func TestRecheckCorrelationPersistsAcrossRestart(t *testing.T) {
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-time.Minute))
+	writeCorrelationFile(t, p.dir, "match", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), true), lobby), now.Add(-10*time.Second))
+	restarted, err := newEngine(p, Config{ReplayRoot: p.dir, PlayerToonHandle: "changed-settings"}, func(string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err := restarted.recheckReplay(context.Background(), e.state.Active.ID, e.state.Active.StartedAt)
+	if err != nil || status.Code != "settled" || restarted.state.Active != nil {
+		t.Fatalf("restart failed: %+v %v", status, err)
+	}
+}
+
+func TestAmbiguousLivePredictionNeverCallsTwitchAfterRestart(t *testing.T) {
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-time.Minute))
+	e.state.Active.DryRun = false
+	e.cfg.RealMode = true
+	winning := correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), true), lobby)
+	losing := correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), false), lobby)
+	writeCorrelationFile(t, p.dir, "win", winning, now.Add(-10*time.Second))
+	second := writeCorrelationFile(t, p.dir, "loss", losing, now.Add(-10*time.Second))
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	requests := 0
+	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
+		requests++
+		t.Errorf("unsafe Twitch request: %s %s", req.Method, req.URL)
+		return manualResponse(`{"data":[]}`), nil
+	})}
+	// No OAuth request should occur either; only the correlation gate is evaluated.
+	status, err := e.recheckReplay(context.Background(), e.state.Active.ID, e.state.Active.StartedAt)
+	if err != nil || status.Code != "correlation_ambiguous" {
+		t.Fatalf("ambiguity missed: %+v %v", status, err)
+	}
+	if err := os.Remove(second); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := newEngine(p, e.cfg, func(string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err = restarted.recheckReplay(context.Background(), e.state.Active.ID, e.state.Active.StartedAt)
+	if err != nil || status.Code != "correlation_ambiguous" || restarted.state.Active == nil || requests != 0 {
+		t.Fatalf("restart unlocked payout: %+v %v requests=%d", status, err, requests)
+	}
+}
+
+func TestInventoryLimitAndChangedReplayBlockCorrelation(t *testing.T) {
+	root := t.TempDir()
+	now := time.Now()
+	lobby := realLobbyTest(t)
+	for i := 0; i < 129; i++ {
+		writeCorrelationFile(t, root, fmt.Sprint(i), []byte("unknown"), now.Add(-10*time.Second))
+	}
+	p := &Prediction{StartedAt: now.Add(-time.Minute).UnixMilli(), Match: bindingTest(t, lobby, now.Add(-time.Minute))}
+	if result, code, _, _ := correlatePrediction(Config{ReplayRoot: root}, p, now); result != nil || code != "correlation_incomplete" {
+		t.Fatalf("incomplete inventory accepted: %+v %s", result, code)
+	}
+	if _, err := correlationReplayFiles(Config{ReplayRoot: filepath.Join(root, "missing")}, time.Time{}); err == nil {
+		t.Fatal("missing configured folder silently accepted")
+	}
+	path := writeCorrelationFile(t, t.TempDir(), "changed", bytes.Repeat([]byte{1}, 64), now)
+	if _, err := readStableReplay(ReplayFile{Path: path, Size: 32, Modified: now}); err == nil {
+		t.Fatal("changed replay accepted")
+	}
+}
+
+func TestCreationBindsExactObservationAndPlayer(t *testing.T) {
+	now := time.Now()
+	e, p := scanFixture(t, now)
+	e.state.Active = nil
+	original := bindingTest(t, realLobbyTest(t), now.Add(-time.Second))
+	e.state.LastLobby = original.Lobby
+	e.cfg.PlayerToonHandle = original.PlayerToon
+	if err := e.doCreate(context.Background(), &e.state, "created-key"); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := loadState(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Active == nil || restored.Active.Match == nil || restored.Active.Match.LobbyKey != "created-key" || restored.Active.Match.PlayerToon != original.PlayerToon || restored.Active.Match.Lobby.SHA256 != original.Lobby.SHA256 {
+		t.Fatalf("creation lost binding: %+v", restored.Active)
+	}
+	e.state.LastLobby.Data.Players[0].Hero = "later"
+	if restored.Active.Match.Lobby.Data.Players[0].Hero == "later" {
+		t.Fatal("binding is not frozen")
+	}
+}
+
+func TestRestartDetectsRepeatedLobbyBeforeWatchBegan(t *testing.T) {
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-time.Minute))
+	temp := t.TempDir()
+	t.Setenv("TMP", temp)
+	t.Setenv("TEMP", temp)
+	root := filepath.Join(os.TempDir(), "Heroes of the Storm", "TempWriteReplayP1")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "replay.server.battlelobby")
+	if err := os.WriteFile(path, lobby, 0600); err != nil {
+		t.Fatal(err)
+	}
+	changedAt := now.Add(-20 * time.Second)
+	if err := os.Chtimes(path, changedAt, changedAt); err != nil {
+		t.Fatal(err)
+	}
+	writeCorrelationFile(t, p.dir, "match", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), true), lobby), now.Add(-10*time.Second))
+	lastError := ""
+	lastLog := time.Time{}
+	e.scanTick(context.Background(), now, &lastError, &lastLog)
+	restored, err := loadState(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Active == nil || !restored.Active.Match.Ambiguous || e.scan.Code != "correlation_ambiguous" {
+		t.Fatalf("startup ignored changed lobby: %+v %+v", restored, e.scan)
+	}
+}

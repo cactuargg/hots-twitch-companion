@@ -67,7 +67,8 @@ function render(s){
   const scan=st.replayScan||{};
   const stale=!!st.running&&!!st.active&&Number(scan.checkedAt)>0&&
     Date.now()-Number(scan.checkedAt)>20000;
-  const reason=st.running?(stale?'stalled':(scan.code||'checking')):'paused';
+  const blocked=String(scan.code||'').startsWith('correlation_');
+  const reason=blocked?scan.code:st.running?(stale?'stalled':(scan.code||'checking')):'paused';
   const reasonKey='replay.scan.'+reason;
   const scanText=t(reasonKey);
   const detail=scan.detail?String(scan.detail).slice(0,170):'';

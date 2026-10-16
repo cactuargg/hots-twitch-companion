@@ -61,7 +61,7 @@ test('UI renders explicit replay diagnosis and alerts if monitoring stops scanni
  assert.match(app,/st\.replayScan\|\|\{\}/);
  assert.match(app,/stale\?'stalled'/);
  assert.match(app,/prediction-scan-message/);
- for(const key of ['too_old','player_not_found','settle_error','stalled','paused']){
+ for(const key of ['too_old','player_not_found','settle_error','stalled','paused','correlation_unavailable','correlation_ambiguous','correlation_incomplete','correlation_mismatch']){
   assert.ok(i18n.includes("'replay.scan."+key+"'"),'Missing diagnostic '+key);
  }
 });
