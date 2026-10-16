@@ -177,7 +177,7 @@ func (d *dashboard) status() map[string]any {
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
   "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
-  "replayScan": scan,
+  "replayScan": scan, "hasTwitchApp": config.twitchClientID() != "",
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
 }
 func (d *dashboard) config() Config {
@@ -300,14 +300,14 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 	d.authStatus = d.tr("auth.requesting")
 	d.mu.Unlock()
 	config := d.config()
-	if config.ClientID == "" {
+	if config.twitchClientID() == "" {
 		d.mu.Lock()
 		d.authPending = false
 		d.mu.Unlock()
 		return nil, errors.New(d.tr("auth.need_client_id"))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 31*time.Minute)
-	code, err := startDevice(ctx, config.ClientID)
+	code, err := startDevice(ctx, config.twitchClientID())
 	if err != nil {
 		cancel()
 		d.mu.Lock()
@@ -331,7 +331,7 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 	d.log(d.tr("log.auth_code_received"))
 	go func() {
 		defer cancel()
-		tok, err := pollDevice(ctx, config.ClientID, config.lang(), code, d.log)
+		tok, err := pollDevice(ctx, config.twitchClientID(), config.lang(), code, d.log)
 		if err != nil {
 			d.logEvent("error", "twitch_auth", d.tr("log.auth_error", err.Error()))
 			d.mu.Lock()
