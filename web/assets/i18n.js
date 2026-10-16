@@ -1,6 +1,7 @@
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'minimal.settings.clientOverride':'This app already has a Twitch Client ID. Leave the field empty to use it. Add your own ID only if you intentionally use a different Twitch app.',
   'replay.scan.checking':'Checking saved replay files',
   'replay.scan.paused':'Monitoring is paused. Automatic settlement will not run.',
   'replay.scan.no_replays':'No replay files found in the configured folder.',
@@ -203,6 +204,7 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'minimal.settings.clientOverride':'В приложении уже настроен Twitch Client ID. Оставь поле пустым, чтобы использовать его. Собственный ID нужен только для другой Twitch-интеграции.',
   'replay.scan.checking':'Проверяем сохранённые реплеи',
   'replay.scan.paused':'Мониторинг остановлен. Автоматическое завершение не выполняется.',
   'replay.scan.no_replays':'В выбранной папке реплеи не найдены.',
