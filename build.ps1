@@ -1,4 +1,4 @@
-# Build HotS Twitch Companion v0.9.3 from source on Windows.
+# Build HotS Twitch Companion v0.9.4 from source on Windows.
 # Requires Go 1.25+ and Node.js 18+ on PATH for tests; app users do not need Node.
 param([switch]$BrowserFallback)
 $ErrorActionPreference = 'Stop'
@@ -36,7 +36,7 @@ try {
         $ldflags += " -X main.defaultTwitchClientID=$publicId"
     }
     $exeName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion.exe" } else { "HotS-Twitch-Companion-$buildVersion.exe" }
-    $zipName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion-windows-x64.zip" } else { "HotS-Twitch-Companion-$buildVersion-windows-x64.zip" }
+    $zipName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion.zip" } else { "HotS-Twitch-Companion-$buildVersion-windows-x64.zip" }
     $buildTags = if ($BrowserFallback) { @() } else { @('-tags', 'wails,production,wv2runtime.error') }
     & go build @buildTags -trimpath "-ldflags=$ldflags" -o "$out/$exeName" .
     if ($LASTEXITCODE -ne 0) { throw 'Go build failed' }
@@ -44,7 +44,7 @@ try {
     Copy-Item 'README.md','README.ru.md','LICENSE','THIRD_PARTY_NOTICES.txt','docs/compact-desktop.ru.md','docs/profile-reset.ru.md','docs/live-predictions.ru.md' $out -Force
     $notes = (Get-Content '.github/RELEASE_NOTES_TEMPLATE.md' -Raw) -replace '__TAG__', $buildVersion
     if ($BrowserFallback) {
-        $notes = $notes.Replace('The main EXE uses Microsoft WebView2 Evergreen Runtime.', 'This BrowserFallback EXE uses Microsoft Edge app mode or the default browser; it has no native title bar or tray and does not require WebView2 Runtime.')
+        $notes = $notes.Replace('The main EXE uses Microsoft WebView2 Evergreen Runtime.', 'This Browser edition EXE uses Microsoft Edge app mode or the default browser; it has no native title bar or tray and does not require WebView2 Runtime.')
     }
     $hash = (Get-FileHash "$out/$exeName" -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $exeName" | Set-Content "$out/SHA256SUMS.txt" -Encoding utf8
