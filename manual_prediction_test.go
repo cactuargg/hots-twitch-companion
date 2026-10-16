@@ -86,16 +86,17 @@ func TestManualRealOutcomesAndRemoteSync(t *testing.T) {
      if req.Method!="GET"||req.URL.Path!="/helix/predictions" { t.Errorf("sync must read Twitch state: %s %s",req.Method,req.URL.Path) }
      return manualResponse(`{"data":[{"id":"prediction-1","status":"`+tc.status+`","winning_outcome_id":"`+tc.winner+`"}]}`),nil
     }
+    if req.Method=="GET" {return manualResponse(`{"data":[{"id":"prediction-1","status":"ACTIVE"}]}`),nil}
     if req.Method!="PATCH"||req.URL.Path!="/helix/predictions" {t.Errorf("manual settle must PATCH Twitch: %s %s",req.Method,req.URL.Path)}
     var b map[string]any
     if err:=json.NewDecoder(req.Body).Decode(&b);err!=nil {t.Error(err)}
     if b["status"]!=tc.status {t.Errorf("wrong Twitch status: %v",b)}
     if tc.choice!="cancel"&&b["winning_outcome_id"]!=tc.winner {t.Errorf("wrong winning outcome: %v",b)}
     if tc.choice=="cancel"&&b["winning_outcome_id"]!=nil {t.Errorf("cancel must not select a winner: %v",b)}
-    return manualResponse(`{"data":[]}`),nil
+    return manualResponse(`{"data":[{"id":"prediction-1","status":"`+tc.status+`","winning_outcome_id":"`+tc.winner+`"}]}`),nil
    })}
    if w:=manualPost(d,prediction.ID,started,tc.choice,true);w.Code!=200 {t.Fatalf("manual API returned %d: %s",w.Code,w.Body.String())}
-   if requests!=1 {t.Fatalf("unexpected Twitch calls: %d",requests)}
+   wantRequests:=2;if tc.choice=="sync" {wantRequests=1};if requests!=wantRequests {t.Fatalf("unexpected Twitch calls: %d",requests)}
    d.engine.mu.Lock()
    state:=d.engine.state
    d.engine.mu.Unlock()

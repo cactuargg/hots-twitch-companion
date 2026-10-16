@@ -86,7 +86,7 @@ test('removed game-themed layout does not leak into base CSS',()=>{
 });
 
 test('correlation failure stays visible after a paused recheck and keeps manual decisions available',()=>{
- for(const code of ['correlation_unavailable','correlation_ambiguous','correlation_incomplete','correlation_mismatch']){
+ for(const code of ['correlation_unavailable','correlation_ambiguous','correlation_incomplete','correlation_mismatch','settle_error','create_error']){
   const {context,get}=harness();
   context.render({running:false,active:true,activeDryRun:false,realMode:true,connected:true,
    twitchPhase:'connected',predictionPhase:'pending',monitorPhase:'off',logs:[],

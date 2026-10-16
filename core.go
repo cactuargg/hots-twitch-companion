@@ -18,6 +18,7 @@ import (
 )
 
 const scope = "channel:manage:predictions"
+const appVersion = "0.8.0"
 const authURL = "https://id.twitch.tv/oauth2"
 const apiURL = "https://api.twitch.tv/helix"
 
@@ -90,6 +91,7 @@ type Prediction struct {
 	StartedAt     int64  `json:"startedAt"`
 	DryRun        bool   `json:"dryRun"`
 	Match         *MatchBinding `json:"match,omitempty"`
+	Settlement    *SettlementAttempt `json:"settlement,omitempty"`
 }
 type State struct {
 	Active           *Prediction `json:"active"`
@@ -97,6 +99,9 @@ type State struct {
 	LastLobbyKey     string      `json:"lastLobbyKey"`
 	LastSettlementAt int64       `json:"lastSettlementAt"`
 	LastResult       string      `json:"lastResult"`
+	PendingLobby     *LobbyEvent `json:"pendingLobby,omitempty"`
+	LastCreatedLobbySHA string `json:"lastCreatedLobbySHA,omitempty"`
+	RecentLobbySHAs []string `json:"recentLobbySHAs,omitempty"`
 }
 type DeviceResponse struct {
 	DeviceCode      string `json:"device_code"`
@@ -111,8 +116,7 @@ type TwitchIdentity struct {
 	Login    string   `json:"login"`
 	Scopes   []string `json:"scopes"`
 }
-type apiResponse struct {
-	Data []struct {
+type apiPrediction struct {
 		ID               string `json:"id"`
 		Status           string `json:"status"`
 		Title            string `json:"title"`
@@ -121,8 +125,8 @@ type apiResponse struct {
 			ID    string `json:"id"`
 			Title string `json:"title"`
 		} `json:"outcomes"`
-	} `json:"data"`
 }
+type apiResponse struct { Data []apiPrediction `json:"data"` }
 type paths struct{ dir, config, secret, state string }
 
 func pathsForUser() (paths, error) {
@@ -143,9 +147,12 @@ func saveJSON(path string, v any) error {
 		return e
 	}
 	tmp := path + ".new"
-	if e = os.WriteFile(tmp, b, 0600); e != nil {
-		return e
-	}
+	f, e := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	if e != nil { return e }
+	if _, e = f.Write(b); e == nil { e = f.Sync() }
+	closeErr := f.Close()
+	if e != nil { return e }
+	if closeErr != nil { return closeErr }
 	return os.Rename(tmp, path)
 }
 func loadJSON(path string, v any) error {
@@ -218,7 +225,7 @@ func requestJSON(ctx context.Context, method, urlPath string, form url.Values, b
 		if msg == "" {
 			msg = res.Status
 		}
-		return fmt.Errorf("Twitch HTTP %d: %s", res.StatusCode, msg)
+		return responseHTTPError(res, msg)
 	}
 	if dst != nil && len(raw) > 0 {
 		return json.Unmarshal(raw, dst)
@@ -368,7 +375,8 @@ func (t *Twitch) req(ctx context.Context, method, route string, body any, dst an
 		return e
 	}
 	e = requestJSON(ctx, method, apiURL+route, nil, body, token, t.clientID, dst)
-	if e != nil && strings.Contains(e.Error(), "HTTP 401") {
+	var httpError *twitchHTTPError
+	if errors.As(e, &httpError) && httpError.Status == 401 {
 		t.mu.Lock()
 		t.token.SavedAt = 0
 		t.mu.Unlock()
@@ -390,6 +398,7 @@ func (t *Twitch) prediction(ctx context.Context, broadcaster, id string) (*apiRe
 	return &d, e
 }
 func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
+	if winTitle == lossTitle { return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid")) }
 	me, e := t.identity(ctx)
 	if e != nil {
 		return nil, e
@@ -408,7 +417,7 @@ func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle,
 	if e != nil {
 		return nil, e
 	}
-	if len(d.Data) != 1 || len(d.Data[0].Outcomes) != 2 {
+	if len(d.Data) != 1 || len(d.Data[0].Outcomes) != 2 || d.Data[0].Status != "ACTIVE" {
 		return nil, errors.New(tr(t.lang, "twitch.create_bad_response"))
 	}
 	p := &Prediction{ID: d.Data[0].ID, BroadcasterID: me.UserID, StartedAt: time.Now().UnixMilli()}
@@ -426,34 +435,7 @@ func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle,
 	return p, nil
 }
 func (t *Twitch) end(ctx context.Context, p *Prediction, outcome string) error {
-	status := "RESOLVED"
-	if outcome == "cancel" {
-		status = "CANCELED"
-	}
-	req := map[string]any{"broadcaster_id": p.BroadcasterID, "id": p.ID, "status": status}
-	win := ""
-	if outcome != "cancel" {
-		win = p.LossID
-		if outcome == "win" {
-			win = p.WinID
-		}
-		req["winning_outcome_id"] = win
-	}
-	var d apiResponse
-	e := t.req(ctx, "PATCH", "/predictions", req, &d)
-	if e == nil {
-		return nil
-	}
-	// A timed-out PATCH could have succeeded: verify before attempting any retry.
-	actual, er := t.prediction(ctx, p.BroadcasterID, p.ID)
-	if er == nil {
-		for _, v := range actual.Data {
-			if v.ID == p.ID && v.Status == status && (win == "" || v.WinningOutcomeID == win) {
-				return nil
-			}
-		}
-	}
-	return e
+ return t.finishPrediction(ctx, p, outcome)
 }
 
 type ReplayFile struct {
@@ -560,6 +542,12 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 	if e != nil {
 		return nil, e
 	}
+	if s.LastCreatedLobbySHA == "" {
+		if s.Active != nil && s.Active.Match != nil && s.Active.Match.Lobby != nil {
+			s.LastCreatedLobbySHA = s.Active.Match.Lobby.SHA256
+		} else if s.LastLobby != nil { s.LastCreatedLobbySHA = s.LastLobby.SHA256 }
+	}
+	if len(s.RecentLobbySHAs)==0 && s.LastCreatedLobbySHA!="" {s.RecentLobbySHAs=[]string{s.LastCreatedLobbySHA}}
 	t, e := newTwitch(p, cfg.twitchClientID(), cfg.lang())
 	if e != nil {
 		return nil, e
@@ -617,8 +605,9 @@ func (e *Engine) updateConfig(cfg Config) error {
 func (e *Engine) updateAndSave(s State) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if err := saveState(e.p, s); err != nil { return err }
 	e.state = s
-	return saveState(e.p, s)
+	return nil
 }
 func (e *Engine) doCreate(ctx context.Context, s *State, lobbyKey string) error {
 	if s.Active != nil {
@@ -627,7 +616,7 @@ func (e *Engine) doCreate(ctx context.Context, s *State, lobbyKey string) error 
 	var p *Prediction
 	var er error
 	if !e.cfg.RealMode {
-		p = &Prediction{ID: "SIMULATION", DryRun: true, StartedAt: time.Now().UnixMilli()}
+		p = &Prediction{ID: "SIMULATION", DryRun: true, StartedAt: max(time.Now().UnixMilli(), s.LastSettlementAt+1)}
 		e.log(tr(e.cfg.lang(), "log.sim_created"))
 	} else {
 		title, winTitle, lossTitle := e.cfg.predictionTexts()
@@ -640,21 +629,16 @@ func (e *Engine) doCreate(ctx context.Context, s *State, lobbyKey string) error 
 	p.Match = bindPredictionMatch(s.LastLobby, lobbyKey, e.cfg.PlayerToonHandle)
 	s.Active = p
  e.setReplayScan("waiting_replay", "", "")
-	return e.updateAndSave(*s)
+	if err := e.updateAndSave(*s); err != nil {
+		// Keep the known remote ID available in this process. The lobby event
+		// was consumed durably before POST, so restart cannot repeat creation.
+		e.mu.Lock(); e.state = *s; e.mu.Unlock()
+		return err
+	}
+	return nil
 }
 func (e *Engine) doSettle(ctx context.Context, s *State, outcome string, source string) error {
-	if s.Active == nil {
-		return errors.New(tr(e.cfg.lang(), "settle.none_active"))
-	}
-	if s.Active.DryRun {
-		e.log(tr(e.cfg.lang(), "log.sim_outcome", outcome))
-	} else if er := e.twitch.end(ctx, s.Active, outcome); er != nil {
-		return er
-	}
-	s.LastSettlementAt = time.Now().UnixMilli()
-	s.LastResult = fmt.Sprintf("%s (%s)", outcome, filepath.Base(source))
-	s.Active = nil
-	return e.updateAndSave(*s)
+ return e.settlePrediction(ctx, s, outcome, source)
 }
 // manualOutcome is serialized with the replay scanner. The caller supplies the
 // exact active prediction identity so a delayed click can never settle a newer game.
@@ -706,7 +690,7 @@ func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, 
   e.report("error", "prediction_settle", tr(e.cfg.lang(), "manual.failed", err.Error()))
   return err
  }
- e.report("info", "prediction_manual", tr(e.cfg.lang(), "manual.completed", outcome))
+ e.report("info", "prediction_manual", tr(e.cfg.lang(), "manual.completed", s.LastResult))
  return nil
 }
 
@@ -783,53 +767,7 @@ func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *str
  e.mu.Lock()
  s := e.state
  e.mu.Unlock()
-	now := time.Now()
-	path, key, modified, err := findLobby()
-	// Recovery must inspect a changed lobby even if it predates this monitor
-	// session. The watch-start filter only controls creation of new Predictions.
-	if err == nil && key != s.LastLobbyKey && s.Active != nil {
-		s.LastLobby = captureBattleLobby(path)
-		s.Active = observeActiveLobby(s.Active, s.LastLobby, key)
-		s.LastLobbyKey = key
-		if er := e.updateAndSave(s); er != nil {
-			e.report("error", "lobby_save", er.Error())
-			return
-		}
-	}
-	if err == nil && key != s.LastLobbyKey && now.Sub(modified) > 2500*time.Millisecond && now.Sub(modified) < 120*time.Second {
-		// Only react to a new/changed lobby *after* watch began.
-		if !modified.Before(started.Add(-2 * time.Second)) {
-			// Persist observations separately; they do not establish match identity.
-			s.LastLobby = captureBattleLobby(path)
-			if er := e.updateAndSave(s); er != nil {
-				e.report("error", "lobby_save", er.Error())
-				return
-			}
-			if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
-				if er := e.doCreate(ctx, &s, key); er != nil {
-					e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
-					return
-				}
-				e.log(tr(e.cfg.lang(), "log.new_game", filepath.Base(filepath.Dir(path))))
-			} else {
-				e.log(tr(e.cfg.lang(), "log.skip_lobby"))
-			}
-		}
-		s.LastLobbyKey = key
-		_ = e.updateAndSave(s)
-	}
-	if s.Active == nil {
-		return
-	}
-	age := now.Sub(time.UnixMilli(s.Active.StartedAt))
-	if age > 100*time.Minute {
-		e.report("warning", "prediction_timeout", tr(e.cfg.lang(), "log.timeout_cancel"))
-		if er := e.doSettle(ctx, &s, "cancel", "timeout"); er != nil {
-			e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", er.Error()))
-		}
-		return
-	}
-	e.scanReplay(ctx, &s, now, lastError, lastLog)
+ e.scanLifecycle(ctx, &s, started, time.Now(), lastError, lastLog)
 }
 
 func (e *Engine) setReplayScan(code, file, detail string) {
@@ -845,7 +783,7 @@ func (e *Engine) scanReplay(ctx context.Context, s *State, now time.Time, lastEr
  if match == nil {
   if code == "correlation_ambiguous" && s.Active.Match != nil && !s.Active.Match.Ambiguous {
    s.Active = ambiguousMatch(s.Active)
-   if err := e.updateAndSave(*s); err != nil { e.report("error", "correlation_save", err.Error()) }
+   if err := e.updateAndSave(*s); err != nil { e.mu.Lock(); e.state = *s; e.mu.Unlock(); e.report("error", "correlation_save", err.Error()) }
   }
   e.setReplayScan(code, file, detail)
   return
@@ -857,7 +795,7 @@ func (e *Engine) scanReplay(ctx context.Context, s *State, now time.Time, lastEr
   return
  }
  e.setReplayScan("settled", filepath.Base(match.Path), "")
- e.log(tr(e.cfg.lang(), "log.settled", match.Player.Result))
+ e.log(tr(e.cfg.lang(), "log.settled", s.LastResult))
 }
 // recheckReplay only evaluates completed replay files. It never creates a new
 // Prediction and refuses stale UI requests for a different active game.

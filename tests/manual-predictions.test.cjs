@@ -53,6 +53,7 @@ test('Live Win/Loss/Cancel require positive confirmation before network action',
   assert.equal(approved.calls[0].payload.id,'live-123');
   assert.equal(approved.calls[0].payload.startedAt,1234);
   assert.equal(approved.refreshes,1);
+  assert.deepEqual(approved.toasts,['manual.success.updated']);
  }
 });
 test('Simulation never asks about channel points, but still sends exact active identity',async()=>{
@@ -73,4 +74,19 @@ test('Sync checks Twitch status without irreversible-outcome confirmation',async
  assert.equal(await h.ctx.manualPrediction('sync'),true);
  assert.equal(h.confirmations.length,0);
  assert.equal(h.calls[0].payload.outcome,'sync');
+});
+
+test('Unconfirmed outcome cannot be switched before Twitch is reconciled',async()=>{
+ const status={active:true,activeDryRun:false,activePredictionId:'live-pending',activePredictionStartedAt:2222,pendingOutcome:'win'};
+ for(const action of ['loss','cancel']){
+  const h=harness(status);
+  await assert.rejects(()=>h.ctx.manualPrediction(action),/manual.pending/);
+  assert.equal(h.calls.length,0);
+  assert.equal(h.confirmations.length,0);
+ }
+ for(const action of ['win','sync']){
+  const h=harness(status);
+  await h.ctx.manualPrediction(action);
+  assert.equal(h.calls[0].payload.outcome,action);
+ }
 });

@@ -1,4 +1,10 @@
-# HotS Twitch Companion v0.7.0
+# HotS Twitch Companion v0.8.0
+
+v0.8.0 adds durable outcome recovery, exact Twitch status verification and queued
+next-match lobbies without the old two-minute cooldown. Unknown POST results are
+never automatically recreated for the same lobby. An unconfirmed Win/Loss/Cancel
+is preserved across restart; conflicting decisions are blocked until reconciled.
+See [stabilization notes and validation limits](docs/stabilization-v0.8.0.ru.md).
 
 BattleLobby observations persist the latest roster in `state.json`; each new
 Prediction gets its own frozen lobby and player binding. Automatic settlement

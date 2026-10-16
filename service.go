@@ -164,19 +164,22 @@ func (d *dashboard) status() map[string]any {
 	activeDry := false
  activeID := ""
  activeStartedAt := int64(0)
+ pendingOutcome := ""
  if active {
   activeDry = s.Active.DryRun
   activeID = s.Active.ID
   activeStartedAt = s.Active.StartedAt
+  if s.Active.Settlement != nil {pendingOutcome=s.Active.Settlement.Outcome}
  }
 	phase, secondsLeft := predictionPhase(s.Active, config.predictionWindowMinutes(), time.Now())
-	return map[string]any{"running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
+	return map[string]any{"version": appVersion, "running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
 		"twitchPhase": connectionPhase(hasToken, validated, authPending),
 		"monitorPhase": monitorPhase(running, active),
 		"predictionPhase": phase, "predictionWindowSecondsLeft": secondsLeft,
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
   "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
+  "pendingOutcome": pendingOutcome,
   "replayScan": scan, "hasTwitchApp": config.twitchClientID() != "",
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs}
 }

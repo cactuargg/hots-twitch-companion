@@ -25,6 +25,9 @@ jobs:
       - name: Run tests
         run: go test ./...
 
+      - name: Run Go vet
+        run: go vet ./...
+
       - name: Check UI scripts and run all UI tests
         shell: pwsh
         run: |
@@ -63,7 +66,7 @@ jobs:
           $notes = (Get-Content .github/RELEASE_NOTES_TEMPLATE.md -Raw) -replace '__TAG__', $tag -replace '__HASH__', $hash
           $notes | Set-Content dist/RELEASE_NOTES.md -Encoding utf8
           Copy-Item dist/RELEASE_NOTES.md RELEASE_NOTES.md
-          Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.md,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
+          Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.md,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt,dist/RELEASE_NOTES.md -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
 
       - name: Upload compiled package
         uses: actions/upload-artifact@v4

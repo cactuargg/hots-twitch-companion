@@ -297,6 +297,7 @@ func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
 	requests := 0
 	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
 		requests++
+		if req.Method=="GET" {return manualResponse(`{"data":[{"id":"bound-prediction","status":"ACTIVE"}]}`),nil}
 		var payload map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 			t.Fatal(err)
@@ -304,14 +305,14 @@ func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
 		if req.Method != "PATCH" || req.URL.Path != "/helix/predictions" || payload["id"] != "bound-prediction" || payload["broadcaster_id"] != "channel" || payload["winning_outcome_id"] != "winning" || payload["status"] != "RESOLVED" {
 			t.Fatalf("wrong target or outcome: %s %s %+v", req.Method, req.URL, payload)
 		}
-		return manualResponse(`{"data":[]}`), nil
+		return manualResponse(`{"data":[{"id":"bound-prediction","status":"RESOLVED","winning_outcome_id":"winning"}]}`), nil
 	})}
 	started := active.StartedAt
 	status, err := e.recheckReplay(context.Background(), active.ID, started)
-	if err != nil || status.Code != "settled" || requests != 1 {
+	if err != nil || status.Code != "settled" || requests != 2 {
 		t.Fatalf("verified settlement: %+v %v requests=%d", status, err, requests)
 	}
-	if _, err := e.recheckReplay(context.Background(), active.ID, started); err == nil || requests != 1 {
+	if _, err := e.recheckReplay(context.Background(), active.ID, started); err == nil || requests != 2 {
 		t.Fatal("repeated recheck called Twitch twice")
 	}
 }
