@@ -1,52 +1,39 @@
 # HotS Twitch Companion __TAG__
 
-Portable Windows x64 app for automating Twitch Predictions based on Heroes of the Storm replays.
+Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.7.0
+## What's new in v0.8.0
 
-### Manual Prediction controls
+- Public Twitch Client ID can be embedded by the release workflow; connect using Device Code without creating your own app.
+- BattleLobby parser with four real fixture builds: 89566, 89754, 90670 and 93640.
+- Each Prediction keeps its own lobby and player binding. Automatic settlement requires matching embedded BattleLobby bytes, consistent participants/results, a fresh game clock and a unique replay. Seed or nickname alone is insufficient.
+- Ambiguous matches stay blocked after restart. Manual Win/Loss/Cancel and Sync remain available.
+- A Win/Loss/Cancel decision is saved before Twitch is called. Lost responses and restart resume that decision; a different outcome is blocked until Twitch is reconciled.
+- Twitch status is read before PATCH, and terminal ID/status/winner are verified. External finalization is recorded without another mutation. Rate limits retain the decision and delay retries.
+- The next fresh lobby is queued while the previous Prediction completes. The two-minute cooldown is removed; duplicate lobby contents do not create another Prediction.
+- A lobby event is saved as consumed before POST. If creation cannot be confirmed, inspect Twitch: the app does not automatically recreate or adopt that Prediction by title.
+- Local and CI builds run Go tests, Go vet, JavaScript syntax checks and UI tests. Local packages now include these release notes and SHA-256.
 
-- New **Win**, **Loss**, and **Cancel / refund** actions on Home while a Prediction is active.
-- Live outcome actions require confirmation: Win/Loss distribute real viewer channel points, while Cancel returns points to viewers. Simulation never makes Twitch Prediction calls.
-- These controls remain available when automated monitoring is stopped.
-- **Sync with Twitch** reconciles a tracked Prediction that was already resolved/canceled elsewhere. It never silently discards a Prediction that Twitch still reports as ACTIVE or LOCKED.
-- Safeguards check the exact Prediction ID and start time, and serialize manual actions with automatic replay processing to prevent duplicate or stale settlement.
+## Automatic support and recovery
 
-### Faster automatic match resolution
+Choose your account from a replay and save the ToonHandle **before** the match. Automatic outcomes currently support ten human participants in 5v5 Quick Match, Unranked Draft, Storm League and ARAM on the fixture builds above. AI/custom games, unsupported builds, missing evidence, legacy active Predictions without a binding and clock mismatches require manual decisions.
 
-- Removed the previous **75-second mandatory wait** before checking a finished replay.
-- Once HotS writes a complete replay, the app polls every ~4 seconds and waits approximately 8 seconds for file stability before parsing its result.
-- Twitch Predictions may be resolved before the full betting-window duration has elapsed when the final result is known.
-- The app still gets match results **from completed replay files**, not game memory or screen capture, so resolution depends on HotS saving the replay.
-
-### From v0.6.0
-
-The minimalist navy/purple Windows interface continues to use Home, History, Settings, a guided first-run wizard and read-only replay diagnostics. No Electron or Node.js installation is required: the frontend is embedded in one Go executable.
+Start with simulation. When verification is incomplete, check the diagnosis on Home. If a selected outcome is awaiting confirmation, retry the same outcome or Sync with Twitch; restarting does not authorize a different decision. Live Win/Loss distributes viewer points, Cancel refunds them. Check the match before confirming.
 
 ## Download
 
 | File | Description |
-|------|-------------|
-| `HotS-Twitch-Companion.exe` | Portable Windows x64 executable |
-| `HotS-Twitch-Companion-windows-x64.zip` | EXE, README files, license and checksum |
-| `SHA256SUMS.txt` | SHA-256 checksum for the executable |
-
-## SHA-256
+| --- | --- |
+| `HotS-Twitch-Companion.exe` | Portable Windows x64 GUI executable |
+| `HotS-Twitch-Companion-windows-x64.zip` | EXE, READMEs, MIT notices, release notes and checksum |
+| `SHA256SUMS.txt` | SHA-256 for the EXE |
 
 ```text
 __HASH__  HotS-Twitch-Companion.exe
 ```
 
-## Usage
+The interface uses Microsoft Edge app mode, with default-browser fallback. No Node.js or Go installation is needed to run the EXE. Twitch tokens stay local under Windows DPAPI.
 
-1. Download `HotS-Twitch-Companion.exe` and launch it (Microsoft Edge app-mode window, with fallback to the default browser).
-2. Choose the correct Heroes of the Storm player from a replay, or enter your player name.
-3. Connect Twitch using the Public app Client ID and Device Code flow, if using real Predictions.
-4. Start in **simulation** and verify that a finished match is detected correctly.
-5. On Home, use Win/Loss/Cancel if automatic settlement cannot be completed. **Double-check the result before confirming a live outcome**, since distributed viewer channel points cannot be recovered by undoing the click.
+Automated tests include a real BattleLobby/StormReplay pair, mocked Twitch transitions and the real local HTTP server startup/shutdown. Visible Edge-window behavior and live Twitch payouts have not been manually smoke-tested. Complete that validation before treating the release as verified for a live channel. The EXE is unsigned.
 
-**Important:** The manual actions manage only a Prediction tracked by this instance of the app. If Twitch has already finished it, use Sync with Twitch. Windows GUI rendering and real Twitch payout behavior have not been smoke-tested manually in this release workflow; automated tests alone are insufficient for that assurance.
-
----
-
-*Unofficial fan-made software, not affiliated with Blizzard Entertainment or Twitch. Heroes of the Storm is a trademark of Blizzard Entertainment, Inc.*
+Unofficial fan-made software, not affiliated with Blizzard Entertainment or Twitch.

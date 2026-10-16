@@ -63,11 +63,12 @@ function render(s){
   const manual=$('prediction-manual');
   manual.hidden=!st.active;
   $('prediction-sync').hidden=!st.active||!!st.activeDryRun;
-  $('prediction-manual-description').textContent=t(st.activeDryRun?'manual.description.sim':'manual.description.real');
+  $('prediction-manual-description').textContent=st.pendingOutcome?
+    t('manual.pending',{outcome:t('manual.'+st.pendingOutcome)}):t(st.activeDryRun?'manual.description.sim':'manual.description.real');
   const scan=st.replayScan||{};
   const stale=!!st.running&&!!st.active&&Number(scan.checkedAt)>0&&
     Date.now()-Number(scan.checkedAt)>20000;
-  const blocked=String(scan.code||'').startsWith('correlation_');
+  const blocked=String(scan.code||'').startsWith('correlation_')||scan.code==='settle_error'||scan.code==='create_error';
   const reason=blocked?scan.code:st.running?(stale?'stalled':(scan.code||'checking')):'paused';
   const reasonKey='replay.scan.'+reason;
   const scanText=t(reasonKey);
@@ -132,6 +133,8 @@ async function manualPrediction(outcome){
  const st=state.status||{};
  if(!st.active||!st.activePredictionId||!st.activePredictionStartedAt)
    throw Error(t('manual.stale'));
+ if(st.pendingOutcome&&outcome!=='sync'&&outcome!==st.pendingOutcome)
+   throw Error(t('manual.pending',{outcome:t('manual.'+st.pendingOutcome)}));
  const isReal=!st.activeDryRun;
  if(outcome!=='sync'&&isReal){
    const prompt=t('manual.confirm.'+outcome);
@@ -140,7 +143,7 @@ async function manualPrediction(outcome){
  await api('prediction/manual','POST',{
    outcome,id:st.activePredictionId,startedAt:st.activePredictionStartedAt
  });
- toast(t('manual.success.'+outcome));
+ toast(t(outcome==='sync'?'manual.success.sync':'manual.success.updated'));
  await loadStatus();
  return true;
 }

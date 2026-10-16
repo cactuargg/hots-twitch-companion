@@ -18,6 +18,9 @@ func normalizeLang(s string) string {
 
 var messages = map[string]map[string]string{
 	langEn: {
+		"lifecycle.create_unconfirmed": "Prediction creation was not confirmed. Check Twitch; this lobby will not be retried automatically: %s",
+		"settle.pending_conflict": "A previous outcome is awaiting Twitch confirmation. Retry the same outcome or Sync with Twitch.",
+		"settle.retry_wait": "Waiting before retrying Twitch confirmation. The selected outcome is preserved.",
 		"twitch.connect_first":        "Connect Twitch first",
 		"twitch.token_expired":        "Token expired. Reconnect Twitch",
 		"twitch.refresh_error":        "Token refresh error: %s",
@@ -100,6 +103,9 @@ var messages = map[string]map[string]string{
 		"error.open_ui":               "Could not open the interface: %s",
 	},
 	langRu: {
+		"lifecycle.create_unconfirmed": "Создание Prediction не подтверждено. Проверь Twitch; для этого лобби автоматического повтора не будет: %s",
+		"settle.pending_conflict": "Предыдущий исход ожидает подтверждения Twitch. Повтори тот же исход или сверь состояние с Twitch.",
+		"settle.retry_wait": "Ожидаем повторной проверки Twitch. Выбранный исход сохранён.",
 		"twitch.connect_first":        "Сначала подключи Twitch",
 		"twitch.token_expired":        "Токен истёк. Подключи Twitch заново",
 		"twitch.refresh_error":        "Ошибка обновления токена: %s",
