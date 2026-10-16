@@ -317,6 +317,121 @@ func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
 	}
 }
 
+func customLobbyTest(t *testing.T) []byte {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/battlelobby/replay.server.IndustrialDistrict1_98348.battlelobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+// Details mirroring the real 2026-10-17 custom game on build 98348: one
+// verified human and AI participants carrying synthetic zero handles, with
+// teams 5/1 and consistent per-team outcomes.
+func customAIDetailsTest(t *testing.T, clock time.Time, humanWin, aiTeammatesWin, intruder bool) []byte {
+	t.Helper()
+	hero := structTest(vintTest(0), intTest(2), vintTest(1), append([]byte{7}, []byte("Hero")...), vintTest(2), intTest(1), vintTest(4), intTest(7669040))
+	otherHero := structTest(vintTest(0), intTest(9), vintTest(1), append([]byte{7}, []byte("Hero")...), vintTest(2), intTest(9), vintTest(4), intTest(9999999))
+	ai := structTest(vintTest(0), intTest(0), vintTest(1), append([]byte{7}, []byte("\x00\x00\x00\x00")...), vintTest(2), intTest(0), vintTest(4), intTest(0))
+	entry := func(name string, toon []byte, team int64, win bool) []byte {
+		result := int64(2)
+		if win {
+			result = 1
+		}
+		return structTest(vintTest(0), blobTest(name), vintTest(1), toon, vintTest(5), intTest(team), vintTest(8), intTest(result))
+	}
+	count := 6
+	if intruder {
+		count = 7
+	}
+	players := []byte{0}
+	players = append(players, vintTest(int64(count))...)
+	players = append(players, entry("Daigert", hero, 0, humanWin)...)
+	for _, name := range []string{"Player 2", "Player 3", "Player 4", "Player 5"} {
+		players = append(players, entry(name, ai, 0, aiTeammatesWin)...)
+	}
+	players = append(players, entry("Player 10", ai, 1, !humanWin)...)
+	if intruder {
+		players = append(players, entry("Intruder", otherHero, 1, !humanWin)...)
+	}
+	ticks := clock.UnixMilli()*10000 + 116444736000000000
+	return structTest(vintTest(0), players, vintTest(1), blobTest("Industrial District"), vintTest(5), intTest(ticks))
+}
+
+func customAIBindingTest(t *testing.T, raw []byte, at time.Time, toon string) *MatchBinding {
+	t.Helper()
+	lobby, err := parseBattleLobby(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bindPredictionMatch(&LobbySnapshot{Status: "roster_parsed", Parser: "battlelobby-roster-v1", SHA256: contentSHA(raw), ModifiedAt: at.UnixMilli(), Size: int64(len(raw)), Data: &lobby}, "original", toon)
+}
+
+func TestCustomAILobbySettlesAutomatically(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		humanWin   bool
+		wantResult string
+	}{
+		{"win", true, "win"},
+		{"loss", false, "loss"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Now()
+			observed := now.Add(-time.Minute)
+			raw := customLobbyTest(t)
+			lobby, err := parseBattleLobby(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !lobby.Custom || lobby.TeamSize != "5v5" {
+				t.Fatalf("fixture is not a 5v5 custom lobby: %+v", lobby)
+			}
+			archive := correlationMPQTest(customAIDetailsTest(t, observed.Add(30*time.Second), tc.humanWin, tc.humanWin, false), raw)
+			root := t.TempDir()
+			writeCorrelationFile(t, root, "custom-ai-"+tc.name, archive, now.Add(-10*time.Second))
+			p := &Prediction{StartedAt: observed.Add(10 * time.Second).UnixMilli(), Match: customAIBindingTest(t, raw, observed, "2-Hero-1-7669040")}
+			result, code, file, detail := correlatePrediction(Config{ReplayRoot: root}, p, now)
+			if result == nil || result.Player.Result != tc.wantResult || code != "" {
+				t.Fatalf("custom AI game did not correlate: %+v %s %s(%s)", result, code, file, detail)
+			}
+		})
+	}
+}
+
+func TestCustomAILobbyReplaySafety(t *testing.T) {
+	now := time.Now()
+	observed := now.Add(-time.Minute)
+	raw := customLobbyTest(t)
+	for _, tc := range []struct {
+		name     string
+		toon     string
+		details  func() []byte
+		wantCode string
+	}{
+		{"unaccounted hero handle", "2-Hero-1-7669040", func() []byte {
+			return customAIDetailsTest(t, observed.Add(30*time.Second), true, true, true)
+		}, "correlation_incomplete"},
+		{"binding outside roster", "9-Hero-9-9999999", func() []byte {
+			return customAIDetailsTest(t, observed.Add(30*time.Second), true, true, false)
+		}, "correlation_unavailable"},
+		{"inconsistent team outcome", "2-Hero-1-7669040", func() []byte {
+			return customAIDetailsTest(t, observed.Add(30*time.Second), true, false, false)
+		}, "correlation_incomplete"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeCorrelationFile(t, root, "custom-ai-"+tc.name, correlationMPQTest(tc.details(), raw), now.Add(-10*time.Second))
+			p := &Prediction{StartedAt: observed.Add(10 * time.Second).UnixMilli(), Match: customAIBindingTest(t, raw, observed, tc.toon)}
+			result, code, _, _ := correlatePrediction(Config{ReplayRoot: root}, p, now)
+			if result != nil || code != tc.wantCode {
+				t.Fatalf("unsafe custom replay accepted: %+v %s", result, code)
+			}
+		})
+	}
+}
+
 func TestLegacyAndUnusableBindingsNeverAutoSettle(t *testing.T) {
 	now := time.Now()
 	for _, modify := range []func(*Prediction){
@@ -324,7 +439,8 @@ func TestLegacyAndUnusableBindingsNeverAutoSettle(t *testing.T) {
 		func(p *Prediction) { p.Match.PlayerToon = "" },
 		func(p *Prediction) { p.Match.PlayerToon = "different" },
 		func(p *Prediction) { p.Match.Lobby.Status = "parse_error" },
-		func(p *Prediction) { p.Match.Lobby.Data.Custom = true },
+		func(p *Prediction) { p.Match.Lobby.Data.Players[1].SlotType = "Comp" },
+		func(p *Prediction) { p.Match.Lobby.Data.Custom = true; p.Match.Lobby.Data.Players[0].SlotType = "Comp" },
 		func(p *Prediction) { p.Match.Lobby.Data.Players[0].Role = "Watc" },
 		func(p *Prediction) { p.Match.Version = 2 },
 		func(p *Prediction) { p.StartedAt = now.Add(-time.Hour).UnixMilli() },

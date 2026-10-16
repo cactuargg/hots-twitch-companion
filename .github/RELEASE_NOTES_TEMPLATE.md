@@ -2,10 +2,14 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.5
+## What's new in v0.9.6
+
+- Custom 5v5 games with AI participants now settle automatically. Every human lobby slot is still verified by a unique ToonHandle; AI entries carry no verifiable identity, so only their team and outcome are checked (verified on the real `IndustrialDistrict1_98348` match). An unaccounted Hero handle, inconsistent team outcomes or a binding outside the roster still block automatic settlement.
+- Matchmaking games keep the strict ten-human 5v5 verification.
+
+## Client build 98348 from v0.9.5
 
 - Recognizes HotS client build 98348 (October 2026 patch). The embedded BattleLobby of a real match on that build parses with the existing bit-level layout and is committed as fixture `IndustrialDistrict1_98348`, so matchmaking games on the current patch correlate and settle automatically again. Games on older builds are unaffected.
-- Reminder: matches that are not ten-human 5v5 matchmaking lobbies (custom games, games with AI participants, observers) intentionally require manual Win/Loss/Cancel decisions.
 
 ## Browser edition from v0.9.4
 
@@ -50,7 +54,7 @@ Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm rep
 
 ## Automatic support and recovery
 
-Choose your account from a replay and save the ToonHandle **before** the match. Automatic outcomes currently support ten human participants in 5v5 Quick Match, Unranked Draft, Storm League and ARAM on the fixture builds above. AI/custom games, unsupported builds, missing evidence, legacy active Predictions without a binding and clock mismatches require manual decisions.
+Choose your account from a replay and save the ToonHandle **before** the match. Automatic outcomes support 5v5 lobbies on the fixture builds above: matchmaking games with ten human participants, and custom games where AI participants are accepted with verified team/outcome data but no identity. Name-only identities, missing evidence, legacy active Predictions without a binding and clock mismatches require manual decisions.
 
 Connect Twitch and confirm the monitoring launch. When verification is incomplete, check the diagnosis on Home. If a selected outcome is awaiting confirmation, retry the same outcome or Sync with Twitch; restarting does not authorize a different decision. Win/Loss distributes viewer points, Cancel refunds them. Check the match before confirming.
 

@@ -133,32 +133,54 @@ func readStableReplay(expected ReplayFile) ([]byte, error) {
 
 func contentSHA(raw []byte) string { h := sha256.Sum256(raw); return hex.EncodeToString(h[:]) }
 
-// Deliberately narrow automatic support: ten human participants in a 5v5 lobby.
-// Observers are excluded by explicit role, never by position in the slot array.
+// Deliberately narrow automatic support: 5v5 lobbies. Matchmaking games
+// must field ten human participants; custom lobbies may substitute AI
+// participants, while every human slot is still verified by ToonHandle and
+// observers stay excluded by explicit role, never by slot position.
 func participantToons(lobby *BattleLobby) (map[string]bool, error) {
-	if lobby == nil || lobby.Custom || lobby.TeamSize != "5v5" {
-		return nil, errors.New("automatic correlation requires a 5v5 matchmaking lobby")
+	if lobby == nil || lobby.TeamSize != "5v5" {
+		return nil, errors.New("automatic correlation requires a 5v5 lobby")
 	}
-	switch lobby.AMMID {
-	case 50001, 50051, 50091, 50101:
-	default:
-		return nil, errors.New("unsupported matchmaking mode")
+	if !lobby.Custom {
+		switch lobby.AMMID {
+		case 50001, 50051, 50091, 50101:
+		default:
+			return nil, errors.New("unsupported matchmaking mode")
+		}
 	}
 	toons := map[string]bool{}
+	humans := 0
 	for _, p := range lobby.Players {
 		if p.Role == "Watc" {
 			continue
 		}
-		if p.Role != "Part" || p.SlotType != "Humn" || p.ToonHandle == "" || toons[p.ToonHandle] {
+		if p.Role != "Part" {
+			return nil, errors.New("unexpected lobby role")
+		}
+		if p.SlotType == "Comp" {
+			if p.ToonHandle != "" {
+				return nil, errors.New("AI slot carries a ToonHandle")
+			}
+			continue
+		}
+		if p.SlotType != "Humn" || p.ToonHandle == "" || !strings.Contains(p.ToonHandle, "-Hero-") || toons[p.ToonHandle] {
 			return nil, errors.New("incomplete or non-human roster")
 		}
 		toons[p.ToonHandle] = true
+		humans++
 	}
-	if len(toons) != 10 {
+	if !lobby.Custom && humans != 10 {
 		return nil, errors.New("expected ten unique participants")
+	}
+	if humans == 0 {
+		return nil, errors.New("no human participants")
 	}
 	return toons, nil
 }
+
+// Blizzard ToonHandles are "<region>-Hero-<realm>-<id>". AI participants get
+// synthetic handles without the Hero program and carry no verified identity.
+func isHeroHandle(toon string) bool { return strings.Contains(toon, "-Hero-") }
 
 func correlatedOutcome(replay Replay, lobby *BattleLobby, toon string) (Player, error) {
 	toons, err := participantToons(lobby)
@@ -168,29 +190,58 @@ func correlatedOutcome(replay Replay, lobby *BattleLobby, toon string) (Player, 
 	if !toons[toon] {
 		return Player{}, errors.New("selected ToonHandle is not a participant")
 	}
-	if len(replay.Players) != len(toons) {
-		return Player{}, errors.New("replay and lobby participant counts differ")
-	}
 	seen := map[string]bool{}
 	counts := [2]int{}
 	results := [2]string{}
 	var selected Player
-	for _, p := range replay.Players {
-		if !toons[p.ToonHandle] || seen[p.ToonHandle] || p.Team < 0 || p.Team > 1 || (p.Result != "win" && p.Result != "loss") {
-			return Player{}, errors.New("invalid replay participant, team or outcome")
+	record := func(p Player) error {
+		if p.Team < 0 || p.Team > 1 || (p.Result != "win" && p.Result != "loss") {
+			return errors.New("invalid replay participant, team or outcome")
 		}
-		seen[p.ToonHandle] = true
-		counts[p.Team]++
 		if results[p.Team] != "" && results[p.Team] != p.Result {
-			return Player{}, errors.New("inconsistent team outcome")
+			return errors.New("inconsistent team outcome")
 		}
 		results[p.Team] = p.Result
-		if p.ToonHandle == toon {
-			selected = p
+		counts[p.Team]++
+		return nil
+	}
+	for _, p := range replay.Players {
+		if toons[p.ToonHandle] {
+			if seen[p.ToonHandle] {
+				return Player{}, errors.New("duplicate replay participant")
+			}
+			seen[p.ToonHandle] = true
+			if err := record(p); err != nil {
+				return Player{}, err
+			}
+			if p.ToonHandle == toon {
+				selected = p
+			}
+			continue
+		}
+		// The replay is already bound to this exact lobby by byte-identical
+		// embedded BattleLobby content. In custom lobbies remaining entries
+		// are AI participants: identity is not verifiable, team and outcome
+		// still are. Any additional Hero handle means an unaccounted player.
+		if !lobby.Custom || isHeroHandle(p.ToonHandle) {
+			return Player{}, errors.New("replay participant is not in the lobby roster")
+		}
+		if err := record(p); err != nil {
+			return Player{}, err
 		}
 	}
-	if counts[0] != 5 || counts[1] != 5 || results[0] == results[1] {
+	if len(seen) != len(toons) {
+		return Player{}, errors.New("replay and lobby participant counts differ")
+	}
+	if lobby.Custom {
+		if counts[0] == 0 || counts[1] == 0 || results[0] == results[1] {
+			return Player{}, errors.New("inconsistent custom-game result")
+		}
+	} else if counts[0] != 5 || counts[1] != 5 || results[0] == results[1] {
 		return Player{}, errors.New("inconsistent 5v5 result")
+	}
+	if selected.ToonHandle == "" {
+		return Player{}, errors.New("selected participant is missing from the replay")
 	}
 	return selected, nil
 }

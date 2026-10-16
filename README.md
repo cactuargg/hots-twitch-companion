@@ -1,6 +1,6 @@
-# HotS Twitch Companion v0.9.5
+# HotS Twitch Companion v0.9.6
 
-v0.9.5 recognizes HotS client build 98348, restoring lobby parsing on the current patch. v0.9.4 attaches the Browser edition ZIP to the release; see [Desktop controls and build instructions](docs/compact-desktop.ru.md).
+v0.9.6 settles custom 5v5 games with AI participants automatically, with every human slot still verified by ToonHandle. v0.9.5 recognizes HotS client build 98348; see [Desktop controls and build instructions](docs/compact-desktop.ru.md).
 
 The v0.8.0 engine provides durable outcome recovery, exact Twitch status verification and queued
 next-match lobbies without the old two-minute cooldown. Unknown POST results are
@@ -25,7 +25,7 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 
 The match-history preview and automatic Prediction settlement are different operations. In v0.7.0 **Check latest replay was read-only**; it did not distribute viewer points. The automatic scanner ran only while monitoring, evaluated up to eight files, and excluded replays with timestamps earlier than the Prediction. Restarting monitoring could resume settlement.
 
-History displays the latest twelve files. Settlement instead checks the complete eligible file inventory within safety limits; it never accepts the first matching player from that list. On starting monitoring, the scanner runs immediately and subsequently every four seconds. Home shows missing match evidence, incomplete verification or ambiguity. Automatic support requires ten human participants in a supported 5v5 matchmaking lobby and a ToonHandle selected before Prediction creation. Legacy Predictions without a binding, name-only identities, AI/custom lobbies and ambiguous matches require manual Win / Loss / Cancel. Restarting or pressing Check result again cannot bypass the correlation gate.
+History displays the latest twelve files. Settlement instead checks the complete eligible file inventory within safety limits; it never accepts the first matching player from that list. On starting monitoring, the scanner runs immediately and subsequently every four seconds. Home shows missing match evidence, incomplete verification or ambiguity. Automatic support requires a supported 5v5 lobby and a ToonHandle selected before Prediction creation: matchmaking games with ten human participants, and custom games where every human slot is verified and AI participants carry team/outcome data without identity. Legacy Predictions without a binding, name-only identities and ambiguous matches require manual Win / Loss / Cancel. Restarting or pressing Check result again cannot bypass the correlation gate.
 
 **View latest replay result** remains a read-only action. The new **Check result again** explicitly reruns replay-based settlement and *can finish the active Prediction* if a valid matching result exists. For real Twitch Predictions, you must first confirm that viewer points may be distributed. This action works even while monitoring is stopped; it verifies the active Prediction ID and creation time and never settles using replays from previous matches. If Twitch already finalized it elsewhere, use the separate Sync with Twitch action.
 
@@ -124,7 +124,7 @@ For contributors, run `go test ./...`, `node --test`, and `node --check web/asse
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
 
 1. Stop any previous `watch` process and old `.exe`.
-2. Run `HotS-Twitch-Companion-v0.9.5.exe` from the release ZIP. Node.js, Go and Python are not required.
+2. Run `HotS-Twitch-Companion-v0.9.6.exe` from the release ZIP. Node.js, Go and Python are not required.
 3. Follow the wizard — or configure manually: in **Settings** set your HotS player name and save; **Match History → Check latest replay** is a safe test without the Twitch API.
 4. In **Settings → Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
 5. Optionally set the **Prediction duration** in **Settings → Operation mode**.
@@ -146,10 +146,10 @@ The logic from the older Go version (MPQ zlib/BZip2 handling, Twitch OAuth, Pred
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.5.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.5.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe .`
 
 Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the Browser edition package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
@@ -170,7 +170,7 @@ Local build in PowerShell:
 .\build.ps1
 ```
 
-Result: `dist/HotS-Twitch-Companion-v0.9.5.exe` and `HotS-Twitch-Companion-v0.9.5-windows-x64.zip`.
+Result: `dist/HotS-Twitch-Companion-v0.9.6.exe` and `HotS-Twitch-Companion-v0.9.6-windows-x64.zip`.
 
 First release (in Git Bash or another terminal with Git):
 
