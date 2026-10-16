@@ -1,9 +1,11 @@
 # HotS Twitch Companion v0.7.0
 
-BattleLobby observations persist the latest roster in `state.json`. Only
-fixture-verified builds 89566, 89754, 90670 and 93640 are supported. These observations
-do not participate in Prediction settlement. See [format research and fixture
-provenance](testdata/battlelobby/README.md) for the exact scope and limitations.
+BattleLobby observations persist the latest roster in `state.json`; each new
+Prediction gets its own frozen lobby and player binding. Automatic settlement
+requires exact embedded BattleLobby content, consistent participant results,
+a fresh in-game timestamp and a unique replay candidate. Only fixture-verified
+builds 89566, 89754, 90670 and 93640 are supported. See [format research and fixture
+provenance](testdata/battlelobby/README.md) and [correlation rules](docs/match-correlation.ru.md).
 
 Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface. The gaming visuals and decorative panels were removed. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. A separate desktop window is opened through the installed Microsoft Edge in `--app` mode; without Edge, your default browser is used. **[Читать на русском](README.ru.md)**
 
@@ -15,7 +17,7 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 
 The match-history preview and automatic Prediction settlement are different operations. In v0.7.0 **Check latest replay was read-only**; it did not distribute viewer points. The automatic scanner ran only while monitoring, evaluated up to eight files, and excluded replays with timestamps earlier than the Prediction. Restarting monitoring could resume settlement.
 
-The scanner and History now consider the same **12 latest replay files**. On starting monitoring, the scanner runs immediately and subsequently every four seconds. A pending Prediction displays a specific diagnosis on Home: no replay, file still being written, replay predating the Prediction, player identity mismatch, Twitch settlement error, or stalled scanning.
+History displays the latest twelve files. Settlement instead checks the complete eligible file inventory within safety limits; it never accepts the first matching player from that list. On starting monitoring, the scanner runs immediately and subsequently every four seconds. Home shows missing match evidence, incomplete verification or ambiguity. Automatic support requires ten human participants in a supported 5v5 matchmaking lobby and a ToonHandle selected before Prediction creation. Legacy Predictions without a binding, name-only identities, AI/custom lobbies and ambiguous matches require manual Win / Loss / Cancel. Restarting or pressing Check result again cannot bypass the correlation gate.
 
 **View latest replay result** remains a read-only action. The new **Check result again** explicitly reruns replay-based settlement and *can finish the active Prediction* if a valid matching result exists. For real Twitch Predictions, you must first confirm that viewer points may be distributed. This action works even while monitoring is stopped; it verifies the active Prediction ID and creation time and never settles using replays from previous matches. If Twitch already finalized it elsewhere, use the separate Sync with Twitch action.
 

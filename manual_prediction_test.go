@@ -2,13 +2,13 @@ package main
 
 import (
  "bytes"
- "compress/zlib"
+
  "context"
  "encoding/json"
  "io"
  "net/http"
  "net/http/httptest"
- "os"
+
  "path/filepath"
  "strings"
  "testing"
@@ -119,30 +119,14 @@ func TestManualSyncNeverClearsOpenRemotePrediction(t *testing.T) {
  if remaining==nil {t.Fatal("lost open real Prediction")}
 }
 
-func TestScanTickResolvesShortGameWithout75SecondDelay(t *testing.T){
- dir:=t.TempDir()
- rp:=filepath.Join(dir,"replays")
- if err:=os.MkdirAll(rp,0700);err!=nil {t.Fatal(err)}
- var z bytes.Buffer
- zw:=zlib.NewWriter(&z)
- details:=detailsTest()
- if _,err:=zw.Write(details);err!=nil {t.Fatal(err)}
- if err:=zw.Close();err!=nil {t.Fatal(err)}
- fixture:=buildTestMPQ(append([]byte{0x02},z.Bytes()...),details)
- filename:=filepath.Join(rp,"Fast.StormReplay")
- if err:=os.WriteFile(filename,fixture,0600);err!=nil {t.Fatal(err)}
- now:=time.Now()
- if err:=os.Chtimes(filename,now.Add(-10*time.Second),now.Add(-10*time.Second));err!=nil {t.Fatal(err)}
- p:=paths{dir:dir,config:filepath.Join(dir,"config.json"),secret:filepath.Join(dir,"tokens.dpapi"),state:filepath.Join(dir,"state.json")}
- e,err:=newEngine(p,Config{PlayerName:"Проверка",ReplayRoot:rp},func(string){})
- if err!=nil{t.Fatal(err)}
- active:=&Prediction{ID:"SIMULATION",DryRun:true,StartedAt:now.Add(-30*time.Second).UnixMilli()}
- if err:=e.updateAndSave(State{Active:active});err!=nil {t.Fatal(err)}
- lastError:=""
- lastLog:=time.Time{}
- e.scanTick(context.Background(),now.Add(-35*time.Second),&lastError,&lastLog)
- e.mu.Lock();st:=e.state;e.mu.Unlock()
- if st.Active!=nil||!(strings.HasPrefix(st.LastResult,"win (")||strings.HasPrefix(st.LastResult,"loss (")) {
-  t.Fatalf("short game did not settle immediately: %+v; parsing issue %q",st,lastError)
- }
+func TestScanTickResolvesShortGameWithout75SecondDelay(t *testing.T) {
+	now := time.Now()
+	e, p, lobby := boundScanFixture(t, now.Add(-30*time.Second))
+	writeCorrelationFile(t, p.dir, "Fast", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-30*time.Second), true), lobby), now.Add(-10*time.Second))
+	lastError := ""
+	lastLog := time.Time{}
+	e.scanTick(context.Background(), now.Add(-35*time.Second), &lastError, &lastLog)
+	if e.state.Active != nil || !strings.HasPrefix(e.state.LastResult, "win (") {
+		t.Fatalf("short game did not settle: %+v %+v", e.state, e.scan)
+	}
 }

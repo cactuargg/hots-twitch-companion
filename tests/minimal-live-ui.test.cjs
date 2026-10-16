@@ -84,3 +84,14 @@ test('removed game-themed layout does not leak into base CSS',()=>{
  assert.ok(!css.includes('grid-template-rows:132px'));
  assert.match(css,/--accent:\s*#9a9bf8/);
 });
+
+test('correlation failure stays visible after a paused recheck and keeps manual decisions available',()=>{
+ for(const code of ['correlation_unavailable','correlation_ambiguous','correlation_incomplete','correlation_mismatch']){
+  const {context,get}=harness();
+  context.render({running:false,active:true,activeDryRun:false,realMode:true,connected:true,
+   twitchPhase:'connected',predictionPhase:'pending',monitorPhase:'off',logs:[],
+   replayScan:{code,checkedAt:Date.now()}});
+  assert.equal(get('prediction-scan-message').textContent,'replay.scan.'+code);
+  assert.equal(get('prediction-manual').hidden,false);
+ }
+});

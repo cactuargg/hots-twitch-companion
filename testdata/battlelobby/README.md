@@ -13,6 +13,14 @@ These are actual game files, not a synthetic invented wire format.
 | ARAM2_93640 | 320ae2612d38b1559c67a03410c68328382ed51d371347b62730b0094c23f789 |
 | Custom1_90670 | 4ad54ea0a493a88758040ba14fe61b1b36d6be7c3c52129ffea5e9a4324be7ab |
 | StormLeague1_89566 | 10e952df59eac0d35e38f8d2ee5912ad70fbd15bee6c63cf2d37c499180e0e22 |
+| HanamuraSL1_89566.StormReplay | 62d3d5a599837cfca85139eb7c38f7655f5ae596f6980de3406fdd004b9b2c97 |
+
+The fifth file is the unmodified `Replays/HanamuraSL1_89566.StormR` from the
+same pinned repository, renamed to `.StormReplay`. Its embedded
+`replay.server.battlelobby` is **byte-identical** to StormLeague1_89566 above.
+The paired test checks actual MPQ extraction, timestamp, roster and outcome.
+Synthetic MPQ wrappers used by other correlation tests are explicitly synthetic;
+they are not claimed to be independent real matches.
 
 ## Findings and implementation boundary
 
@@ -53,11 +61,10 @@ capture. As with any metadata check, same-size writes restoring timestamps are
 not guaranteed detectable. Only the latest observation is retained; no archive
 or retention UI is introduced. Existing state files remain readable.
 
-The observation is independent of `active`, and never enters settlement rules.
-Capturing a newer lobby while a Prediction is active must not relabel that
-Prediction. Correlation, repeated rosters, ambiguous matches, startup recovery
-policy and payout changes belong to PR #19. Existing automatic settlement remains
-as on main; this PR does not claim to fix its correlation limitations.
+`lastLobby` remains the latest observation. Each newly created Prediction now
+stores its own frozen copy under `active.match`; a newer lobby never relabels it.
+See [PR #19 correlation rules](../../docs/match-correlation.ru.md) for the payout
+gate, repeated data, clock checks and fail-closed recovery.
 
 Tests use upstream expected build/seed/mode, Muradin/Ragnaros and ToonHandle
 assertions, observer/AI counts, malformed/truncated inputs, wire order, capture
