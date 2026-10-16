@@ -1,6 +1,11 @@
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'reset.title':'User data',
+  'reset.description':'Remove settings, local Twitch credentials, match state and application cache. HotS replays stay. The app closes; restart it to begin setup again.',
+  'reset.button':'Clear user data',
+  'reset.confirm':'Clear all Companion user data? Settings, local Twitch credentials, match state and app cache will be removed on next launch. HotS replays and your browser Twitch login stay. The app will close. Monitoring must be stopped and no Prediction may be active.',
+  'reset.done':'Data reset requested. Close and reopen Companion to begin setup again.',
   'shell.minimize':'Minimize',
   'shell.tray':'Hide to tray — monitoring continues',
   'shell.close':'Close application',
@@ -211,6 +216,11 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'reset.title':'Пользовательские данные',
+  'reset.description':'Удалить настройки, локальные Twitch-токены, состояние матчей и кэш приложения. Реплеи HotS останутся. Приложение закроется; запусти его снова для настройки с нуля.',
+  'reset.button':'Очистить пользовательские данные',
+  'reset.confirm':'Очистить все пользовательские данные Companion? При следующем запуске будут удалены настройки, локальные Twitch-токены, состояние матчей и кэш приложения. Реплеи HotS и вход в Twitch в браузере останутся. Приложение закроется. Мониторинг должен быть остановлен, активного Prediction быть не должно.',
+  'reset.done':'Сброс запрошен. Закрой и запусти Companion снова для настройки с нуля.',
   'shell.minimize':'Свернуть',
   'shell.tray':'В трей — мониторинг продолжится',
   'shell.close':'Закрыть приложение',

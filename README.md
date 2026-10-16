@@ -130,7 +130,7 @@ For contributors, run `go test ./...`, `node --test`, and `node --check web/asse
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
 
 1. Stop any previous `watch` process and old `.exe`.
-2. Run `HotS-Twitch-Companion.exe` from the release ZIP. Node.js, Go and Python are not required.
+2. Run `HotS-Twitch-Companion-v0.9.0.exe` from the release ZIP. Node.js, Go and Python are not required.
 3. Follow the wizard — or configure manually: in **Settings** set your HotS player name and save; **Match History → Check latest replay** is a safe test without the Twitch API.
 4. In **Settings → Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
 5. Optionally set the **Prediction duration** in **Settings → Operation mode**.
@@ -150,10 +150,10 @@ The logic from the older Go version (MPQ zlib/BZip2 handling, Twitch OAuth, Pred
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.0.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.0.exe .`
 
 Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the browser package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
@@ -174,7 +174,7 @@ Local build in PowerShell:
 .\build.ps1
 ```
 
-Result: `dist/HotS-Twitch-Companion.exe` and `HotS-Twitch-Companion-windows-x64.zip`.
+Result: `dist/HotS-Twitch-Companion-v0.9.0.exe` and `HotS-Twitch-Companion-v0.9.0-windows-x64.zip`.
 
 First release (in Git Bash or another terminal with Git):
 
@@ -195,3 +195,5 @@ The project source code is distributed under the **MIT License** — see [LICENS
 The MIT License **does not grant rights to trademarks, logos, or third-party artwork** of Blizzard and Twitch. Verify the origin of files in `web/assets/` and your rights to publish them. This application is unofficial and is not affiliated with Blizzard Entertainment or Twitch.
 
 GitHub Actions and the Windows GUI require verification on a real Windows run. The `.exe` is not Authenticode-signed; SHA256 pins the content but does not prove the absence of malicious code.
+
+Profile reset: Settings → User data → Clear user data; restart the app to begin setup again. See [reset behavior](docs/profile-reset.ru.md).

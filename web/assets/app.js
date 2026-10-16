@@ -39,6 +39,7 @@ function setActionBusy(name, busy){
 }
 
 function render(s){
+ if(s?.version)$('app-version').textContent='v'+s.version;
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
   const view=monitoringView(st);
@@ -148,6 +149,12 @@ async function manualPrediction(outcome){
  return true;
 }
 async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
+ case 'reset-profile':
+   if(!confirm(t('reset.confirm')))break;
+   await api('profile/reset','POST',{confirmed:true});
+   try{localStorage.clear()}catch(e){}
+   document.body.replaceChildren(line(t('reset.done'),'empty-mini'));
+   break;
  case 'save':await save();break;
  case 'auth':{
    if(!$('clientId').value.trim()&&!state.status?.hasTwitchApp){

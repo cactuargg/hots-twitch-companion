@@ -122,7 +122,7 @@ Client ID и проверка реплея доступны в раскрыва�
 При первом запуске автоматически открывается **мастер настройки**: он проведёт по шагам — язык, ник игрока HotS (с безопасной проверкой реплея), подключение Twitch и автоматизация — и объяснит, какого результата ждать на каждом шаге. Мастер можно запустить повторно из «Настроек».
 
 1. Останови предыдущий `watch` и старый `.exe`.
-2. Запусти `HotS-Twitch-Companion.exe` из release ZIP. Node.js, Go и Python устанавливать не нужно.
+2. Запусти `HotS-Twitch-Companion-v0.9.0.exe` из release ZIP. Node.js, Go и Python устанавливать не нужно.
 3. Следуй мастеру — или настрой вручную: в **Настройках** укажи свой ник в HotS и длительность Prediction, сохрани; **История матчей → Проверить последний реплей** — безопасный тест без Twitch API.
 4. В **Настройки → Twitch** укажи `Client ID` Public приложения, сохрани и подключи OAuth Device Code Flow (токен шифруется через DPAPI).
 5. Запусти мониторинг с **Обзора** (или из мастера). Симуляция используется по умолчанию.
@@ -141,10 +141,10 @@ Client ID и проверка реплея доступны в раскрыва�
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.0.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.0.exe .`
 
 Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает Desktop, `./build.ps1 -BrowserFallback` — браузерный вариант. Desktop использует Wails v2/WebView2 и fyne.io/systray; [инструкция](docs/compact-desktop.ru.md). `service.go` — HTTP/UI-обвязка, `main_windows.go` — окно Edge, `core.go` — логика Twitch/HotS, `replay.go` — MPQ декодер, `i18n.go` — каталог сообщений EN/RU, `web/` — интерфейс.
 
@@ -166,7 +166,7 @@ Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает De
 .\build.ps1
 ```
 
-Результат: `dist/HotS-Twitch-Companion.exe` и `HotS-Twitch-Companion-windows-x64.zip`.
+Результат: `dist/HotS-Twitch-Companion-v0.9.0.exe` и `HotS-Twitch-Companion-v0.9.0-windows-x64.zip`.
 
 Первый релиз (в Git Bash или другом терминале с Git):
 
@@ -198,3 +198,5 @@ git push origin v0.3.0
 
 
 GitHub Actions и Windows GUI требуют проверки реального запуска на Windows. `.exe` не подписан Authenticode; SHA256 фиксирует содержимое, но не доказывает отсутствие вредоносного кода.
+
+Сброс профиля: Настройки → Пользовательские данные → Очистить пользовательские данные; затем запусти приложение снова. [Подробности](docs/profile-reset.ru.md).

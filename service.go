@@ -46,6 +46,7 @@ type playerSummary struct {
 }
 
 type dashboard struct {
+	postMu sync.Mutex
 	hideToTray                            func() error
 	mu                                    sync.Mutex
 	engine                                *Engine
@@ -502,7 +503,22 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		d.postMu.Lock()
+		defer d.postMu.Unlock()
+		select {
+		case <-d.shutdown:
+			jsonOutput(w, 503, map[string]string{"error": "Application is closing"})
+			return
+		default:
+		}
 		switch route {
+		case "profile/reset":
+			var body struct { Confirmed bool `json:"confirmed"` }
+			if err:=readJSONRequest(r,&body);err!=nil {requestError(w,err);return}
+			if !body.Confirmed {requestError(w,errors.New(d.tr("reset.confirm_required")));return}
+			if err:=d.requestProfileReset();err!=nil {requestError(w,err);return}
+			jsonOutput(w,200,map[string]bool{"ok":true})
+			return
 		case "config":
 			d.mu.Lock()
 			pending := d.authPending

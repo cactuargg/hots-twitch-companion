@@ -54,6 +54,10 @@ func loadDesktopDashboard(dataDir string) (*dashboard, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := applyProfileReset(p); err != nil {
+		release()
+		return nil, nil, err
+	}
 	cfg, err := readConfig(p)
 	if err != nil {
 		release()

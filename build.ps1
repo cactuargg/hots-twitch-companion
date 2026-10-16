@@ -4,6 +4,10 @@ param([switch]$BrowserFallback)
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try {
+    . "$PSScriptRoot/build-version.ps1"
+    if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $buildVersion) {
+        throw "Release tag must match appVersion: $buildVersion"
+    }
     Write-Host 'Running tests...'
     & go test ./...
     if ($LASTEXITCODE -ne 0) { throw 'Go tests failed' }
@@ -31,21 +35,21 @@ try {
         }
         $ldflags += " -X main.defaultTwitchClientID=$publicId"
     }
-    $exeName = if ($BrowserFallback) { 'HotS-Twitch-Companion-Browser.exe' } else { 'HotS-Twitch-Companion.exe' }
-    $zipName = if ($BrowserFallback) { 'HotS-Twitch-Companion-Browser-windows-x64.zip' } else { 'HotS-Twitch-Companion-windows-x64.zip' }
+    $exeName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion.exe" } else { "HotS-Twitch-Companion-$buildVersion.exe" }
+    $zipName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion-windows-x64.zip" } else { "HotS-Twitch-Companion-$buildVersion-windows-x64.zip" }
     $buildTags = if ($BrowserFallback) { @() } else { @('-tags', 'wails,production,wv2runtime.error') }
     & go build @buildTags -trimpath "-ldflags=$ldflags" -o "$out/$exeName" .
     if ($LASTEXITCODE -ne 0) { throw 'Go build failed' }
 
-    Copy-Item 'README.md','README.ru.md','LICENSE','THIRD_PARTY_NOTICES.txt','docs/compact-desktop.ru.md' $out -Force
-    $notes = (Get-Content '.github/RELEASE_NOTES_TEMPLATE.md' -Raw) -replace '__TAG__', 'v0.9.0'
+    Copy-Item 'README.md','README.ru.md','LICENSE','THIRD_PARTY_NOTICES.txt','docs/compact-desktop.ru.md','docs/profile-reset.ru.md' $out -Force
+    $notes = (Get-Content '.github/RELEASE_NOTES_TEMPLATE.md' -Raw) -replace '__TAG__', $buildVersion
     if ($BrowserFallback) {
         $notes = $notes.Replace('The main EXE uses Microsoft WebView2 Evergreen Runtime.', 'This BrowserFallback EXE uses Microsoft Edge app mode or the default browser; it has no native title bar or tray and does not require WebView2 Runtime.')
     }
     $hash = (Get-FileHash "$out/$exeName" -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $exeName" | Set-Content "$out/SHA256SUMS.txt" -Encoding utf8
-    ($notes -replace '__HASH__', $hash -replace 'HotS-Twitch-Companion.exe', $exeName) | Set-Content "$out/RELEASE_NOTES.md" -Encoding utf8
-    Compress-Archive -Path "$out/$exeName", "$out/README.md", "$out/README.ru.md", "$out/LICENSE", "$out/THIRD_PARTY_NOTICES.txt", "$out/compact-desktop.ru.md", "$out/SHA256SUMS.txt", "$out/RELEASE_NOTES.md" `
+    ($notes -replace '__HASH__', $hash -replace 'HotS-Twitch-Companion.exe', $exeName -replace 'HotS-Twitch-Companion-windows-x64.zip', $zipName) | Set-Content "$out/RELEASE_NOTES.md" -Encoding utf8
+    Compress-Archive -Path "$out/$exeName", "$out/README.md", "$out/README.ru.md", "$out/LICENSE", "$out/THIRD_PARTY_NOTICES.txt", "$out/compact-desktop.ru.md", "$out/profile-reset.ru.md", "$out/SHA256SUMS.txt", "$out/RELEASE_NOTES.md" `
         -DestinationPath $zipName -Force
 
     Write-Host ''
