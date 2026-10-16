@@ -2,10 +2,14 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.2
+## What's new in v0.9.3
+
+- The app now checks public GitHub release metadata once at startup (and daily while running) and shows an "Update available" link in the footer when a newer version exists. The link opens the release page in your browser; nothing is downloaded or installed automatically.
+- The check is a single read-only request to `api.github.com` that sends no account or match data, and it fails silently offline.
+
+## Twitch identity fix from v0.9.2
 
 - The verified Twitch connection now survives saving settings. Previously, finishing setup or pressing Launch right after authorization could report Twitch as disconnected and bounce back to the setup step, even though the token was stored. The identity is dropped only when the Client ID actually changes.
-- Token and scope verification before monitoring start, and all v0.9.1 live-launch confirmations, are unchanged.
 
 ## Live launch from v0.9.1
 

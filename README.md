@@ -1,6 +1,6 @@
-# HotS Twitch Companion v0.9.2
+# HotS Twitch Companion v0.9.3
 
-v0.9.2 keeps the verified Twitch connection when settings are saved, so the launch step after authorization no longer bounces back to setup. v0.9.1 replaced simulation with a confirmed live Twitch launch; see [Desktop controls and build instructions](docs/compact-desktop.ru.md).
+v0.9.3 checks for a newer release on startup and shows a footer link to the release page. v0.9.2 keeps the verified Twitch connection when settings are saved; see [Desktop controls and build instructions](docs/compact-desktop.ru.md).
 
 The v0.8.0 engine provides durable outcome recovery, exact Twitch status verification and queued
 next-match lobbies without the old two-minute cooldown. Unknown POST results are
@@ -124,7 +124,7 @@ For contributors, run `go test ./...`, `node --test`, and `node --check web/asse
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
 
 1. Stop any previous `watch` process and old `.exe`.
-2. Run `HotS-Twitch-Companion-v0.9.2.exe` from the release ZIP. Node.js, Go and Python are not required.
+2. Run `HotS-Twitch-Companion-v0.9.3.exe` from the release ZIP. Node.js, Go and Python are not required.
 3. Follow the wizard — or configure manually: in **Settings** set your HotS player name and save; **Match History → Check latest replay** is a safe test without the Twitch API.
 4. In **Settings → Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
 5. Optionally set the **Prediction duration** in **Settings → Operation mode**.
@@ -138,16 +138,18 @@ A **setup wizard** runs automatically on first launch: it walks you through lang
 
 The local interface listens only on `127.0.0.1` at a random port, the address is guarded by a random 192-bit path segment, API calls require a special header, POST requests are checked for Origin/Sec-Fetch-Site, CSP is enabled, and cross-origin requests are denied. Twitch tokens never reach the UI and are stored via Windows DPAPI; HotS files are opened read-only, without DLL injection, hooks, drivers, or game-memory reads. None of these mechanisms guarantees approval by Blizzard.
 
+On each start the app performs one read-only request to `api.github.com` to learn whether a newer release exists, repeating daily while it runs; failures are silent and no account or match data is sent.
+
 The logic from the older Go version (MPQ zlib/BZip2 handling, Twitch OAuth, Predictions, `replay.server.battlelobby`/`.StormReplay` watching) is preserved. State in `%LOCALAPPDATA%\HotSTwitchCompanion` is reused — **do not run two versions at the same time**. The old Node.js prototype is not compatible in state/token format.
 
 ## Building from source
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.2.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.3.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.2.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.3.exe .`
 
 Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the browser package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
@@ -168,7 +170,7 @@ Local build in PowerShell:
 .\build.ps1
 ```
 
-Result: `dist/HotS-Twitch-Companion-v0.9.2.exe` and `HotS-Twitch-Companion-v0.9.2-windows-x64.zip`.
+Result: `dist/HotS-Twitch-Companion-v0.9.3.exe` and `HotS-Twitch-Companion-v0.9.3-windows-x64.zip`.
 
 First release (in Git Bash or another terminal with Git):
 
