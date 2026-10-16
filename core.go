@@ -35,6 +35,15 @@ type Config struct {
 	PredictionLoss      string `json:"predictionLoss"`
 }
 
+// Set at build time with -ldflags '-X main.defaultTwitchClientID=...'.
+// Twitch Client IDs are public; never embed an OAuth client secret here.
+var defaultTwitchClientID string
+
+func (c Config) twitchClientID() string {
+ if id := strings.TrimSpace(c.ClientID); id != "" { return id }
+ return strings.TrimSpace(defaultTwitchClientID)
+}
+
 const defaultPredictionWindow = 2
 const maxPredictionWindow = 30
 
@@ -549,7 +558,7 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 	if e != nil {
 		return nil, e
 	}
-	t, e := newTwitch(p, cfg.ClientID, cfg.lang())
+	t, e := newTwitch(p, cfg.twitchClientID(), cfg.lang())
 	if e != nil {
 		return nil, e
 	}
@@ -595,7 +604,7 @@ func (e *Engine) updateConfig(cfg Config) error {
 	if er := writeConfig(e.p, cfg); er != nil {
 		return er
 	}
-	t, er := newTwitch(e.p, cfg.ClientID, cfg.lang())
+	t, er := newTwitch(e.p, cfg.twitchClientID(), cfg.lang())
 	if er != nil {
 		return er
 	}
@@ -708,7 +717,7 @@ func (e *Engine) start() error {
 		e.mu.Unlock()
 		return errors.New(tr(e.cfg.lang(), "automation.need_player"))
 	}
-	if e.cfg.ClientID == "" && e.cfg.RealMode {
+	if e.cfg.twitchClientID() == "" && e.cfg.RealMode {
 		e.mu.Unlock()
 		return errors.New(tr(e.cfg.lang(), "automation.need_client_id"))
 	}
