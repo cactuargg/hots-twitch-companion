@@ -6,6 +6,16 @@ The app watches local Heroes of the Storm files, and when a match starts it crea
 
 ## Automatic and manual Prediction settlement
 
+### If the replay shows a result but the Prediction remains unresolved
+
+The match-history preview and automatic Prediction settlement are different operations. In v0.7.0 **Check latest replay was read-only**; it did not distribute viewer points. The automatic scanner ran only while monitoring, evaluated up to eight files, and excluded replays with timestamps earlier than the Prediction. Restarting monitoring could resume settlement.
+
+The scanner and History now consider the same **12 latest replay files**. On starting monitoring, the scanner runs immediately and subsequently every four seconds. A pending Prediction displays a specific diagnosis on Home: no replay, file still being written, replay predating the Prediction, player identity mismatch, Twitch settlement error, or stalled scanning.
+
+**View latest replay result** remains a read-only action. The new **Check result again** explicitly reruns replay-based settlement and *can finish the active Prediction* if a valid matching result exists. For real Twitch Predictions, you must first confirm that viewer points may be distributed. This action works even while monitoring is stopped; it verifies the active Prediction ID and creation time and never settles using replays from previous matches. If Twitch already finalized it elsewhere, use the separate Sync with Twitch action.
+
+
+
 You no longer have to wait for the full Twitch betting window when a HotS game ends early. The app checks for completed replay files every four seconds and waits for the replay file to be stable for approximately eight seconds before parsing it. The previous mandatory 75-second delay is gone. The result still comes from a completed replay, **not by reading the game's screen or memory**, so settlement occurs after HotS has saved the replay.
 
 While a Prediction is pending, Home shows **Win / Loss / Cancel**. These are available even with monitoring stopped. On **live Twitch Predictions**, Win or Loss immediately distributes viewer points, and Cancel refunds them. Every live action requires confirmation. Simulation does not call Twitch. Buttons disappear once a decision is successful.
