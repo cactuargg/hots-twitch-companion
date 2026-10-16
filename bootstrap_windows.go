@@ -1,0 +1,90 @@
+//go:build windows
+
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"syscall"
+	"unsafe"
+)
+
+func showError(message string) {
+	dll := syscall.NewLazyDLL("user32.dll")
+	f := dll.NewProc("MessageBoxW")
+	text, _ := syscall.UTF16PtrFromString(message)
+	title, _ := syscall.UTF16PtrFromString("HotS Twitch Companion")
+	f.Call(0, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(title)), 0x10)
+}
+
+// Both launchers use the same profile lock, including the encrypted token file.
+// Windows releases it automatically if a process crashes; file existence alone
+// never prevents the next launch.
+func lockDesktopProfile(dir string) (func(), error) {
+	name, err := syscall.UTF16PtrFromString(filepath.Join(dir, ".instance.lock"))
+	if err != nil {
+		return nil, err
+	}
+	handle, err := syscall.CreateFile(name, syscall.GENERIC_READ|syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_ALWAYS, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot open this profile; another Companion may already be using it: %w", err)
+	}
+	return func() { syscall.CloseHandle(handle) }, nil
+}
+
+func loadDesktopDashboard(dataDir string) (*dashboard, func(), error) {
+	p, err := pathsForUser()
+	if err != nil {
+		return nil, nil, err
+	}
+	if dataDir != "" {
+		dir, err := filepath.Abs(dataDir)
+		if err != nil {
+			return nil, nil, err
+		}
+		p = paths{dir: dir, config: filepath.Join(dir, "config.json"), state: filepath.Join(dir, "state.json"), secret: filepath.Join(dir, "tokens.dpapi")}
+	}
+	if err := os.MkdirAll(p.dir, 0700); err != nil {
+		return nil, nil, err
+	}
+	release, err := lockDesktopProfile(p.dir)
+	if err != nil {
+		return nil, nil, err
+	}
+	cfg, err := readConfig(p)
+	if err != nil {
+		release()
+		return nil, nil, errors.New(tr(langEn, "error.read_config", err.Error()))
+	}
+	d, err := newDashboard(p, cfg)
+	if err != nil {
+		release()
+		return nil, nil, errors.New(tr(cfg.lang(), "error.startup", err.Error()))
+	}
+	return d, release, nil
+}
+
+func runWindowsApplication(run func(*dashboard) error) {
+	flags := flag.NewFlagSet("HotS Twitch Companion", flag.ContinueOnError)
+	dataDir := flags.String("data-dir", "", "Use a separate profile directory (for testing)")
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		showError(err.Error())
+		return
+	}
+	if flags.NArg() != 0 {
+		showError("Unexpected command-line argument")
+		return
+	}
+	d, release, err := loadDesktopDashboard(*dataDir)
+	if err != nil {
+		showError(err.Error())
+		return
+	}
+	defer release()
+	if err := run(d); err != nil {
+		showError(d.tr("error.open_ui", err.Error()))
+	}
+}

@@ -5,6 +5,15 @@ const state = { status: null, config: null, replays: [], logs: [], expandedRepla
 const code = { authUrl: 'https://www.twitch.tv/activate' };
 let toastTimer;
 
+// Keep authentication pages outside the embedded application origin.
+function openExternalLink(raw){
+ const url=new URL(raw);
+ if(url.protocol!=='https:'||url.username||url.password||url.port||
+   !['www.twitch.tv','twitch.tv','dev.twitch.tv'].includes(url.hostname))throw Error('External URL refused');
+ if(window.runtime?.BrowserOpenURL)window.runtime.BrowserOpenURL(url.href);
+ else window.open(url.href,'_blank','noopener,noreferrer');
+}
+
 function toast(message, error = false){ const n=$('toast'); n.textContent=message; n.className='toast show'+(error?' error':''); clearTimeout(toastTimer); toastTimer=setTimeout(()=>n.className='toast',4600); }
 function safe(v){return v==null?'':String(v)}
 async function api(route, method='GET', data){

@@ -1,5 +1,5 @@
 # Build HotS Twitch Companion v0.8.0 from source on Windows.
-# Requires Go 1.23+ and Node.js 18+ on PATH for tests; app users do not need Node.
+# Requires Go 1.25+ and Node.js 18+ on PATH for tests; app users do not need Node.
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try {

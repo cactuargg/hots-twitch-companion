@@ -168,9 +168,9 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
    }
    break;
  }
- case 'activate':window.open(code.authUrl,'_blank','noopener,noreferrer');break;
+ case 'activate':openExternalLink(code.authUrl);break;
   case 'copy-code':await copyTwitchCode(false);break;
- case 'developer':window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');break;
+ case 'developer':openExternalLink('https://dev.twitch.tv/console/apps');break;
  case 'replay':{
     const result=await api('replay/check','POST',{});
     if(result.selected)toast(t('toast.replay_ok'));
