@@ -34,6 +34,7 @@
 .desktop .overview-detail>span{white-space:normal;overflow-wrap:anywhere}
 .desktop .overview-detail .text-action{font-size:11px;align-self:flex-end}
 .desktop .footer{margin-top:14px;padding-top:12px}
+.desktop .footer .quit{display:none}
 .desktop .settings-card{padding:16px}
 .desktop .settings-stack{gap:10px}
 .desktop .settings-savebar{padding:10px;bottom:0}

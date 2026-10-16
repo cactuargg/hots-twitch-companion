@@ -193,6 +193,13 @@
             </section>
           </div>
         </details>
+        <details class="secondary-details settings-advanced">
+          <summary data-i18n="reset.title">Пользовательские данные</summary>
+          <div class="secondary-details-body">
+            <p class="field-hint" data-i18n="reset.description">Удалить настройки, подключение Twitch, локальное состояние и кэш приложения. Реплеи HotS останутся. Приложение закроется; при следующем запуске откроется мастер настройки.</p>
+            <button type="button" class="btn btn-outline" data-action="reset-profile" data-i18n="reset.button">Очистить пользовательские данные</button>
+          </div>
+        </details>
         <div class="settings-savebar">
           <span id="settings-save-status" class="settings-save-status" role="status" aria-live="polite" data-i18n="minimal.settings.saved">Все изменения сохранены</span>
           <div class="form-buttons">
@@ -202,7 +209,7 @@
         </div>
       </section>
     </main>
-    <footer class="footer"><span>HotS Twitch Companion</span><button type="button" class="quit" data-action="quit" data-i18n="footer.quit">Выход</button></footer>
+    <footer class="footer"><span>HotS Twitch Companion <span id="app-version"></span></span><button type="button" class="quit" data-action="quit" data-i18n="footer.quit">Выход</button></footer>
   </div>
 
   <div class="wizard-backdrop" id="wizard" hidden>

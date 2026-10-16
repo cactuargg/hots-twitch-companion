@@ -4,6 +4,9 @@ Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm rep
 
 ## What's new in v0.9.0
 
+- EXE/ZIP filenames include the app version, also shown in the footer. Desktop uses the title-bar close button instead of a duplicate footer Exit.
+- Settings offers confirmed profile reset: after the app closes, next launch clears local settings/tokens/state/WebView2 cache and restarts setup. Monitoring must be stopped and no Prediction may be active. HotS replays stay untouched.
+
 - Wails/WebView2 is now the default Windows desktop shell, starting at 520×740 with width constrained to 480–560 logical pixels.
 - Custom draggable title bar with minimize, hide to tray, and close. The tray offers Open and Exit; hiding continues monitoring, while closing retains the existing safety confirmation and saved Prediction.
 - H application icon, Windows version resources and PerMonitorV2 manifest; compact Home, History, Settings and setup wizard using the existing interface and Go engine.

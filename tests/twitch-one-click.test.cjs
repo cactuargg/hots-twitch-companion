@@ -73,7 +73,8 @@ test('wizard hides advanced Client ID when app login works and preserves develop
 });
 test('Windows release builds embed only a public repository variable, no secret',()=>{
  assert.ok(workflow.includes('vars.TWITCH_CLIENT_ID'));
- assert.ok(workflow.includes('-X main.defaultTwitchClientID=$publicId'));
+ assert.ok(read('build.ps1').includes('-X main.defaultTwitchClientID=$publicId'));
+ assert.ok(workflow.includes('run: ./build.ps1'));
  assert.ok(!workflow.includes('TWITCH_CLIENT_SECRET'));
  assert.ok(!workflow.includes('secrets.TWITCH_CLIENT_ID'));
 });

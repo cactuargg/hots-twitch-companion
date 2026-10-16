@@ -51,10 +51,11 @@ function harness(){
 test('simulation shows one action, latest match and no live warning',()=>{
  const {context,get,btn}=harness();
  context.state.replays=[{map:'Dragon Shire',result:'win'}];
- context.render({running:true,active:false,realMode:false,connected:true,
+ context.render({version:'0.9.0',running:true,active:false,realMode:false,connected:true,
    twitchPhase:'connected',channel:'demo',predictionPhase:'none',monitorPhase:'watching',
    logs:[{time:'15:00:00',message:'Watching for lobby'}]});
  assert.equal(get('overview-state-title').textContent,'overview.state.watching');
+ assert.equal(get('app-version').textContent,'v0.9.0');
  assert.equal(get('overview-twitch').textContent,'@demo');
  assert.equal(get('overview-last-map').textContent,'Dragon Shire');
  assert.equal(get('overview-last-outcome').textContent,'badge.win');

@@ -33,7 +33,7 @@ SVG и Go-генератор находятся в assets/ и web/assets/app-ico
 ```powershell
 ./build.ps1                  # основной Desktop EXE и ZIP
 ./build.ps1 -BrowserFallback # отдельный Browser EXE и ZIP
-./dist/HotS-Twitch-Companion.exe --data-dir ./.research/compact-profile
+./dist/HotS-Twitch-Companion-v0.9.0.exe --data-dir ./.research/compact-profile
 ```
 
 Требуются Go 1.25+ и Node.js 18+. В рабочем приложении нужны Windows x64 и
