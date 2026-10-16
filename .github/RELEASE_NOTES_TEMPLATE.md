@@ -2,7 +2,12 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.1
+## What's new in v0.9.2
+
+- The verified Twitch connection now survives saving settings. Previously, finishing setup or pressing Launch right after authorization could report Twitch as disconnected and bounce back to the setup step, even though the token was stored. The identity is dropped only when the Client ID actually changes.
+- Token and scope verification before monitoring start, and all v0.9.1 live-launch confirmations, are unchanged.
+
+## Live launch from v0.9.1
 
 - First-run setup now connects Twitch and launches real Predictions directly, with explicit confirmation. Simulation and the mode switch are removed from the user flow.
 - Saving settings or finishing setup without starting never enables monitoring. Legacy simulated Predictions are cleared during profile migration; real active Predictions and recovery evidence are preserved.

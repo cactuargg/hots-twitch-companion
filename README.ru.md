@@ -1,6 +1,6 @@
-# HotS Twitch Companion v0.9.1
+# HotS Twitch Companion v0.9.2
 
-v0.9.1 добавляет компактное окно Wails/WebView2 шириной 520 px, собственный заголовок, значок H и системный трей. [Управление окном и сборка](docs/compact-desktop.ru.md).
+v0.9.2 сохраняет подтверждённое подключение Twitch при сохранении настроек — шаг запуска после авторизации больше не сбрасывается к настройке. v0.9.1 заменил симуляцию подтверждённым запуском реальных Twitch Predictions; [Управление окном и сборка](docs/compact-desktop.ru.md).
 
 Движок v0.8.0 сохраняет выбранный исход до запроса Twitch, восстанавливает его после
 сбоя и проверяет точный ID/статус на сервере. Следующее лобби не теряется при
@@ -116,7 +116,7 @@ Client ID **не является секретом** и доступен люб�
 При первом запуске автоматически открывается **мастер настройки**: он проведёт по шагам — язык, ник игрока HotS (с безопасной проверкой реплея), подключение Twitch и автоматизация — и объяснит, какого результата ждать на каждом шаге. Мастер можно запустить повторно из «Настроек».
 
 1. Останови предыдущий `watch` и старый `.exe`.
-2. Запусти `HotS-Twitch-Companion-v0.9.1.exe` из release ZIP. Node.js, Go и Python устанавливать не нужно.
+2. Запусти `HotS-Twitch-Companion-v0.9.2.exe` из release ZIP. Node.js, Go и Python устанавливать не нужно.
 3. Следуй мастеру — или настрой вручную: в **Настройках** укажи свой ник в HotS и длительность Prediction, сохрани; **История матчей → Проверить последний реплей** — безопасный тест без Twitch API.
 4. В **Настройки → Twitch** укажи `Client ID` Public приложения, сохрани и подключи OAuth Device Code Flow (токен шифруется через DPAPI).
 5. Запусти мониторинг с **Обзора** (или из мастера). Подтверди запуск настоящих Twitch Predictions.
@@ -135,10 +135,10 @@ Client ID **не является секретом** и доступен люб�
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.1.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.2.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.1.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.2.exe .`
 
 Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает Desktop, `./build.ps1 -BrowserFallback` — браузерный вариант. Desktop использует Wails v2/WebView2 и fyne.io/systray; [инструкция](docs/compact-desktop.ru.md). `service.go` — HTTP/UI-обвязка, `main_windows.go` — окно Edge, `core.go` — логика Twitch/HotS, `replay.go` — MPQ декодер, `i18n.go` — каталог сообщений EN/RU, `web/` — интерфейс.
 
@@ -160,7 +160,7 @@ Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает De
 .\build.ps1
 ```
 
-Результат: `dist/HotS-Twitch-Companion-v0.9.1.exe` и `HotS-Twitch-Companion-v0.9.1-windows-x64.zip`.
+Результат: `dist/HotS-Twitch-Companion-v0.9.2.exe` и `HotS-Twitch-Companion-v0.9.2-windows-x64.zip`.
 
 Первый релиз (в Git Bash или другом терминале с Git):
 
