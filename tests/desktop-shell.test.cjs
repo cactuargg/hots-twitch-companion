@@ -16,3 +16,24 @@ test('Twitch links use native system browser or safe browser fallback',()=>{
   assert.equal(calls.length,1);
  }
 });
+
+const desktop=fs.readFileSync('web/assets/desktop.js','utf8');
+function shellHarness(native=true){
+ const calls=[],classes=[];
+ const titlebar={hidden:true,addEventListener:(name,fn)=>{titlebar.click=fn}};
+ const window=native?{runtime:{WindowMinimise:()=>calls.push('minimize'),Quit:()=>calls.push('quit')}}:{};
+ const ctx=vm.createContext({window,document:{documentElement:{classList:{add:x=>classes.push(x)}}},$:()=>titlebar,api:async(...args)=>calls.push(args),toast:(...args)=>calls.push(args)});
+ vm.runInContext(desktop,ctx);ctx.initDesktopShell();return {ctx,titlebar,calls,classes};
+}
+test('native controls minimize, close through Wails, and hide only through guarded API',async()=>{
+ const {titlebar,calls,classes}=shellHarness();
+ assert.equal(titlebar.hidden,false);assert.deepEqual(classes,['desktop']);
+ for(const name of ['minimize','close','tray'])await titlebar.click({target:{closest:()=>({dataset:{window:name}})}});
+ assert.deepEqual(calls.slice(0,2),['minimize','quit']);assert.deepEqual(Array.from(calls[2]),['window/hide','POST']);
+});
+test('browser keeps native controls hidden, failed tray request reports error',async()=>{
+ const browser=shellHarness(false);assert.equal(browser.titlebar.hidden,true);assert.deepEqual(browser.classes,[]);
+ const {ctx,titlebar,calls}=shellHarness();ctx.api=async()=>{throw Error('Tray unavailable')};
+ await titlebar.click({target:{closest:()=>({dataset:{window:'tray'}})}});
+ assert.deepEqual(calls,[['Tray unavailable',true]]);
+});

@@ -8,8 +8,8 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const assets = path.join(root, 'web', 'assets');
 const html = fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8');
-const scripts = ['core.js', 'i18n.js', 'replays.js', 'diagnostics.js', 'onboarding.js', 'app.js'];
-const styles = ['style.css', 'wizard.css', 'overview.css', 'onboarding.css', 'diagnostics.css', 'settings.css'];
+const scripts = ['core.js', 'i18n.js', 'replays.js', 'diagnostics.js', 'onboarding.js', 'desktop.js', 'app.js'];
+const styles = ['style.css', 'wizard.css', 'overview.css', 'onboarding.css', 'diagnostics.css', 'settings.css', 'compact.css'];
 
 test('HTML loads every local module in dependency order', () => {
   const loaded = [...html.matchAll(/<script defer src="\.\/assets\/([^"]+)"\s*><\/script>/g)].map(m => m[1]);

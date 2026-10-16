@@ -2,7 +2,15 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.8.0
+## What's new in v0.9.0
+
+- Wails/WebView2 is now the default Windows desktop shell, starting at 520×740 with width constrained to 480–560 logical pixels.
+- Custom draggable title bar with minimize, hide to tray, and close. The tray offers Open and Exit; hiding continues monitoring, while closing retains the existing safety confirmation and saved Prediction.
+- H application icon, Windows version resources and PerMonitorV2 manifest; compact Home, History, Settings and setup wizard using the existing interface and Go engine.
+- BrowserFallback remains a separate build and CI artifact. Desktop requires WebView2 Evergreen Runtime; no automatic installation occurs.
+- Both configurations run Go tests/vet and all JavaScript tests before packaging. Dependencies' license notices are included in the ZIP.
+
+## Match safety carried forward from v0.8.0
 
 - Public Twitch Client ID can be embedded by the release workflow; connect using Device Code without creating your own app.
 - BattleLobby parser with four real fixture builds: 89566, 89754, 90670 and 93640.
@@ -32,8 +40,8 @@ Start with simulation. When verification is incomplete, check the diagnosis on H
 __HASH__  HotS-Twitch-Companion.exe
 ```
 
-The interface uses Microsoft Edge app mode, with default-browser fallback. No Node.js or Go installation is needed to run the EXE. Twitch tokens stay local under Windows DPAPI.
+The main EXE uses Microsoft WebView2 Evergreen Runtime. No Node.js or Go installation is needed to run the EXE. Twitch tokens stay local under Windows DPAPI. Close any old v0.8.0 instance before launching; old builds do not honor the new profile lock.
 
-Automated tests include a real BattleLobby/StormReplay pair, mocked Twitch transitions and the real local HTTP server startup/shutdown. Visible Edge-window behavior and live Twitch payouts have not been manually smoke-tested. Complete that validation before treating the release as verified for a live channel. The EXE is unsigned.
+Automated tests include real BattleLobby/StormReplay data, mocked Twitch transitions, local server startup/shutdown, guarded tray requests and native window controls. Live Twitch payouts are not part of UI smoke-tests. Validate simulation and tray behavior on your Windows/DPI setup before a live channel. The EXE is unsigned.
 
 Unofficial fan-made software, not affiliated with Blizzard Entertainment or Twitch.

@@ -229,6 +229,7 @@ async function checkReplayRoot(){
 }
 
 window.addEventListener('DOMContentLoaded',async()=>{
+ initDesktopShell();
  document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.view)));
  $('nav').addEventListener('keydown',handleTabKeyDown);
  document.querySelectorAll('[data-goto]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.goto)));

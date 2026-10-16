@@ -43,7 +43,7 @@ func TestDesktopServerStartsServesUIAndExits(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if response.StatusCode != 200 || status["version"] != "0.8.0" || status["active"] != false {
+		if response.StatusCode != 200 || status["version"] != appVersion || status["active"] != false {
 			t.Fatalf("bad startup status: %+v", status)
 		}
 		parsed, err := url.Parse(root)

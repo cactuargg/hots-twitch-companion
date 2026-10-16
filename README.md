@@ -1,6 +1,8 @@
-# HotS Twitch Companion v0.8.0
+# HotS Twitch Companion v0.9.0
 
-v0.8.0 adds durable outcome recovery, exact Twitch status verification and queued
+v0.9.0 adds a compact 520 px Wails/WebView2 desktop window, custom title bar, H icon and system tray. See [Desktop controls and build instructions](docs/compact-desktop.ru.md).
+
+The v0.8.0 engine provides durable outcome recovery, exact Twitch status verification and queued
 next-match lobbies without the old two-minute cooldown. Unknown POST results are
 never automatically recreated for the same lobby. An unconfirmed Win/Loss/Cancel
 is preserved across restart; conflicting decisions are blocked until reconciled.
@@ -13,7 +15,7 @@ a fresh in-game timestamp and a unique replay candidate. Only fixture-verified
 builds 89566, 89754, 90670 and 93640 are supported. See [format research and fixture
 provenance](testdata/battlelobby/README.md) and [correlation rules](docs/match-correlation.ru.md).
 
-Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface. The gaming visuals and decorative panels were removed. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. A separate desktop window is opened through the installed Microsoft Edge in `--app` mode; without Edge, your default browser is used. **[Читать на русском](README.ru.md)**
+Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface. The gaming visuals and decorative panels were removed. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. The desktop window uses Microsoft WebView2 Evergreen Runtime. A separate browser fallback build uses Edge app mode or the default browser. **[Читать на русском](README.ru.md)**
 
 The app watches local Heroes of the Storm files, and when a match starts it creates a **Twitch Prediction** ("HotS win?"). When the match ends, the replay is parsed, the tracked player's win/loss is determined, and the Prediction resolves automatically.
 
@@ -48,11 +50,9 @@ If you already finished the Prediction through Twitch while the app still shows 
 
 ## Compact desktop and Windows display scaling
 
-The Edge app now starts at **1024×800** instead of 1440×950 (the window remains resizable). Spacing and card dimensions are reduced without shrinking text everywhere, and content reflows instead of forcing horizontal scrolling in narrow windows.
+Desktop starts at **520×740**, resizes between 480 and 560 logical pixels in width, and supports Windows DPI scaling. The custom title bar provides minimize, hide to tray, and close. Hiding keeps monitoring active; closing keeps the existing confirmation and saves any active Prediction. Click the tray icon or Open to restore; Exit uses the same close confirmation.
 
-Responsive CSS addresses effective viewport widths caused by **125–150% Windows display scaling** and browser zoom. Stop Monitoring is visually distinct from Start. While an app request runs, conflicting action buttons are disabled and the activated button shows a progress indicator; controls recover after success or failure. The OS reduced-motion preference is honored.
-
-Automated checks cover CSS breakpoints and interactive busy states, but cannot replace manual visual review on a high-DPI Windows desktop.
+[Desktop details, prerequisites and validation](docs/compact-desktop.ru.md). BrowserFallback keeps the previous responsive interface.
 
 ## Twitch login without entering a Client ID
 
@@ -155,7 +155,7 @@ go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .
 
 Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .`
 
-Go 1.25+. Optional Desktop Pilot uses Wails v2/WebView2; the default browser binary uses the standard library. See [Desktop Pilot](docs/desktop-shell.ru.md) and run `./build-desktop.ps1` for the separate pilot package. `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
+Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the browser package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
 ## Tests
 
