@@ -443,7 +443,7 @@ func findOutcome(r Replay, playerName, toon, lang string) (Player, error) {
 		}
 	}
 	if len(matches) != 1 {
-		return Player{}, fmt.Errorf(tr(lang, "replay.player_matches", len(matches)))
+		return Player{}, errors.New(tr(lang, "replay.player_matches", len(matches)))
 	}
 	if matches[0].Result == "unknown" {
 		return Player{}, errors.New(tr(lang, "replay.unknown_outcome"))

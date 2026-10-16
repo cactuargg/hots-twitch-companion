@@ -155,7 +155,7 @@ go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .
 
 Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion.exe .`
 
-Go 1.23, standard library only, no dependencies. `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
+Go 1.25+. Optional Desktop Pilot uses Wails v2/WebView2; the default browser binary uses the standard library. See [Desktop Pilot](docs/desktop-shell.ru.md) and run `./build-desktop.ps1` for the separate pilot package. `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
 ## Tests
 

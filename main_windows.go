@@ -1,4 +1,4 @@
-//go:build windows
+//go:build windows && !wails
 
 package main
 
@@ -6,8 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
-	"unsafe"
 )
 
 func launchDesktop(url string) error {
@@ -34,34 +32,6 @@ func launchDesktop(url string) error {
 	// Fallback: default browser opens the same local UI without installing anything.
 	return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", url).Start()
 }
-func showError(message string) {
-	dll := syscall.NewLazyDLL("user32.dll")
-	f := dll.NewProc("MessageBoxW")
-	text, _ := syscall.UTF16PtrFromString(message)
-	title, _ := syscall.UTF16PtrFromString("HotS Twitch Companion")
-	f.Call(0, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(title)), 0x10)
-}
 func main() {
-	p, err := pathsForUser()
-	if err != nil {
-		showError(err.Error())
-		return
-	}
-	if err = os.MkdirAll(p.dir, 0700); err != nil {
-		showError(err.Error())
-		return
-	}
-	cfg, err := readConfig(p)
-	if err != nil {
-		showError(tr(langEn, "error.read_config", err.Error()))
-		return
-	}
-	d, err := newDashboard(p, cfg)
-	if err != nil {
-		showError(tr(cfg.lang(), "error.startup", err.Error()))
-		return
-	}
-	if err = d.runDesktop(launchDesktop); err != nil {
-		showError(tr(cfg.lang(), "error.open_ui", err.Error()))
-	}
+	runWindowsApplication(func(d *dashboard) error { return d.runDesktop(launchDesktop) })
 }

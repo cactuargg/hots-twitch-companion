@@ -188,7 +188,7 @@ async function wizardAction(kind){
       res.textContent=t('wiz.p.ok',{res:x.selected.name+' → '+x.selected.result,map:x.map});
       await reloadReplays();
     }else if(kind==='console'){
-      window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');
+      openExternalLink('https://dev.twitch.tv/console/apps');
     }else if(kind==='auth'){
       const id=$('wz-client').value.trim();
       if(!id&&!state.status?.hasTwitchApp){
@@ -209,7 +209,7 @@ async function wizardAction(kind){
         toast(t('toast.auth_code'));
       }
     }else if(kind==='activate'){
-      window.open(code.authUrl,'_blank','noopener,noreferrer');
+      openExternalLink(code.authUrl);
     }else if(kind==='copy-code'){
       await copyTwitchCode(true);
     }else if(kind==='start'){
