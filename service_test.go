@@ -98,10 +98,10 @@ func TestConfigLanguageAndPredictionWindow(t *testing.T) {
 	if got := post(map[string]any{"clientId": "123", "playerName": "Demo", "realMode": false, "confirmedRealMode": false}); got != 200 {
 		t.Fatalf("prepare config returned %d", got)
 	}
-	if err := d.engine.start(); err != nil {
-		t.Fatal(err)
-	}
-	defer d.engine.stopWatch()
+	// Test configuration locking without starting a Twitch network worker.
+	d.engine.mu.Lock()
+	d.engine.running = true
+	d.engine.mu.Unlock()
 	if got := post(map[string]any{"clientId": "123", "playerName": "Other", "realMode": false, "lang": "ru"}); got != 400 {
 		t.Fatalf("field change while running returned %d", got)
 	}

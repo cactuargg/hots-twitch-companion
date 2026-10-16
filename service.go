@@ -545,10 +545,6 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				requestError(w, err)
 				return
 			}
-			if body.RealMode && !body.ConfirmedRealMode {
-				requestError(w, errors.New(d.tr("config.confirm_real")))
-				return
-			}
 			if body.Lang != "" && normalizeLang(body.Lang) != body.Lang {
 				requestError(w, errors.New(d.tr("config.lang_invalid")))
 				return
@@ -574,7 +570,7 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 				requestError(w, errors.New(d.tr("config.too_long")))
 				return
 			}
-			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: body.RealMode, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin, WizardDone: body.WizardDone, PredictionTitle: strings.TrimSpace(body.PredictionTitle), PredictionWin: strings.TrimSpace(body.PredictionWin), PredictionLoss: strings.TrimSpace(body.PredictionLoss)}
+			cfg := Config{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: true, Lang: normalizeLang(body.Lang), PredictionWindowMin: body.PredictionWindowMin, WizardDone: body.WizardDone, PredictionTitle: strings.TrimSpace(body.PredictionTitle), PredictionWin: strings.TrimSpace(body.PredictionWin), PredictionLoss: strings.TrimSpace(body.PredictionLoss)}
 			if err := d.engine.updateConfig(cfg); err != nil {
 				requestError(w, err)
 				return
@@ -649,6 +645,28 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
    jsonOutput(w, 200, map[string]any{"ok": true})
    return
 		case "automation/start":
+			var body struct {
+				ConfirmedRealMode bool `json:"confirmedRealMode"`
+			}
+			if err := readJSONRequest(r, &body); err != nil {
+				requestError(w, err)
+				return
+			}
+			if !body.ConfirmedRealMode {
+				requestError(w, errors.New(d.tr("config.confirm_real")))
+				return
+			}
+			d.engine.mu.Lock()
+			tw := d.engine.twitch
+			live := d.engine.cfg.RealMode
+			d.engine.mu.Unlock()
+			tw.mu.Lock()
+			connected := tw.token.AccessToken != "" && tw.login != ""
+			tw.mu.Unlock()
+			if !live || !connected {
+				requestError(w, errors.New(d.tr("automation.need_twitch")))
+				return
+			}
 			if err := d.engine.start(); err != nil {
 				requestError(w, err)
 				return

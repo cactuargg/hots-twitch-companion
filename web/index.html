@@ -155,8 +155,6 @@
               <div class="prediction-options"><span id="preview-win">…</span><span id="preview-loss">…</span></div>
               <small id="preview-duration">…</small>
             </div>
-            <label class="check-row settings-real-mode"><input id="realMode" type="checkbox"/><span><strong data-i18n="settings.real">Разрешить реальные Twitch Predictions</strong><small data-i18n="settings.real.sub">Используются настоящие баллы зрителей. Включай после проверки симуляции.</small></span></label>
-            <p id="settings-real-warning" class="settings-real-warning" hidden data-i18n="minimal.settings.realPending">Реальный режим будет включён после сохранения и подтверждения.</p>
           </section>
         </div>
 
@@ -245,7 +243,7 @@
         </section>
         <section data-step="1">
           <h3 data-i18n="onboarding.simple.twitch">Подключение Twitch</h3>
-          <p class="secondary" data-i18n="onboarding.simple.twitchHelp">Для настоящих Predictions нужен Twitch. Для безопасной симуляции этот шаг можно пропустить.</p>
+          <p class="secondary" data-i18n="onboarding.simple.twitchHelp">Подключи Twitch-канал, на котором будут создаваться Predictions.</p>
           <p id="wz-twitch-status" class="twitch-onboarding-state" role="status">…</p>
           <button type="button" class="btn btn-outline" data-wiz="auth" data-i18n="twitch.connect">Подключить Twitch</button>
           <details class="wizard-disclosure" id="wz-twitch-details">
@@ -266,11 +264,11 @@
         </section>
         <section data-step="2">
           <h3 data-i18n="onboarding.simple.ready">Готово к запуску</h3>
-          <p class="secondary" data-i18n="onboarding.simple.readyHelp">Сначала запустим симуляцию: баллы зрителей не используются. Реальный режим можно включить позже в настройках.</p>
+          <p class="secondary" data-i18n="onboarding.simple.readyHelp">Запуск включает настоящие Twitch Predictions с баллами зрителей.</p>
           <div class="wizard-ready">
             <div><span data-i18n="wiz.f.player">Игрок</span><strong id="wz-ch-player">…</strong></div>
             <div><span>Twitch</span><strong id="wz-ch-twitch">…</strong></div>
-            <div><span data-i18n="settings.mode">Режим</span><strong id="wz-ch-monitor" data-i18n="minimal.simMode">Симуляция</strong></div>
+            <div><span>Twitch Predictions</span><strong id="wz-ch-monitor" data-i18n="minimal.realDetail">Баллы зрителей</strong></div>
           </div>
           <details class="wizard-disclosure">
             <summary data-i18n="onboarding.simple.preview">Посмотреть пример Prediction</summary>
@@ -281,7 +279,7 @@
               <small id="wz-preview-duration">…</small>
             </div>
           </details>
-          <p id="wz-safe-note" class="wizard-safe-note" data-i18n="onboarding.simple.safe">Симуляция не создаёт Predictions на Twitch.</p>
+          <p id="wz-safe-note" class="wizard-safe-note" data-i18n="onboarding.simple.safe">Используются настоящие баллы зрителей. Запуск требует твоего подтверждения.</p>
         </section>
       </div>
       <footer class="wizard-foot">

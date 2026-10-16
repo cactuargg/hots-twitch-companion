@@ -63,6 +63,10 @@ func loadDesktopDashboard(dataDir string) (*dashboard, func(), error) {
 		release()
 		return nil, nil, errors.New(tr(langEn, "error.read_config", err.Error()))
 	}
+	if err := migrateLiveProfile(p, cfg); err != nil {
+		release()
+		return nil, nil, err
+	}
 	d, err := newDashboard(p, cfg)
 	if err != nil {
 		release()

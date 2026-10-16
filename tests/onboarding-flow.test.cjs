@@ -41,6 +41,7 @@ function setup(){
   const ctx={
     $,document:doc,state,
     t:(key,vars)=>vars?key+':'+JSON.stringify(vars):key,
+    confirm:()=>true,
     renderPlayerPickers(){},renderPredictionPreviews(){},render(){},
     toast(msg,err){ctx.lastToast={msg,err}},
     go(page){ctx.page=page},
@@ -62,11 +63,13 @@ function setup(){
     async copyTwitchCode(){},getInputs:()=>({...state.config})
   };
   vm.createContext(ctx);
+  const app=fs.readFileSync(path.join(root,'web/assets/app.js'),'utf8');
+  vm.runInContext(app.slice(app.indexOf('async function startAutomation('),app.indexOf('async function manualPrediction(')),ctx);
   vm.runInContext(source.slice(start),ctx);
   return {ctx,$,calls,state,sections,back};
 }
 
-test('Wizard has only three focused steps, optional Twitch and one final primary CTA',()=>{
+test('Wizard has three focused steps and a single explicit live launch CTA',()=>{
  const wizard=html.slice(html.indexOf('<div class="wizard-backdrop"'));
  assert.deepEqual([...wizard.matchAll(/<section data-step="(\d+)"/g)].map(m=>m[1]),['0','1','2']);
  assert.equal((wizard.match(/data-wiz="next"/g)||[]).length,1);
@@ -77,6 +80,17 @@ test('Wizard has only three focused steps, optional Twitch and one final primary
  assert.ok(wizard.includes('id="wz-preview-title"'));
  const labels=[...wizard.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  assert.equal(labels.length,new Set(labels).size,'Duplicate wizard IDs');
+});
+
+test('Cancelling launch or missing Twitch never starts Predictions or finishes setup',async()=>{
+ for(const connected of [false,true]){
+  const {ctx,$,calls,state}=setup();ctx.openWizard();$('wz-player').value='Streamer';
+  vm.runInContext('wiz.step=2',ctx);state.status.connected=connected;ctx.confirm=()=>false;
+  assert.equal(await ctx.wizNext(),false);
+  assert.equal(calls.some(c=>c.route==='automation/start'),false);
+  assert.equal(state.config.wizardDone,false);
+  assert.equal($('wizard').hidden,false);
+ }
 });
 
 test('Player selection is required for next, but replay parsing is optional',async()=>{
@@ -94,11 +108,14 @@ test('Player selection is required for next, but replay parsing is optional',asy
  assert.equal(vm.runInContext('wiz.step',ctx),1);
 });
 
-test('Twitch step can be skipped without Client ID or authorization',async()=>{
- const {ctx,$,calls}=setup();
+test('Twitch connection is required before proceeding to live launch',async()=>{
+ const {ctx,$,calls,state}=setup();
  ctx.openWizard();
  $('wz-player').value='HotSStreamer';
  await ctx.wizNext();
+ assert.equal(await ctx.wizNext(),false);
+ assert.equal(vm.runInContext('wiz.step',ctx),1);
+ state.status.connected=true;
  assert.equal(await ctx.wizNext(),true);
  assert.equal(vm.runInContext('wiz.step',ctx),2);
  assert.equal(calls.filter(c=>c.route==='auth').length,0);
@@ -116,26 +133,27 @@ test('Twitch connect with no Client ID reveals the exact field, not an API reque
  assert.equal(calls.length,0);
 });
 
-test('Start persists simulation first, then starts automation, then marks wizard complete',async()=>{
+test('Start confirms real Predictions, starts automation and marks setup complete',async()=>{
  const {ctx,$,calls,state}=setup();
  ctx.openWizard();
  $('wz-player').value='HotSStreamer';
  vm.runInContext('wiz.step=2',ctx);
- // Existing persisted live-mode config must be safely downgraded before starting.
+ state.status.connected=true;
  state.config.realMode=true;
  $('realMode').checked=true;
  assert.equal(await ctx.wizNext(),true);
  assert.equal(calls[0].type,'save');
- assert.equal(calls[0].payload.realMode,false);
+ assert.notEqual(calls[0].payload.realMode,false);
  assert.equal(calls[1].route,'automation/start');
+ assert.equal(calls[1].data.confirmedRealMode,true);
  assert.equal(calls[2].route,'config');
  assert.equal(calls[2].data.wizardDone,true);
- assert.equal(calls[2].data.realMode,false);
+ assert.equal(calls[2].data.realMode,true);
  assert.equal($('wizard').hidden,true);
  assert.equal(ctx.page,'dashboard');
 });
 
-test('A running live Prediction blocks switching to simulation from wizard',async()=>{
+test('A running monitor cannot be started again from wizard',async()=>{
  const {ctx,$,calls,state}=setup();
  ctx.openWizard();
  $('wz-player').value='HotSStreamer';
@@ -165,6 +183,7 @@ test('Failure to start leaves wizard open and never marks setup completed',async
  const {ctx,$,calls,state}=setup();
  ctx.openWizard();
  $('wz-player').value='HotSStreamer';
+ state.status.connected=true;
  vm.runInContext('wiz.step=2',ctx);
  ctx.api=async(route,method,data)=>{
    calls.push({type:'api',route,data});

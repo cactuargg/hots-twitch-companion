@@ -18,6 +18,7 @@ func normalizeLang(s string) string {
 
 var messages = map[string]map[string]string{
 	langEn: {
+		"automation.need_twitch": "Connect Twitch before starting Predictions.",
 		"reset.busy": "Stop monitoring and finish the active Prediction before resetting data.",
 		"reset.confirm_required": "Confirm the profile reset first.",
 		"shell.open": "Open",
@@ -109,6 +110,7 @@ var messages = map[string]map[string]string{
 		"error.open_ui":               "Could not open the interface: %s",
 	},
 	langRu: {
+		"automation.need_twitch": "Подключи Twitch перед запуском Predictions.",
 		"reset.busy": "Останови мониторинг и заверши активный Prediction перед сбросом данных.",
 		"reset.confirm_required": "Сначала подтверди сброс данных.",
 		"shell.open": "Открыть",

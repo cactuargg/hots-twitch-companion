@@ -104,7 +104,7 @@ function renderWizard(){
   $('wz-ch-twitch').textContent=st.connected?
     (st.channel?'@'+st.channel:t('overview.twitch.connected')):
     t('onboarding.simple.twitchOptional');
-  $('wz-ch-monitor').textContent=t('minimal.simMode');
+  $('wz-ch-monitor').textContent=t('minimal.realDetail');
   // Client ID stays a developer-only fallback when the EXE has its own OAuth app.
   $('wz-twitch-details').hidden=!!st.hasTwitchApp&&!$('wz-client').value.trim();
   const twitch=st.twitchPhase||'disconnected';
@@ -133,7 +133,7 @@ async function wizardSkip(){
     // Mark the wizard dismissed without committing unrelated draft Settings fields.
     const cfg=state.config||getInputs();
     const x=await api('config','POST',{
-      ...cfg,wizardDone:true,confirmedRealMode:!!cfg.realMode
+      ...cfg,wizardDone:true,realMode:true,confirmedRealMode:true
     });
     state.config=x.config;
     closeWizard();
@@ -160,6 +160,7 @@ async function wizNext(){
       $('playerName').value=name;
       await save();
     }else if(wiz.step===1){
+      if(!state.status?.connected){toast(t('onboarding.simple.needTwitch'),true);return false}
       const id=$('wz-client').value.trim();
       if(id!==$('clientId').value.trim()){
         $('clientId').value=id;
@@ -220,18 +221,16 @@ async function wizardAction(kind){
         toast(t('onboarding.simple.needPlayer'),true);
         return false;
       }
-      if(state.status?.running&&state.status?.realMode){
+      if(state.status?.running){
         toast(t('onboarding.simple.liveRunning'),true);
         return false;
       }
       $('playerName').value=name;
-      // Make the mode safe on disk *before* requesting monitoring.
-      await save({realMode:false});
-      if(!state.status?.running){
-        await api('automation/start','POST',{});
-      }
+      if(!state.status?.connected){wiz.step=1;renderWizard();toast(t('onboarding.simple.needTwitch'),true);return false}
+      await save();
+      if(!await startAutomation())return false;
       const x=await api('config','POST',{
-        ...state.config,wizardDone:true,realMode:false,confirmedRealMode:false
+        ...state.config,wizardDone:true,realMode:true,confirmedRealMode:true
       });
       state.config=x.config;
       state.hasUnsaved=false;
