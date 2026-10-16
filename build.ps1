@@ -1,4 +1,4 @@
-# Build HotS Twitch Companion v0.9.5 from source on Windows.
+# Build HotS Twitch Companion v0.9.6 from source on Windows.
 # Requires Go 1.25+ and Node.js 18+ on PATH for tests; app users do not need Node.
 param([switch]$BrowserFallback)
 $ErrorActionPreference = 'Stop'
