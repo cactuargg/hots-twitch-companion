@@ -319,7 +319,7 @@ func decodeBattleLobby(raw []byte) (BattleLobby, error) {
 		r.skip(4)
 		build := int(r.bits(32))
 		// Extend this list only with a real fixture verifying the new layout.
-		knownBuild := build == 89566 || build == 89754 || build == 90670 || build == 93640
+		knownBuild := build == 89566 || build == 89754 || build == 90670 || build == 93640 || build == 98348
 		if !knownBuild || (out.Build != 0 && out.Build != build) {
 			return fail("unsupported or inconsistent client build")
 		}
