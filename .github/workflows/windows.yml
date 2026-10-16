@@ -37,9 +37,68 @@ jobs:
 
       - name: Build Windows x64 GUI executable
         shell: pwsh
+        env:
+          TWITCH_CLIENT_ID: ${{ vars.TWITCH_CLIENT_ID }}
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          go build -trimpath '-ldflags=-H=windowsgui -s -w' -o dist/HotS-Twitch-Companion.exe .
+          $ldflags = '-H=windowsgui -s -w'
+          $publicId = $env:TWITCH_CLIENT_ID
+          if ($publicId) {
+            if ($publicId -notmatch '^[a-zA-Z0-9]{10,80}
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+          Copy-Item README.md dist/README.md
+          Copy-Item README.ru.md dist/README.ru.md
+          Copy-Item LICENSE dist/LICENSE
+          $hash = (Get-FileHash dist/HotS-Twitch-Companion.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  HotS-Twitch-Companion.exe" | Set-Content dist/SHA256SUMS.txt -Encoding utf8
+          Copy-Item dist/SHA256SUMS.txt SHA256SUMS.txt
+          Copy-Item dist/HotS-Twitch-Companion.exe HotS-Twitch-Companion.exe
+          # Fill the release description: tag and exe hash are injected automatically.
+          $tag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { 'dev' }
+          $notes = (Get-Content .github/RELEASE_NOTES_TEMPLATE.md -Raw) -replace '__TAG__', $tag -replace '__HASH__', $hash
+          $notes | Set-Content dist/RELEASE_NOTES.md -Encoding utf8
+          Copy-Item dist/RELEASE_NOTES.md RELEASE_NOTES.md
+          Compress-Archive -Path dist/HotS-Twitch-Companion.exe,dist/README.md,dist/README.ru.md,dist/LICENSE,dist/SHA256SUMS.txt -DestinationPath HotS-Twitch-Companion-windows-x64.zip -Force
+
+      - name: Upload compiled package
+        uses: actions/upload-artifact@v4
+        with:
+          name: HotS-Twitch-Companion-Windows-x64
+          path: |
+            HotS-Twitch-Companion-windows-x64.zip
+            SHA256SUMS.txt
+            HotS-Twitch-Companion.exe
+            RELEASE_NOTES.md
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tested Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: HotS-Twitch-Companion-Windows-x64
+          path: package
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            package/HotS-Twitch-Companion.exe \
+            package/HotS-Twitch-Companion-windows-x64.zip \
+            package/SHA256SUMS.txt \
+            --verify-tag --generate-notes --notes-file package/RELEASE_NOTES.md
+) { throw 'Invalid TWITCH_CLIENT_ID repository variable' }
+            $ldflags += " -X main.defaultTwitchClientID=$publicId"
+          }
+          go build -trimpath "-ldflags=$ldflags" -o dist/HotS-Twitch-Companion.exe .
           if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
           Copy-Item README.md dist/README.md
           Copy-Item README.ru.md dist/README.ru.md
