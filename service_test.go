@@ -351,6 +351,34 @@ func TestDashboardPhases(t *testing.T) {
 	}
 }
 
+func TestConfigSaveKeepsVerifiedTwitchIdentity(t *testing.T) {
+	dir := t.TempDir()
+	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
+	d, err := newDashboard(p, Config{RealMode: true})
+	if err != nil { t.Fatal(err) }
+	// Completed device authorization: token persisted, identity verified.
+	tok := Token{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600, SavedAt: time.Now().Unix()}
+	d.engine.twitch.mu.Lock()
+	if err := d.engine.twitch.saveToken(tok); err != nil { t.Fatal(err) }
+	d.engine.twitch.login = "demo"
+	d.engine.twitch.broadcasterID = "42"
+	d.engine.twitch.mu.Unlock()
+	// Saving settings (e.g. finishing setup or the launch step) rebuilds the
+	// Twitch client from disk; the verified login must survive it.
+	if err := d.engine.updateConfig(Config{RealMode: true, WizardDone: true}); err != nil { t.Fatal(err) }
+	st := d.status()
+	if st["connected"] != true || st["twitchPhase"] != "connected" || st["channel"] != "demo" {
+		t.Fatalf("config save dropped the verified Twitch identity: %#v", st)
+	}
+	// Switching to another OAuth application invalidates the identity: the
+	// stored token belongs to the previous app and must be re-authorized.
+	if err := d.engine.updateConfig(Config{ClientID: "other-app", RealMode: true, WizardDone: true}); err != nil { t.Fatal(err) }
+	st = d.status()
+	if st["connected"] != false || st["channel"] != "" {
+		t.Fatalf("identity must not survive an OAuth app change: %#v", st)
+	}
+}
+
 func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
