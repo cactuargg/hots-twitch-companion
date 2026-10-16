@@ -92,6 +92,7 @@ type Prediction struct {
 }
 type State struct {
 	Active           *Prediction `json:"active"`
+	LastLobby        *LobbySnapshot `json:"lastLobby,omitempty"`
 	LastLobbyKey     string      `json:"lastLobbyKey"`
 	LastSettlementAt int64       `json:"lastSettlementAt"`
 	LastResult       string      `json:"lastResult"`
@@ -785,6 +786,12 @@ func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *str
 	if err == nil && key != s.LastLobbyKey && now.Sub(modified) > 2500*time.Millisecond && now.Sub(modified) < 120*time.Second {
 		// Only react to a new/changed lobby *after* watch began.
 		if !modified.Before(started.Add(-2 * time.Second)) {
+			// Persist observations separately; they do not establish match identity.
+			s.LastLobby = captureBattleLobby(path)
+			if er := e.updateAndSave(s); er != nil {
+				e.report("error", "lobby_save", er.Error())
+				return
+			}
 			if s.Active == nil && now.Sub(time.UnixMilli(s.LastSettlementAt)) > 2*time.Minute {
 				if er := e.doCreate(ctx, &s); er != nil {
 					e.report("error", "prediction_create", tr(e.cfg.lang(), "log.create_error", er.Error()))
