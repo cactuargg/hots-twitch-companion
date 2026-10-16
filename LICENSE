@@ -1,6 +1,8 @@
 MIT License
 
 Copyright (c) 2026 HotS Twitch Companion contributors
+Copyright (c) 2020 - 2026 Kevin Oliva (BattleLobby layout adapted from
+HeroesToolChest/Heroes.StormReplayParser; fixtures in testdata/battlelobby)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

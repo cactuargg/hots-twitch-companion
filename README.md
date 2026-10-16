@@ -1,5 +1,10 @@
 # HotS Twitch Companion v0.7.0
 
+BattleLobby observations persist the latest roster in `state.json`. Only
+fixture-verified builds 89566, 89754, 90670 and 93640 are supported. These observations
+do not participate in Prediction settlement. See [format research and fixture
+provenance](testdata/battlelobby/README.md) for the exact scope and limitations.
+
 Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface. The gaming visuals and decorative panels were removed. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. A separate desktop window is opened through the installed Microsoft Edge in `--app` mode; without Edge, your default browser is used. **[Читать на русском](README.ru.md)**
 
 The app watches local Heroes of the Storm files, and when a match starts it creates a **Twitch Prediction** ("HotS win?"). When the match ends, the replay is parsed, the tracked player's win/loss is determined, and the Prediction resolves automatically.

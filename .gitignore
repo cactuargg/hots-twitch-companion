@@ -4,6 +4,7 @@
 /dist/
 /release/
 /coverage.out
+/.research/
 *.test
 
 # Local application data and sensitive Twitch tokens
