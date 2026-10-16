@@ -1,0 +1,53 @@
+/* Native window only: browser fallback keeps its responsive layout. */
+.window-controls{display:none}
+.desktop .shell{padding:0 18px 14px;max-width:none}
+.desktop .topbar{height:46px;gap:8px;--wails-draggable:drag;user-select:none;position:sticky;top:0;z-index:10;background:var(--bg)}
+.desktop .brand{font-size:13px;gap:8px;letter-spacing:-.25px;min-width:0}
+.desktop .brand-mark{width:23px;height:23px;border-radius:6px;background:none;flex-shrink:0}
+.brand-mark img{display:block;width:100%;height:100%}
+.desktop .brand-sub{display:inline;color:var(--muted-strong)}
+.desktop .topbar .status-chip{display:none}
+.desktop .window-controls{display:flex;align-self:stretch;margin-right:-12px;--wails-draggable:no-drag}
+.window-controls button{width:34px;min-height:36px;padding:0;border:0;border-radius:0;background:transparent;color:var(--muted-strong);display:grid;place-items:center;--wails-draggable:no-drag}
+.window-controls button:hover{background:var(--surface-hover);color:var(--ink)}
+.window-controls .window-close:hover{background:#94394c;color:white}
+.window-controls svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;pointer-events:none}
+.desktop .tabbar{height:43px;gap:24px}
+.desktop .tab{font-size:12px;min-height:40px}
+.desktop .main{margin-top:18px;min-height:0}
+.desktop .view-heading{margin-bottom:15px}
+.desktop .view-heading h1{font-size:21px;letter-spacing:-.4px}
+.desktop .view-heading p{font-size:12px;margin-top:5px}
+.desktop #view-dashboard>.view-heading{display:none}
+.desktop .overview-command{padding:18px}
+.desktop .overview-command-eyebrow{font-size:10px}
+.desktop .overview-heading{margin:9px 0 8px;gap:9px}
+.desktop .overview-heading h2{font-size:23px}
+.desktop .overview-description{font-size:12px;margin-bottom:15px}
+.desktop .overview-command-actions{gap:10px;flex-direction:column;align-items:stretch}
+.desktop .overview-toggle{width:100%}
+.desktop .mode-indicator{font-size:11px;gap:6px}
+.desktop .mode-indicator strong{font-size:11px}
+.desktop .section-heading{margin:18px 0 9px;font-size:11px}
+.desktop .summary-row{min-height:43px;padding:11px 14px;font-size:12px;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)}
+.desktop .overview-detail{align-items:flex-start;gap:8px;font-size:11px;flex-direction:column;padding-top:12px}
+.desktop .overview-detail>span{white-space:normal;overflow-wrap:anywhere}
+.desktop .overview-detail .text-action{font-size:11px;align-self:flex-end}
+.desktop .footer{margin-top:14px;padding-top:12px}
+.desktop .settings-card{padding:16px}
+.desktop .settings-stack{gap:10px}
+.desktop .settings-savebar{padding:10px;bottom:0}
+.desktop .content-panel{padding:16px}
+.desktop .head-actions{gap:8px;margin-top:12px}
+.desktop .head-actions .btn{flex:1;white-space:normal;min-width:0;font-size:12px}
+.desktop .prediction-manual{padding:15px;margin-top:12px}
+.desktop .match-head{padding:13px 0;gap:8px}
+.desktop .match-head small{max-width:100%}
+.desktop .wizard{max-width:calc(100vw - 24px);max-height:calc(100vh - 24px)}
+.desktop .toast{max-width:calc(100vw - 24px)}
+@media(max-width:490px){
+ .desktop .shell{padding-inline:14px}
+ .desktop .brand-sub{font-size:12px}
+ .desktop .brand{gap:6px}
+ .desktop .tabbar{gap:20px}
+}

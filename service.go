@@ -46,6 +46,7 @@ type playerSummary struct {
 }
 
 type dashboard struct {
+	hideToTray                            func() error
 	mu                                    sync.Mutex
 	engine                                *Engine
 	p                                     paths
@@ -647,6 +648,17 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 		case "quit":
 			d.engine.stopWatch()
 			d.shutdownOnce.Do(func() { close(d.shutdown) })
+			jsonOutput(w, 200, map[string]bool{"ok": true})
+			return
+		case "window/hide":
+			if d.hideToTray == nil {
+				jsonOutput(w, 400, map[string]string{"error": "Desktop shell unavailable"})
+				return
+			}
+			if err := d.hideToTray(); err != nil {
+				jsonOutput(w, 503, map[string]string{"error": err.Error()})
+				return
+			}
 			jsonOutput(w, 200, map[string]bool{"ok": true})
 			return
 		default:

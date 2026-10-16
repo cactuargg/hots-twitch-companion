@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -43,6 +44,43 @@ func TestNativeTransportRetainsSecurityGuards(t *testing.T) {
 				t.Fatal("adapter mutated caller URL")
 			}
 		})
+	}
+}
+
+func TestHideToTrayUsesSameGuardsAndNeverTouchesPrediction(t *testing.T) {
+	d := manualDashboard(t, Config{})
+	d.engine.state.Active = &Prediction{ID: "keep"}
+	h, err := d.nativeAssetHandler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	d.hideToTray = func() error { calls++; return nil }
+	for _, tc := range []struct {
+		origin, header string
+		want           int
+	}{
+		{"https://evil.test", "1", 403}, {"http://" + desktopHost, "", 403}, {"http://" + desktopHost, "1", 200},
+	} {
+		r := httptest.NewRequest("POST", "http://"+desktopHost+"/api/window/hide", strings.NewReader("{}"))
+		r.Header.Set("Origin", tc.origin)
+		r.Header.Set("X-Companion", tc.header)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != tc.want {
+			t.Fatalf("hide: %d", w.Code)
+		}
+	}
+	if calls != 1 || d.engine.state.Active.ID != "keep" {
+		t.Fatal("hide bypassed guards or changed prediction")
+	}
+	d.hideToTray = func() error { return errors.New("not ready") }
+	r := httptest.NewRequest("POST", "http://"+desktopHost+"/api/window/hide", nil)
+	r.Header.Set("X-Companion", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 503 {
+		t.Fatalf("unavailable tray: %d", w.Code)
 	}
 }
 

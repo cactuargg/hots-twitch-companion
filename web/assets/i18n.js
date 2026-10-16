@@ -1,6 +1,9 @@
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'shell.minimize':'Minimize',
+  'shell.tray':'Hide to tray — monitoring continues',
+  'shell.close':'Close application',
   'minimal.settings.clientOverride':'This app already has a Twitch Client ID. Leave the field empty to use it. Add your own ID only if you intentionally use a different Twitch app.',
   'replay.scan.checking':'Checking saved replay files',
   'manual.pending':'Awaiting Twitch confirmation: {outcome}. Retry this outcome or Sync with Twitch.',
@@ -208,6 +211,9 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'shell.minimize':'Свернуть',
+  'shell.tray':'В трей — мониторинг продолжится',
+  'shell.close':'Закрыть приложение',
   'minimal.settings.clientOverride':'В приложении уже настроен Twitch Client ID. Оставь поле пустым, чтобы использовать его. Собственный ID нужен только для другой Twitch-интеграции.',
   'replay.scan.checking':'Проверяем сохранённые реплеи',
   'manual.pending':'Ожидаем подтверждения Twitch: {outcome}. Повтори этот исход или сверь состояние с Twitch.',

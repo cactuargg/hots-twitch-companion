@@ -18,6 +18,9 @@ func normalizeLang(s string) string {
 
 var messages = map[string]map[string]string{
 	langEn: {
+		"shell.open": "Open",
+		"shell.exit": "Exit",
+		"shell.tray_unavailable": "System tray is not ready. The window stays open.",
 		"shell.close_active": "Closing stops monitoring. Any active Prediction stays saved and is not canceled. Exit?",
 		"lifecycle.create_unconfirmed": "Prediction creation was not confirmed. Check Twitch; this lobby will not be retried automatically: %s",
 		"settle.pending_conflict": "A previous outcome is awaiting Twitch confirmation. Retry the same outcome or Sync with Twitch.",
@@ -104,6 +107,9 @@ var messages = map[string]map[string]string{
 		"error.open_ui":               "Could not open the interface: %s",
 	},
 	langRu: {
+		"shell.open": "Открыть",
+		"shell.exit": "Выход",
+		"shell.tray_unavailable": "Трей ещё не готов. Окно остаётся открытым.",
 		"shell.close_active": "Закрытие остановит мониторинг. Активный Prediction останется сохранённым и не будет отменён. Выйти?",
 		"lifecycle.create_unconfirmed": "Создание Prediction не подтверждено. Проверь Twitch; для этого лобби автоматического повтора не будет: %s",
 		"settle.pending_conflict": "Предыдущий исход ожидает подтверждения Twitch. Повтори тот же исход или сверь состояние с Twitch.",
