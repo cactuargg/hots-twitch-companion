@@ -143,7 +143,7 @@ async function manualPrediction(outcome){
 async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
  case 'save':await save();break;
  case 'auth':{
-   if(!$('clientId').value.trim()){
+   if(!$('clientId').value.trim()&&!state.status?.hasTwitchApp){
      go('settings');
      $('settings-advanced').open=true;
      $('clientId').focus();
