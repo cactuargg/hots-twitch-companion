@@ -604,6 +604,18 @@ func (e *Engine) updateConfig(cfg Config) error {
 	if er != nil {
 		return er
 	}
+	// newTwitch restores the persisted token but not the verified identity,
+	// which only identity() sets (app start or monitoring start). Saving
+	// settings must not drop the connected login while the OAuth application
+	// stays the same, or the UI bounces the user back to Twitch setup.
+	if e.cfg.twitchClientID() == cfg.twitchClientID() {
+		e.twitch.mu.Lock()
+		login, broadcaster := e.twitch.login, e.twitch.broadcasterID
+		e.twitch.mu.Unlock()
+		t.mu.Lock()
+		t.login, t.broadcasterID = login, broadcaster
+		t.mu.Unlock()
+	}
 	e.cfg = cfg
 	e.twitch = t
 	return nil
