@@ -9,7 +9,15 @@ try {
 
     New-Item -ItemType Directory -Force -Path 'dist' | Out-Null
     Write-Host 'Building Windows GUI EXE...'
-    & go build -trimpath '-ldflags=-H=windowsgui -s -w' -o 'dist/HotS-Twitch-Companion.exe' .
+    $ldflags = '-H=windowsgui -s -w'
+    $publicId = $env:TWITCH_CLIENT_ID
+    if ($publicId) {
+        if ($publicId -notmatch '^[A-Za-z0-9]+$' -or $publicId.Length -lt 10 -or $publicId.Length -gt 80) {
+            throw 'Invalid TWITCH_CLIENT_ID environment variable'
+        }
+        $ldflags += " -X main.defaultTwitchClientID=$publicId"
+    }
+    & go build -trimpath "-ldflags=$ldflags" -o 'dist/HotS-Twitch-Companion.exe' .
     if ($LASTEXITCODE -ne 0) { throw 'Go build failed' }
 
     Copy-Item 'README.md' 'dist/README.md' -Force

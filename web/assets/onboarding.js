@@ -105,6 +105,8 @@ function renderWizard(){
     (st.channel?'@'+st.channel:t('overview.twitch.connected')):
     t('onboarding.simple.twitchOptional');
   $('wz-ch-monitor').textContent=t('minimal.simMode');
+  // Client ID stays a developer-only fallback when the EXE has its own OAuth app.
+  $('wz-twitch-details').hidden=!!st.hasTwitchApp&&!$('wz-client').value.trim();
   const twitch=st.twitchPhase||'disconnected';
   $('wz-twitch-status').textContent=t('onboarding.twitch.'+twitch,{name:st.channel||''});
   $('wz-twitch-status').classList.toggle('verified',twitch==='connected');
@@ -189,7 +191,7 @@ async function wizardAction(kind){
       window.open('https://dev.twitch.tv/console/apps','_blank','noopener,noreferrer');
     }else if(kind==='auth'){
       const id=$('wz-client').value.trim();
-      if(!id){
+      if(!id&&!state.status?.hasTwitchApp){
         $('wz-twitch-details').open=true;
         $('wz-client').focus();
         toast(t('minimal.settings.clientRequired'),true);

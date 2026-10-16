@@ -41,6 +41,16 @@ Responsive CSS addresses effective viewport widths caused by **125–150% Window
 
 Automated checks cover CSS breakpoints and interactive busy states, but cannot replace manual visual review on a high-DPI Windows desktop.
 
+## Twitch login without entering a Client ID
+
+Official Windows builds can embed one **public** OAuth Client ID for HotS Twitch Companion. Set the repository's **Settings → Secrets and variables → Actions → Variables → TWITCH_CLIENT_ID**. The Windows workflow injects it via `-ldflags -X main.defaultTwitchClientID=...`; no OAuth Client Secret or user tokens are bundled into the EXE.
+
+Register a **Public** Twitch app for the Device Code Flow. Each user still authorizes their own channel on Twitch, and their tokens are stored locally using Windows DPAPI. For normal users the flow is just Connect Twitch, then approve access using the code on Twitch Activate.
+
+The build variable is optional for local or fork builds. If unset, users can enter their own Twitch Client ID in **Advanced settings**. If a built-in ID exists, leaving the field empty automatically uses it; a custom ID takes precedence. Changing apps requires Twitch reauthorization because tokens are bound to the Client ID.
+
+The Client ID is **not secret** and is extractable from any distributed EXE. Never commit or embed a Client Secret, access token or refresh token. Public Device Code refresh tokens are single-use and may require reauthorization after prolonged inactivity.
+
 ## Simplified first-run setup
 
 The first-run wizard now has **three focused steps**: (1) choose a HotS player from a replay or enter the nickname manually, (2) optionally connect Twitch, and (3) **start a safe simulation**. Twitch authorization is **not required to simulate**. Likewise, replay validation is optional until a finished match is available.

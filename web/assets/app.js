@@ -104,6 +104,9 @@ function render(s){
   mainButton.classList.toggle('is-stop',running);
   $('twitch-info').textContent=connected?t('twitch.info.on',{name}):view.twitch==='disconnected'?t('twitch.info.off'):twitchLabel;
   $('settings-connect-label').textContent=t(connected?'minimal.settings.reconnect':'twitch.connect');
+  const clientHintKey=st.hasTwitchApp?'minimal.settings.clientOverride':'onboarding.twitch.steps';
+  $('twitch-client-hint').dataset.i18n=clientHintKey;
+  $('twitch-client-hint').textContent=t(clientHintKey);
   renderSettingsDraft();
   if(st.authCode){
     $('auth-progress').hidden=false;
@@ -143,7 +146,7 @@ async function manualPrediction(outcome){
 async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
  case 'save':await save();break;
  case 'auth':{
-   if(!$('clientId').value.trim()){
+   if(!$('clientId').value.trim()&&!state.status?.hasTwitchApp){
      go('settings');
      $('settings-advanced').open=true;
      $('clientId').focus();
