@@ -48,7 +48,7 @@ function harness(){
  vm.runInContext(source.slice(from,end),context);
  return {context,get,btn};
 }
-test('simulation shows one action, latest match and no live warning',()=>{
+test('Home shows real viewer points with the latest match and one action',()=>{
  const {context,get,btn}=harness();
  context.state.replays=[{map:'Dragon Shire',result:'win'}];
  context.render({version:'0.9.0',running:true,active:false,realMode:false,connected:true,
@@ -59,7 +59,7 @@ test('simulation shows one action, latest match and no live warning',()=>{
  assert.equal(get('overview-twitch').textContent,'@demo');
  assert.equal(get('overview-last-map').textContent,'Dragon Shire');
  assert.equal(get('overview-last-outcome').textContent,'badge.win');
- assert.equal(get('overview-alert').hidden,true);
+ assert.equal(get('overview-alert').hidden,false);
  assert.equal(btn.dataset.action,'toggle');
  assert.equal(get('start-label').textContent,'start.stop');
 });
@@ -70,7 +70,7 @@ test('real viewer-point mode remains visibly warned; missing player opens setup'
    predictionWindowSecondsLeft:45,logs:[]});
  assert.equal(get('overview-alert').hidden,false);
  assert.equal(get('overview-alert').textContent,'minimal.twitchWarning');
- assert.equal(get('automation-mode').textContent,'minimal.realMode');
+ assert.equal(get('automation-mode').textContent,'Twitch Predictions');
  context.state.config={playerName:'',playerToonHandle:''};
  context.render({running:false,active:false,realMode:false,connected:false,
    twitchPhase:'disconnected',monitorPhase:'off',predictionPhase:'none',logs:[]});

@@ -1,4 +1,4 @@
-# Build HotS Twitch Companion v0.9.0 from source on Windows.
+# Build HotS Twitch Companion v0.9.1 from source on Windows.
 # Requires Go 1.25+ and Node.js 18+ on PATH for tests; app users do not need Node.
 param([switch]$BrowserFallback)
 $ErrorActionPreference = 'Stop'
@@ -41,7 +41,7 @@ try {
     & go build @buildTags -trimpath "-ldflags=$ldflags" -o "$out/$exeName" .
     if ($LASTEXITCODE -ne 0) { throw 'Go build failed' }
 
-    Copy-Item 'README.md','README.ru.md','LICENSE','THIRD_PARTY_NOTICES.txt','docs/compact-desktop.ru.md','docs/profile-reset.ru.md' $out -Force
+    Copy-Item 'README.md','README.ru.md','LICENSE','THIRD_PARTY_NOTICES.txt','docs/compact-desktop.ru.md','docs/profile-reset.ru.md','docs/live-predictions.ru.md' $out -Force
     $notes = (Get-Content '.github/RELEASE_NOTES_TEMPLATE.md' -Raw) -replace '__TAG__', $buildVersion
     if ($BrowserFallback) {
         $notes = $notes.Replace('The main EXE uses Microsoft WebView2 Evergreen Runtime.', 'This BrowserFallback EXE uses Microsoft Edge app mode or the default browser; it has no native title bar or tray and does not require WebView2 Runtime.')
@@ -49,7 +49,7 @@ try {
     $hash = (Get-FileHash "$out/$exeName" -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $exeName" | Set-Content "$out/SHA256SUMS.txt" -Encoding utf8
     ($notes -replace '__HASH__', $hash -replace 'HotS-Twitch-Companion.exe', $exeName -replace 'HotS-Twitch-Companion-windows-x64.zip', $zipName) | Set-Content "$out/RELEASE_NOTES.md" -Encoding utf8
-    Compress-Archive -Path "$out/$exeName", "$out/README.md", "$out/README.ru.md", "$out/LICENSE", "$out/THIRD_PARTY_NOTICES.txt", "$out/compact-desktop.ru.md", "$out/profile-reset.ru.md", "$out/SHA256SUMS.txt", "$out/RELEASE_NOTES.md" `
+    Compress-Archive -Path "$out/$exeName", "$out/README.md", "$out/README.ru.md", "$out/LICENSE", "$out/THIRD_PARTY_NOTICES.txt", "$out/compact-desktop.ru.md", "$out/profile-reset.ru.md", "$out/live-predictions.ru.md", "$out/SHA256SUMS.txt", "$out/RELEASE_NOTES.md" `
         -DestinationPath $zipName -Force
 
     Write-Host ''

@@ -51,36 +51,24 @@ test('Settings shows three simple sections, with technical fields disclosed only
  const advanced=html.slice(start,finish);
  for(const id of ['clientId','toonHandle','replayRoot','predTitle','predWin','predLoss'])
    assert.ok(advanced.includes('id="'+id+'"'),'Missing advanced control: '+id);
- for(const id of ['playerName','predictionWindow','realMode'])
+ for(const id of ['playerName','predictionWindow'])
    assert.ok(html.indexOf('id="'+id+'"')<start,'Expected basic visible control: '+id);
  assert.ok(html.includes('id="settings-save-status"'));
- assert.ok(html.includes('id="settings-real-warning"'));
+ assert.ok(!html.includes('id="realMode"'));
  assert.equal((html.match(/data-action="save"/g)||[]).length,1);
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
  assert.equal(ids.length,new Set(ids).size,'Duplicate IDs in settings view');
 });
-test('Savebar flags unsaved edits and distinguishes unsaved activation from currently live mode',()=>{
+test('Savebar flags unsaved edits without a simulation/live switch',()=>{
  const {ctx,$,row}=env();
  ctx.renderSettingsDraft();
  assert.equal($('settings-save-status').textContent,'minimal.settings.saved');
- assert.equal($('settings-real-warning').hidden,true);
  ctx.state.hasUnsaved=true;
- $('realMode').checked=true;
  ctx.renderSettingsDraft();
  assert.equal($('settings-save-status').textContent,'minimal.settings.unsaved');
  assert.equal($('settings-save-status').classList.contains('dirty'),true);
- assert.equal($('settings-real-warning').hidden,false);
- assert.equal($('settings-real-warning').textContent,'minimal.settings.realPending');
- assert.equal(row.classList.contains('active'),true);
- ctx.state.config.realMode=true;
- $('realMode').checked=false;
- ctx.renderSettingsDraft();
- assert.equal($('settings-real-warning').textContent,'minimal.settings.realStopPending');
- assert.equal($('settings-real-warning').hidden,false);
- ctx.state.config.realMode=false;
  ctx.state.hasUnsaved=false;
  ctx.renderSettingsDraft();
- assert.equal($('settings-real-warning').hidden,true);
  assert.equal($('settings-save-status').classList.contains('dirty'),false);
 });
 test('Connecting Twitch without Client ID expands the exact advanced input instead of saving drafts',async()=>{
@@ -95,7 +83,7 @@ test('Connecting Twitch without Client ID expands the exact advanced input inste
  assert.equal(ctx.state.hasUnsaved,true);
 });
 test('All Settings fields still match persisted config contract',()=>{
- const keys=['clientId','playerName','toonHandle','replayRoot','realMode','lang','predictionWindow','predTitle','predWin','predLoss'];
+ const keys=['clientId','playerName','toonHandle','replayRoot','lang','predictionWindow','predTitle','predWin','predLoss'];
  for(const key of keys){
    assert.ok(html.includes('id="'+key+'"'),'Configuration field missing: '+key);
    assert.ok(core.includes("$('"+key+"')"),'Config reader missing field: '+key);

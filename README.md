@@ -1,6 +1,6 @@
-# HotS Twitch Companion v0.9.0
+# HotS Twitch Companion v0.9.1
 
-v0.9.0 adds a compact 520 px Wails/WebView2 desktop window, custom title bar, H icon and system tray. See [Desktop controls and build instructions](docs/compact-desktop.ru.md).
+v0.9.1 adds a compact 520 px Wails/WebView2 desktop window, custom title bar, H icon and system tray. See [Desktop controls and build instructions](docs/compact-desktop.ru.md).
 
 The v0.8.0 engine provides durable outcome recovery, exact Twitch status verification and queued
 next-match lobbies without the old two-minute cooldown. Unknown POST results are
@@ -33,7 +33,7 @@ History displays the latest twelve files. Settlement instead checks the complete
 
 You no longer have to wait for the full Twitch betting window when a HotS game ends early. The app checks for completed replay files every four seconds and waits for the replay file to be stable for approximately eight seconds before parsing it. The previous mandatory 75-second delay is gone. The result still comes from a completed replay, **not by reading the game's screen or memory**, so settlement occurs after HotS has saved the replay.
 
-While a Prediction is pending, Home shows **Win / Loss / Cancel**. These are available even with monitoring stopped. On **live Twitch Predictions**, Win or Loss immediately distributes viewer points, and Cancel refunds them. Every live action requires confirmation. Simulation does not call Twitch. Buttons disappear once a decision is successful.
+While a Prediction is pending, Home shows **Win / Loss / Cancel**. These are available even with monitoring stopped. On **live Twitch Predictions**, Win or Loss immediately distributes viewer points, and Cancel refunds them. Every live action requires confirmation. Buttons disappear once a decision is successful.
 
 If you already finished the Prediction through Twitch while the app still shows it as active, use **Sync with Twitch**. The app verifies the exact Prediction ID and clears the local state only if Twitch reports `RESOLVED` or `CANCELED`. It will not silently forget an `ACTIVE` or `LOCKED` Prediction. The API checks both the prediction ID and creation time before applying an action, preventing stale UI clicks from affecting the next match.
 
@@ -45,7 +45,7 @@ If you already finished the Prediction through Twitch while the app still shows 
 - **Configurable Prediction duration** — the betting window (1–30 minutes) is selected in Settings, just like the duration picker in the Twitch Predictions interface. Default: 2 minutes.
 - **Customizable Prediction texts** — title and outcome names can be changed in Settings; empty fields use localized defaults.
 - **Replays folder check** — Settings has a button that verifies the folder (default or custom) and counts found `.StormReplay` files before saving.
-- **Simulation mode by default** — full pipeline runs without touching real channel points until you explicitly enable real Predictions.
+- **Explicit launch** — connect Twitch and confirm real Predictions. Saving configuration never starts monitoring.
 - Read-only MPQ replay parser (zlib/BZip2) written from public file-format documentation — no DLL injection, hooks, drivers, or game-memory access.
 
 ## Compact desktop and Windows display scaling
@@ -66,19 +66,13 @@ The Client ID is **not secret** and is extractable from any distributed EXE. Nev
 
 ## Simplified first-run setup
 
-The first-run wizard now has **three focused steps**: (1) choose a HotS player from a replay or enter the nickname manually, (2) optionally connect Twitch, and (3) **start a safe simulation**. Twitch authorization is **not required to simulate**. Likewise, replay validation is optional until a finished match is available.
+Choose your HotS player, connect Twitch, then confirm **Start Twitch Predictions**. Twitch is required; there is no simulation or mode switch. **Finish without starting** saves setup without monitoring. Failed or cancelled launch leaves the wizard open.
 
-Twitch Client ID and manual replay validation live in expandable details, rather than lengthy instructions. The final step has one primary **Start simulation** action, with **Finish without starting** as a secondary choice. The app persists `realMode=false` before asking the engine to start; it will not silently switch an already-running live monitor. If starting fails, the wizard remains open, without marking the setup complete.
-
-Existing Go API endpoints, Twitch OAuth, and configuration file format are unchanged. A compact EN/RU switch remains available in the wizard header and in Settings.
+[Live launch and profile migration](docs/live-predictions.ru.md).
 
 ## Simplified settings
 
-Settings now has three straightforward cards: Twitch (connection and status), Heroes of the Storm (player name and optional replay-based selection), and Prediction (betting window, preview and an **explicit live viewer-points toggle**).
-
-The technical controls (Twitch Client ID, Toon Handle, replay path and customized Prediction copy) remain fully supported but are tucked into **Advanced settings**. The configuration format and behavior are unchanged. If a user clicks Connect without a Client ID, the advanced section opens and focuses the correct field.
-
-A persistent Save bar indicates draft changes. First enabling real Predictions still requires explicit confirmation, and unchecking an enabled live mode warns that live points remain enabled until the change is saved. Language selection is visible at the top and persists independently.
+Three cards: Twitch connection, HotS player and Prediction duration/preview. Technical fields remain in Advanced settings. Saving settings does not start monitoring; starting real Predictions requires explicit confirmation. Manual outcomes keep their own confirmations.
 
 ## Minimal production interface
 
@@ -130,11 +124,11 @@ For contributors, run `go test ./...`, `node --test`, and `node --check web/asse
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
 
 1. Stop any previous `watch` process and old `.exe`.
-2. Run `HotS-Twitch-Companion-v0.9.0.exe` from the release ZIP. Node.js, Go and Python are not required.
+2. Run `HotS-Twitch-Companion-v0.9.1.exe` from the release ZIP. Node.js, Go and Python are not required.
 3. Follow the wizard — or configure manually: in **Settings** set your HotS player name and save; **Match History → Check latest replay** is a safe test without the Twitch API.
 4. In **Settings → Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
 5. Optionally set the **Prediction duration** in **Settings → Operation mode**.
-6. Start monitoring from **Overview** (or the wizard). Simulation is used by default.
+6. Start monitoring from **Overview** (or the wizard). Confirm real Twitch Predictions.
 7. For real points, separately enable real mode with confirmation in **Settings**.
 8. The **Exit** button at the bottom stops the process immediately. Closing the window also stops the app after a few minutes of lost contact.
 
@@ -150,16 +144,16 @@ The logic from the older Go version (MPQ zlib/BZip2 handling, Twitch OAuth, Pred
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.0.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.1.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.0.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.1.exe .`
 
 Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the browser package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
 ## Tests
 
-MPQ, BZip2/zlib, result reading, file integrity, and local API tests pass on Linux; the `.exe` is cross-compiled and verified as a Windows x64 GUI PE. **The live Twitch API and on-screen behavior with real HotS have not been tested yet.** Check replays and simulation first; do not enable real Predictions until correctness is confirmed.
+MPQ, BZip2/zlib, result reading, file integrity, and local API tests pass on Linux; the `.exe` is cross-compiled and verified as a Windows x64 GUI PE. **The live Twitch API and on-screen behavior with real HotS have not been tested yet.** Replay parsing and launch consent are covered by automated tests; live payouts are not performed by tests.
 
 ## GitHub and CI/CD
 
@@ -174,7 +168,7 @@ Local build in PowerShell:
 .\build.ps1
 ```
 
-Result: `dist/HotS-Twitch-Companion-v0.9.0.exe` and `HotS-Twitch-Companion-v0.9.0-windows-x64.zip`.
+Result: `dist/HotS-Twitch-Companion-v0.9.1.exe` and `HotS-Twitch-Companion-v0.9.1-windows-x64.zip`.
 
 First release (in Git Bash or another terminal with Git):
 

@@ -15,15 +15,6 @@ function renderSettingsDraft(){
     status.textContent=t(state.hasUnsaved?'minimal.settings.unsaved':'minimal.settings.saved');
     status.classList.toggle('dirty',state.hasUnsaved);
   }
-  const warning=$('settings-real-warning');
-  if(warning){
-    const checked=$('realMode').checked, enabled=!!state.config?.realMode;
-    warning.hidden=!checked&&!enabled;
-    const key=enabled?(checked?'minimal.settings.realActive':'minimal.settings.realStopPending'):'minimal.settings.realPending';
-    warning.textContent=t(key);
-    const row=$('realMode').closest?.('.settings-real-mode');
-    row?.classList.toggle('active',checked||enabled);
-  }
 }
 
 function setActionBusy(name, busy){
@@ -90,11 +81,11 @@ function render(s){
   const events=Array.isArray(st.logs)?st.logs:[];
   const event=events.length?events[events.length-1]:null;
   $('overview-latest-event').textContent=event?t('minimal.lastEvent',{message:String(event.message||'').slice(0,145)}):t('minimal.noEvents');
-  const real=!!st.realMode;
+  const real=true;
   const safety=$('overview-safety');
   safety.classList.toggle('is-real',real);
-  $('automation-mode').textContent=t(real?'minimal.realMode':'minimal.simMode');
-  $('automation-mode-detail').textContent=t(real?'minimal.realDetail':'minimal.simDetail');
+  $('automation-mode').textContent='Twitch Predictions';
+  $('automation-mode-detail').textContent=t('minimal.realDetail');
   const warning=$('overview-alert');
   const authIssue=real&&running&&!connected;
   const alertText=authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
@@ -126,9 +117,15 @@ async function loadStatus(){try{render(await api('status'))}catch(e){/* app clos
 async function reloadReplays(){try{const x=await api('replays');showReplays(x.replays||[])}catch(e){toast(e.message,true)}}
 async function save(over={}){
  const data={...getInputs(),...over};
- if(data.realMode&&!state.config?.realMode){if(!confirm(t('confirm.real'))){data.realMode=false;$('realMode').checked=false}}
+ data.realMode=true;
  const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
  state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();renderSettingsDraft();toast(t('toast.saved'));await loadStatus();return x;
+}
+async function startAutomation(){
+ if(!state.status?.connected){go('settings');toast(t('onboarding.simple.needTwitch'),true);return false}
+ if(!confirm(t('confirm.real')))return false;
+ await api('automation/start','POST',{confirmedRealMode:true});
+ return true;
 }
 async function manualPrediction(outcome){
  const st=state.status||{};
@@ -187,9 +184,9 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
     if(first&&first.getAttribute('aria-expanded')!=='true')first.click();
     break;
   }
- case 'start':if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'));await loadStatus();break;
+ case 'start':if(state.hasUnsaved)await save();if(await startAutomation()){toast(t('toast.started'));await loadStatus()}break;
  case 'stop':await api('automation/stop','POST',{});toast(t('toast.stopping'));await loadStatus();break;
- case 'toggle':if(state.status?.running){await api('automation/stop','POST',{});toast(t('toast.stopping'))}else{if(state.hasUnsaved)await save();await api('automation/start','POST',{});toast(t('toast.started'))}await loadStatus();break;
+ case 'toggle':if(state.status?.running){await api('automation/stop','POST',{});toast(t('toast.stopping'))}else{if(state.hasUnsaved)await save();if(await startAutomation())toast(t('toast.started'))}await loadStatus();break;
  case 'recheck-result':{
    const st=state.status||{};
    if(!st.active||!st.activePredictionId||!st.activePredictionStartedAt)
@@ -249,7 +246,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
  document.querySelector('[data-wiz="next"]').addEventListener('click',wizNext);
  document.querySelector('[data-wiz="back"]').addEventListener('click',()=>{if(!wiz.busy&&wiz.step>0){wiz.step--;renderWizard();}});
  document.querySelector('[data-wiz="skip"]').addEventListener('click',wizardSkip);
- for (const id of ['clientId','playerName','toonHandle','replayRoot','realMode','predictionWindow','predTitle','predWin','predLoss']){
+ for (const id of ['clientId','playerName','toonHandle','replayRoot','predictionWindow','predTitle','predWin','predLoss']){
     $(id).addEventListener('input',()=>{
       state.hasUnsaved=true;renderSettingsDraft();
       if(['predictionWindow','predTitle','predWin','predLoss'].includes(id))renderPredictionPreviews();

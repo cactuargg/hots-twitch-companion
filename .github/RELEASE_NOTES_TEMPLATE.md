@@ -2,7 +2,12 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.0
+## What's new in v0.9.1
+
+- First-run setup now connects Twitch and launches real Predictions directly, with explicit confirmation. Simulation and the mode switch are removed from the user flow.
+- Saving settings or finishing setup without starting never enables monitoring. Legacy simulated Predictions are cleared during profile migration; real active Predictions and recovery evidence are preserved.
+
+## Desktop features from v0.9.0
 
 - EXE/ZIP filenames include the app version, also shown in the footer. Desktop uses the title-bar close button instead of a duplicate footer Exit.
 - Settings offers confirmed profile reset: after the app closes, next launch clears local settings/tokens/state/WebView2 cache and restarts setup. Monitoring must be stopped and no Prediction may be active. HotS replays stay untouched.
@@ -29,7 +34,7 @@ Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm rep
 
 Choose your account from a replay and save the ToonHandle **before** the match. Automatic outcomes currently support ten human participants in 5v5 Quick Match, Unranked Draft, Storm League and ARAM on the fixture builds above. AI/custom games, unsupported builds, missing evidence, legacy active Predictions without a binding and clock mismatches require manual decisions.
 
-Start with simulation. When verification is incomplete, check the diagnosis on Home. If a selected outcome is awaiting confirmation, retry the same outcome or Sync with Twitch; restarting does not authorize a different decision. Live Win/Loss distributes viewer points, Cancel refunds them. Check the match before confirming.
+Connect Twitch and confirm the monitoring launch. When verification is incomplete, check the diagnosis on Home. If a selected outcome is awaiting confirmation, retry the same outcome or Sync with Twitch; restarting does not authorize a different decision. Win/Loss distributes viewer points, Cancel refunds them. Check the match before confirming.
 
 ## Download
 
@@ -45,6 +50,6 @@ __HASH__  HotS-Twitch-Companion.exe
 
 The main EXE uses Microsoft WebView2 Evergreen Runtime. No Node.js or Go installation is needed to run the EXE. Twitch tokens stay local under Windows DPAPI. Close any old v0.8.0 instance before launching; old builds do not honor the new profile lock.
 
-Automated tests include real BattleLobby/StormReplay data, mocked Twitch transitions, local server startup/shutdown, guarded tray requests and native window controls. Live Twitch payouts are not part of UI smoke-tests. Validate simulation and tray behavior on your Windows/DPI setup before a live channel. The EXE is unsigned.
+Automated tests include real BattleLobby/StormReplay data, mocked Twitch transitions, local server startup/shutdown, guarded tray requests, live-launch consent and profile migration. Real Twitch payouts are not performed by these tests. The EXE is unsigned.
 
 Unofficial fan-made software, not affiliated with Blizzard Entertainment or Twitch.

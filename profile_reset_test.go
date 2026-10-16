@@ -38,7 +38,7 @@ func TestResetClearsOnlyOwnedDataOnNextLaunch(t *testing.T) {
 		t.Fatal("replay removed")
 	}
 	cfg, err := readConfig(d.p)
-	if err != nil || cfg.WizardDone || cfg.RealMode {
+	if err != nil || cfg.WizardDone || !cfg.RealMode {
 		t.Fatal("not a fresh profile")
 	}
 	if err := applyProfileReset(d.p); err != nil {

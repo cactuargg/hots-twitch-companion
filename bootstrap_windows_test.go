@@ -37,7 +37,7 @@ func TestResetLaunchStartsWithFreshWizard(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	if fresh.config().WizardDone || fresh.config().PlayerName != "" || fresh.config().RealMode {
+	if fresh.config().WizardDone || fresh.config().PlayerName != "" || !fresh.config().RealMode {
 		t.Fatal("profile was restored instead of reset")
 	}
 }

@@ -18,7 +18,7 @@ import (
 )
 
 const scope = "channel:manage:predictions"
-const appVersion = "0.9.0"
+const appVersion = "0.9.1"
 const authURL = "https://id.twitch.tv/oauth2"
 const apiURL = "https://api.twitch.tv/helix"
 
@@ -165,7 +165,13 @@ func loadJSON(path string, v any) error {
 	}
 	return json.Unmarshal(b, v)
 }
-func readConfig(p paths) (Config, error)  { var c Config; e := loadJSON(p.config, &c); return c, e }
+func readConfig(p paths) (Config, error) {
+	var c Config
+	err := loadJSON(p.config, &c)
+	// Desktop profiles always use Twitch; dry runs are an internal test facility.
+	c.RealMode = true
+	return c, err
+}
 func writeConfig(p paths, c Config) error { return saveJSON(p.config, c) }
 func loadState(p paths) (State, error)    { var s State; e := loadJSON(p.state, &s); return s, e }
 func saveState(p paths, s State) error    { return saveJSON(p.state, s) }
