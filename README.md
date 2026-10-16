@@ -1,6 +1,6 @@
-# HotS Twitch Companion v0.9.4
+# HotS Twitch Companion v0.9.5
 
-v0.9.4 attaches the Browser edition ZIP to the release with its checksum. v0.9.3 checks for a newer release on startup and shows a footer link; see [Desktop controls and build instructions](docs/compact-desktop.ru.md).
+v0.9.5 recognizes HotS client build 98348, restoring lobby parsing on the current patch. v0.9.4 attaches the Browser edition ZIP to the release; see [Desktop controls and build instructions](docs/compact-desktop.ru.md).
 
 The v0.8.0 engine provides durable outcome recovery, exact Twitch status verification and queued
 next-match lobbies without the old two-minute cooldown. Unknown POST results are
@@ -12,7 +12,7 @@ BattleLobby observations persist the latest roster in `state.json`; each new
 Prediction gets its own frozen lobby and player binding. Automatic settlement
 requires exact embedded BattleLobby content, consistent participant results,
 a fresh in-game timestamp and a unique replay candidate. Only fixture-verified
-builds 89566, 89754, 90670 and 93640 are supported. See [format research and fixture
+builds 89566, 89754, 90670, 93640 and 98348 are supported. See [format research and fixture
 provenance](testdata/battlelobby/README.md) and [correlation rules](docs/match-correlation.ru.md).
 
 Portable Windows x64 EXE with a minimalist dark navy, blue and purple interface. The gaming visuals and decorative panels were removed. The GUI is built from local HTML/CSS/JS embedded into the executable with `go:embed`. The desktop window uses Microsoft WebView2 Evergreen Runtime. A separate browser fallback build uses Edge app mode or the default browser. **[Читать на русском](README.ru.md)**
@@ -124,7 +124,7 @@ For contributors, run `go test ./...`, `node --test`, and `node --check web/asse
 A **setup wizard** runs automatically on first launch: it walks you through language, your HotS player name (with a safe replay test), Twitch connection and automation, explaining what to expect at every step. You can re-run it any time from **Settings**.
 
 1. Stop any previous `watch` process and old `.exe`.
-2. Run `HotS-Twitch-Companion-v0.9.4.exe` from the release ZIP. Node.js, Go and Python are not required.
+2. Run `HotS-Twitch-Companion-v0.9.5.exe` from the release ZIP. Node.js, Go and Python are not required.
 3. Follow the wizard — or configure manually: in **Settings** set your HotS player name and save; **Match History → Check latest replay** is a safe test without the Twitch API.
 4. In **Settings → Twitch** enter the `Client ID` of a **Public** application, save, and connect via the OAuth Device Code Flow (the token is encrypted with DPAPI).
 5. Optionally set the **Prediction duration** in **Settings → Operation mode**.
@@ -146,10 +146,10 @@ The logic from the older Go version (MPQ zlib/BZip2 handling, Twitch OAuth, Pred
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.4.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.5.exe .
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.4.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.5.exe .`
 
 Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the Browser edition package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
@@ -170,7 +170,7 @@ Local build in PowerShell:
 .\build.ps1
 ```
 
-Result: `dist/HotS-Twitch-Companion-v0.9.4.exe` and `HotS-Twitch-Companion-v0.9.4-windows-x64.zip`.
+Result: `dist/HotS-Twitch-Companion-v0.9.5.exe` and `HotS-Twitch-Companion-v0.9.5-windows-x64.zip`.
 
 First release (in Git Bash or another terminal with Git):
 

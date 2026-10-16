@@ -2,7 +2,12 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.4
+## What's new in v0.9.5
+
+- Recognizes HotS client build 98348 (October 2026 patch). The embedded BattleLobby of a real match on that build parses with the existing bit-level layout and is committed as fixture `IndustrialDistrict1_98348`, so matchmaking games on the current patch correlate and settle automatically again. Games on older builds are unaffected.
+- Reminder: matches that are not ten-human 5v5 matchmaking lobbies (custom games, games with AI participants, observers) intentionally require manual Win/Loss/Cancel decisions.
+
+## Browser edition from v0.9.4
 
 - The Browser edition is now attached to the release itself as `HotS-Twitch-Companion-Browser-v__TAG__.zip` instead of staying a CI-only artifact, and its SHA-256 is included in `SHA256SUMS.txt`. Use it when WebView2 Runtime is unavailable: it runs the interface in Microsoft Edge app mode or the default browser, without the native title bar and tray.
 
@@ -34,7 +39,7 @@ Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm rep
 ## Match safety carried forward from v0.8.0
 
 - Public Twitch Client ID can be embedded by the release workflow; connect using Device Code without creating your own app.
-- BattleLobby parser with four real fixture builds: 89566, 89754, 90670 and 93640.
+- BattleLobby parser with five real fixture builds: 89566, 89754, 90670, 93640 and 98348.
 - Each Prediction keeps its own lobby and player binding. Automatic settlement requires matching embedded BattleLobby bytes, consistent participants/results, a fresh game clock and a unique replay. Seed or nickname alone is insufficient.
 - Ambiguous matches stay blocked after restart. Manual Win/Loss/Cancel and Sync remain available.
 - A Win/Loss/Cancel decision is saved before Twitch is called. Lost responses and restart resume that decision; a different outcome is blocked until Twitch is reconciled.

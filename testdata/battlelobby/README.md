@@ -13,7 +13,15 @@ These are actual game files, not a synthetic invented wire format.
 | ARAM2_93640 | 320ae2612d38b1559c67a03410c68328382ed51d371347b62730b0094c23f789 |
 | Custom1_90670 | 4ad54ea0a493a88758040ba14fe61b1b36d6be7c3c52129ffea5e9a4324be7ab |
 | StormLeague1_89566 | 10e952df59eac0d35e38f8d2ee5912ad70fbd15bee6c63cf2d37c499180e0e22 |
+| IndustrialDistrict1_98348 | 5540111a79ec5a2c341f1769729d420e2142f37727cbc2f24ce18fd275965b09 |
 | HanamuraSL1_89566.StormReplay | 62d3d5a599837cfca85139eb7c38f7655f5ae596f6980de3406fdd004b9b2c97 |
+
+`IndustrialDistrict1_98348` is the embedded `replay.server.battlelobby` of the
+maintainer's own custom-game replay on client build 98348 (October 2026),
+extracted with this repository's `readMPQMember`; its bytes are identical to
+the `TempWriteReplayP1` lobby captured live for that match. The layout parses
+without any drift on the existing bit-level parser, so the build joins the
+known list.
 
 The fifth file is the unmodified `Replays/HanamuraSL1_89566.StormR` from the
 same pinned repository, renamed to `.StormReplay`. Its embedded

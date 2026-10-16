@@ -24,6 +24,7 @@ func TestRealBattleLobbies(t *testing.T) {
 		{"ARAM1_89754", 89754, 2002111530, 50101, 10},
 		{"Custom1_90670", 90670, 243203581, 0, 1},
 		{"ARAM2_93640", 93640, 893217909, 50101, 10},
+		{"IndustrialDistrict1_98348", 98348, 427522310, 0, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join("testdata", "battlelobby", "replay.server."+tc.name+".battlelobby"))
@@ -57,6 +58,9 @@ func TestRealBattleLobbies(t *testing.T) {
 			}
 			if tc.name == "Custom1_90670" && (!got.Custom || len(got.Players) != 11 || got.Players[0].Role != "Watc" || got.Players[1].SlotType != "Comp" || got.Players[1].ToonHandle != "") {
 				t.Fatal("observer/AI roster differs from upstream assertions")
+			}
+			if tc.name == "IndustrialDistrict1_98348" && (!got.Custom || got.TeamSize != "5v5" || got.Players[0].SlotType != "Humn" || got.Players[0].ToonHandle != "2-Hero-1-7669040" || got.Players[1].SlotType != "Comp") {
+				t.Fatal("98348 layout differs from the verified custom-game roster")
 			}
 		})
 	}
