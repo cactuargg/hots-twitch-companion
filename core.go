@@ -18,7 +18,7 @@ import (
 )
 
 const scope = "channel:manage:predictions"
-const appVersion = "0.9.3"
+const appVersion = "0.9.4"
 const authURL = "https://id.twitch.tv/oauth2"
 const apiURL = "https://api.twitch.tv/helix"
 

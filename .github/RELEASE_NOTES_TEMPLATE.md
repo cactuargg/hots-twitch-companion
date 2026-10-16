@@ -2,9 +2,13 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.3
+## What's new in v0.9.4
 
-- The app now checks public GitHub release metadata once at startup (and daily while running) and shows an "Update available" link in the footer when a newer version exists. The link opens the release page in your browser; nothing is downloaded or installed automatically.
+- The Browser edition is now attached to the release itself as `HotS-Twitch-Companion-Browser-v__TAG__.zip` instead of staying a CI-only artifact, and its SHA-256 is included in `SHA256SUMS.txt`. Use it when WebView2 Runtime is unavailable: it runs the interface in Microsoft Edge app mode or the default browser, without the native title bar and tray.
+
+## Update checks from v0.9.3
+
+- The app checks public GitHub release metadata once at startup (and daily while running) and shows an "Update available" link in the footer when a newer version exists. The link opens the release page in your browser; nothing is downloaded or installed automatically.
 - The check is a single read-only request to `api.github.com` that sends no account or match data, and it fails silently offline.
 
 ## Twitch identity fix from v0.9.2
@@ -24,7 +28,7 @@ Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm rep
 - Wails/WebView2 is now the default Windows desktop shell, starting at 520×740 with width constrained to 480–560 logical pixels.
 - Custom draggable title bar with minimize, hide to tray, and close. The tray offers Open and Exit; hiding continues monitoring, while closing retains the existing safety confirmation and saved Prediction.
 - H application icon, Windows version resources and PerMonitorV2 manifest; compact Home, History, Settings and setup wizard using the existing interface and Go engine.
-- BrowserFallback remains a separate build and CI artifact. Desktop requires WebView2 Evergreen Runtime; no automatic installation occurs.
+- The Browser edition is published alongside the Desktop package. Desktop requires WebView2 Evergreen Runtime; no automatic installation occurs.
 - Both configurations run Go tests/vet and all JavaScript tests before packaging. Dependencies' license notices are included in the ZIP.
 
 ## Match safety carried forward from v0.8.0
@@ -51,7 +55,8 @@ Connect Twitch and confirm the monitoring launch. When verification is incomplet
 | --- | --- |
 | `HotS-Twitch-Companion.exe` | Portable Windows x64 GUI executable |
 | `HotS-Twitch-Companion-windows-x64.zip` | EXE, READMEs, MIT notices, release notes and checksum |
-| `SHA256SUMS.txt` | SHA-256 for the EXE |
+| `HotS-Twitch-Companion-Browser-v__TAG__.zip` | Browser edition for systems without WebView2 Runtime |
+| `SHA256SUMS.txt` | SHA-256 for the EXE and the Browser edition ZIP |
 
 ```text
 __HASH__  HotS-Twitch-Companion.exe
