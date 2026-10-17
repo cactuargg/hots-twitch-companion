@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -518,6 +519,63 @@ func TestUncertainCreationIsNeverAutomaticallyRepeated(t *testing.T) {
 	if posts != 1 || restarted.state.Active != nil {
 		t.Fatalf("unknown creation retried/adopted: posts=%d %+v", posts, restarted.state)
 	}
+}
+
+
+// An uncertain POST must fail closed for ALL later lobbies, including across
+// restart. Only an explicit, remote-verified reconciliation can remove it.
+func TestUnconfirmedCreationBlocksOtherLobbiesUntilTwitchChecked(t *testing.T) {
+	temp := t.TempDir()
+	t.Setenv("TMP", temp)
+	t.Setenv("TEMP", temp)
+	now := time.Now()
+	e, p := liveLifecycleTest(t)
+	s := e.state
+	s.Active = nil
+	s.LastCreatedLobbySHA = ""
+	s.RecentLobbySHAs = nil
+	s.UnconfirmedCreation = &CreationAttempt{LobbySHA:"old-lobby",BroadcasterID:"channel",AttemptedAt:now.Add(-time.Minute).UnixMilli()}
+	if err := e.updateAndSave(s); err != nil {t.Fatal(err)}
+	fresh := realLobbyTest(t)
+	lobbyFileTest(t,fresh,now.Add(-5*time.Second))
+	old := httpClient
+	defer func(){httpClient=old}()
+	requests:=0
+	remoteStatus:="ACTIVE"
+	remoteUser:="channel"
+	httpClient=&http.Client{Transport:manualTransport(func(req *http.Request)(*http.Response,error){
+		requests++
+		if req.URL.Path=="/oauth2/validate" {
+			return manualResponse(fmt.Sprintf(`{"client_id":"client","user_id":%q,"scopes":["channel:manage:predictions"]}`,remoteUser)),nil
+		}
+		if req.Method=="GET" {
+			if remoteStatus=="ACTIVE" {return manualResponse(`{"data":[{"id":"remote-open","status":"ACTIVE"}]}`),nil}
+			return manualResponse(`{"data":[]}`),nil
+		}
+		t.Fatalf("unexpected mutation during reconciliation: %s",req.Method)
+		return nil,nil
+	})}
+	lastError:=""
+	lastLog:=time.Time{}
+	started:=now.Add(-time.Minute)
+	e.scanTick(context.Background(),started,&lastError,&lastLog)
+	if requests!=0 || e.state.Active!=nil || e.state.PendingLobby==nil {
+		t.Fatalf("new lobby created or lost despite uncertain prior POST: %+v calls=%d",e.state,requests)
+	}
+	if err:=e.start();err==nil {t.Fatal("automation restarted with an unresolved creation")}
+	if err:=e.updateConfig(Config{ClientID:"another",RealMode:true});err==nil {t.Fatal("OAuth app switched during reconciliation")}
+	if err:=e.acknowledgeUnconfirmedCreation(context.Background());err==nil {t.Fatal("acknowledged despite live Twitch Prediction")}
+	if e.state.UnconfirmedCreation==nil {t.Fatal("failed acknowledgment cleared marker")}
+	remoteStatus="none"
+	remoteUser="another-channel"
+	if err:=e.acknowledgeUnconfirmedCreation(context.Background());err==nil {t.Fatal("another broadcaster was accepted")}
+	remoteUser="channel"
+	restarted,err:=newEngine(p,e.cfg,func(string){})
+	if err!=nil {t.Fatal(err)}
+	restarted.twitch.token=e.twitch.token
+	if err:=restarted.acknowledgeUnconfirmedCreation(context.Background());err!=nil {t.Fatal(err)}
+	persisted,err:=loadState(p)
+	if err!=nil || persisted.UnconfirmedCreation!=nil || persisted.PendingLobby==nil {t.Fatalf("reconciliation did not persist or forgot next lobby: %+v %v",persisted,err)}
 }
 
 func TestCreationRefusesOpenOrMalformedPredictions(t *testing.T) {

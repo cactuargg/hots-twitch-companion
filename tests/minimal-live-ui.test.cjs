@@ -71,6 +71,15 @@ test('uncertain Twitch creation stays visible after restart',()=>{
  assert.equal(get('overview-alert').textContent,'minimal.creationUnconfirmed');
  assert.equal(get('prediction-scan-message').textContent,'replay.scan.create_error');
 });
+test('unconfirmed wager requires explicit reconciliation before starting',async()=>{
+ const {context,get}=harness();
+ context.render({running:false,active:false,realMode:true,connected:true,
+  twitchPhase:'connected',monitorPhase:'off',creationUnconfirmed:true,logs:[]});
+ assert.equal(get('reconcile-creation').hidden,false);
+ context.render({running:false,active:false,realMode:true,connected:true,
+  twitchPhase:'connected',monitorPhase:'off',creationUnconfirmed:false,logs:[]});
+ assert.equal(get('reconcile-creation').hidden,true);
+});
 test('real viewer-point mode remains visibly warned; missing player opens setup',()=>{
  const {context,get,btn}=harness();
  context.render({running:true,active:true,realMode:true,connected:false,

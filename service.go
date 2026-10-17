@@ -622,6 +622,15 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			}
 			jsonOutput(w, 200, v)
 			return
+		case "prediction/acknowledge-unconfirmed":
+			var body struct { Confirmed bool `json:"confirmed"` }
+			if err := readJSONRequest(r, &body); err != nil { requestError(w, err); return }
+			if !body.Confirmed { requestError(w, errors.New("Explicit confirmation required")); return }
+			ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
+			defer cancel()
+			if err := d.engine.acknowledgeUnconfirmedCreation(ctx); err != nil { requestError(w, err); return }
+			jsonOutput(w, 200, map[string]bool{"ok": true})
+			return
 		case "prediction/recheck":
    var body struct {
     ID string `json:"id"`

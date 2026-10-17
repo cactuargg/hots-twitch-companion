@@ -101,6 +101,7 @@ function render(s){
   const shouldWarn=!!st.creationUnconfirmed||real||authIssue;
   if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
   warning.hidden=!shouldWarn;
+  $('reconcile-creation').hidden=!st.creationUnconfirmed;
   $('start-label').textContent=needsSetup&&!running?t('minimal.configure'):t(running?'start.stop':'start.start');
   const mainButton=document.querySelector('.overview-toggle');
   mainButton.dataset.action=needsSetup&&!running?'wizard':'toggle';
@@ -131,6 +132,7 @@ async function save(over={}){
  state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();renderSettingsDraft();toast(t('toast.saved'));await loadStatus();return x;
 }
 async function startAutomation(){
+ if(state.status?.creationUnconfirmed){toast(t('minimal.creationUnconfirmed'),true);return false}
  if(!state.status?.connected){go('settings');toast(t('onboarding.simple.needTwitch'),true);return false}
  if(!confirm(t('confirm.real')))return false;
  await api('automation/start','POST',{confirmedRealMode:true});
@@ -208,6 +210,13 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
    toast(t('replay.scan.rechecked'));
    break;
  }
+ case 'reconcile-creation':
+   if(!state.status?.creationUnconfirmed)break;
+   if(!confirm(t('minimal.creationConfirm')))break;
+   await api('prediction/acknowledge-unconfirmed','POST',{confirmed:true});
+   toast(t('minimal.creationResolved'));
+   await loadStatus();
+   break;
  case 'manual-win':await manualPrediction('win');break;
  case 'manual-loss':await manualPrediction('loss');break;
  case 'manual-cancel':await manualPrediction('cancel');break;
