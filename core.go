@@ -548,16 +548,12 @@ func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, 
    if p.Status != "RESOLVED" && p.Status != "CANCELED" {
     return errors.New(tr(e.cfg.lang(), "manual.still_open"))
    }
-   result := "cancel"
-   if p.Status == "RESOLVED" {
-    if p.WinningOutcomeID == s.Active.WinID { result = "win" } else if p.WinningOutcomeID == s.Active.LossID { result = "loss" } else {
-     result = "external"
-    }
-   }
-   s.LastSettlementAt = e.clock.Now().UnixMilli()
-   s.LastResult = result + " (Twitch)"
-   s.Active = nil
-   if err := e.updateAndSave(s); err != nil { return err }
+   // Use the same immutable completion transition as automatic settlement.
+   // The result mapping also stays shared with recovery from an external
+   // Twitch resolution; do not maintain a second outcome state machine.
+   next, err := completedPredictionState(s, remoteOutcome(p, s.Active), "Twitch", e.clock.Now())
+   if err != nil { return err }
+   if err := e.updateAndSave(next); err != nil { return err }
    e.report("info", "prediction_synced", tr(e.cfg.lang(), "manual.synced", p.Status))
    return nil
   }
