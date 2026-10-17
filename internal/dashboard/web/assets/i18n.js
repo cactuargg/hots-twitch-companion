@@ -1,6 +1,9 @@
 /* ── i18n ────────────────────────────────────────────────────────────── */
 const I18N = {
  en: {
+  'settings.wait':'Wait for the current settings save to finish.',
+  'settings.draftRemaining':'Earlier settings saved; your latest edits are still unsaved.',
+  'connection.lost':'Connection to Companion lost. Displayed data may be outdated; actions are paused until the connection returns.',
   'reset.title':'User data',
   'reset.description':'Remove settings, local Twitch credentials, match state and application cache. HotS replays stay. The app closes; restart it to begin setup again.',
   'reset.button':'Clear user data',
@@ -222,6 +225,9 @@ const I18N = {
   'wiz.ok':'✓ Done','wiz.pending':'— Not yet','wiz.fail':'✗ Check failed'
  },
  ru: {
+  'settings.wait':'Дождитесь завершения сохранения настроек.',
+  'settings.draftRemaining':'Предыдущие настройки сохранены; последние изменения ещё не сохранены.',
+  'connection.lost':'Связь с Companion потеряна. Показаны последние известные данные; действия приостановлены до восстановления связи.',
   'reset.title':'Пользовательские данные',
   'reset.description':'Удалить настройки, локальные Twitch-токены, состояние матчей и кэш приложения. Реплеи HotS останутся. Приложение закроется; запусти его снова для настройки с нуля.',
   'reset.button':'Очистить пользовательские данные',
@@ -467,6 +473,9 @@ function applyI18n(){
 }
 async function setLang(l){
   if (l === lang) return;
+  if(state.saving||state.languageSaving){$('lang').value=lang;toast(t('settings.wait'),true);return}
+  state.languageSaving=true;
+  try{
   const previous = lang;
   lang = l;
   applyI18n();
@@ -490,5 +499,6 @@ async function setLang(l){
     }
   }
   try { localStorage.setItem('hots-lang', l); } catch (e) { /* private mode */ }
+  }finally{state.languageSaving=false}
 }
 

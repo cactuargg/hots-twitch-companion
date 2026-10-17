@@ -57,6 +57,8 @@ type Dashboard struct {
 	shutdown                              chan struct{}
 	shutdownOnce                          sync.Once
 	lastActivity                          time.Time
+	backgroundOnce                        sync.Once
+	backgroundCancel                      context.CancelFunc
 }
 
 func New(engine Application, p config.Paths, version string) *Dashboard {
@@ -65,21 +67,63 @@ func New(engine Application, p config.Paths, version string) *Dashboard {
 
 // StartBackground is explicit so tests never contact public services.
 func (d *Dashboard) StartBackground() {
-	go d.watchUpdates()
-	c := d.engine.Config()
-	if d.engine.Connection().HasToken {
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
-			defer cancel()
-			if who, err := d.engine.Identity(ctx); err == nil {
-				d.log(i18n.Text(c.Language(), "log.twitch_connected", who.Login))
-			} else {
-				d.LogEvent("warning", "twitch_auth", i18n.Text(c.Language(), "log.token_check", err.Error()))
-			}
-		}()
+	d.backgroundOnce.Do(func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		d.mu.Lock()
+		select {
+		case <-d.shutdown:
+			d.mu.Unlock()
+			cancel()
+			return
+		default:
+		}
+		d.backgroundCancel = cancel
+		d.mu.Unlock()
+		go d.watchUpdates()
+		go d.watchConnection(ctx, time.Minute)
+		c := d.engine.Config()
+		d.log(i18n.Text(c.Language(), "log.app_started"))
+		d.log(i18n.Text(c.Language(), "log.read_only"))
+	})
+}
+
+// A failed startup check must recover when connectivity returns, without OAuth
+// reauthorization. This loop only validates credentials; it never starts wagers.
+func (d *Dashboard) watchConnection(ctx context.Context, interval time.Duration) {
+	lastError := ""
+	check := func() {
+		connection := d.engine.Connection()
+		if !connection.HasToken {
+			return
+		}
+		checkCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+		defer cancel()
+		who, err := d.engine.Identity(checkCtx)
+		if ctx.Err() != nil {
+			return
+		}
+		if err == nil && (connection.Login == "" || connection.Login != who.Login) {
+			d.log(d.Text("log.twitch_connected", who.Login))
+		} else if err != nil && err.Error() != lastError {
+			d.LogEvent("warning", "twitch_auth", d.Text("log.token_check", err.Error()))
+		}
+		if err != nil {
+			lastError = err.Error()
+		} else {
+			lastError = ""
+		}
 	}
-	d.log(i18n.Text(c.Language(), "log.app_started"))
-	d.log(i18n.Text(c.Language(), "log.read_only"))
+	check()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			check()
+		}
+	}
 }
 func (d *Dashboard) Text(key string, args ...any) string {
 	return i18n.Text(d.Config().Lang, key, args...)
@@ -129,8 +173,8 @@ func (d *Dashboard) Status() map[string]any {
 	phase, secondsLeft := PredictionPhase(s.Active, config.PredictionWindowMinutes(), time.Now())
 	return map[string]any{"version": d.version, "running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
 		"twitchPhase":     ConnectionPhase(hasToken, validated, authPending),
-		"MonitorPhase":    MonitorPhase(running, active),
-		"PredictionPhase": phase, "predictionWindowSecondsLeft": secondsLeft,
+		"monitorPhase":    MonitorPhase(running, active),
+		"predictionPhase": phase, "predictionWindowSecondsLeft": secondsLeft,
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
 		"activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,

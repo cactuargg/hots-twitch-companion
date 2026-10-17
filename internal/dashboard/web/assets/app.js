@@ -96,7 +96,7 @@ function render(s){
   const warning=$('overview-alert');
   const authIssue=real&&running&&!connected;
   // Persisted uncertain POSTs take priority over generic live notices.
-  const alertText=st.creationUnconfirmed?t('minimal.creationUnconfirmed'):
+  const alertText=state.connectionLost?t('connection.lost'):st.creationUnconfirmed?t('minimal.creationUnconfirmed'):
     authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
   const shouldWarn=!!st.creationUnconfirmed||real||authIssue;
   if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
@@ -123,15 +123,31 @@ function render(s){
   showLogs(st.logs);
   if(!$('wizard').hidden)renderWizard();
 }
-async function loadStatus(){try{render(await api('status'))}catch(e){/* app closed, keep last UI */}}
+async function loadStatus(){
+ if(state.statusPending)return;
+ state.statusPending=true;
+ try{const status=await api('status');state.connectionLost=false;render(status)}
+ catch(e){state.connectionLost=true;render(state.status)}
+ finally{state.statusPending=false}
+}
 async function reloadReplays(){try{const x=await api('replays');showReplays(x.replays||[])}catch(e){toast(e.message,true)}}
 async function save(over={}){
+ if(state.saving||state.languageSaving)throw Error(t('settings.wait'));
+ const draft=JSON.stringify(getInputs());
  const data={...getInputs(),...over};
  data.realMode=true;
- const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
- state.config=x.config;state.hasUnsaved=false;lang=x.config.lang||lang;applyI18n();renderSettingsDraft();toast(t('toast.saved'));await loadStatus();return x;
+ state.saving=true;
+ try{
+  const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
+  const changed=JSON.stringify(getInputs())!==draft;
+  state.config=x.config;state.hasUnsaved=changed;lang=x.config.lang||lang;
+  applyI18n();renderSettingsDraft();toast(t(changed?'settings.draftRemaining':'toast.saved'));
+  await loadStatus();return x;
+ }finally{state.saving=false}
 }
 async function startAutomation(){
+ if(state.connectionLost){toast(t('connection.lost'),true);return false}
+ if(state.hasUnsaved){toast(t('settings.draftRemaining'),true);return false}
  if(state.status?.creationUnconfirmed){toast(t('minimal.creationUnconfirmed'),true);return false}
  if(!state.status?.connected){go('settings');toast(t('onboarding.simple.needTwitch'),true);return false}
  if(!confirm(t('confirm.real')))return false;
@@ -139,6 +155,7 @@ async function startAutomation(){
  return true;
 }
 async function manualPrediction(outcome){
+ if(state.connectionLost)throw Error(t('connection.lost'));
  const st=state.status||{};
  if(!st.active||!st.activePredictionId||!st.activePredictionStartedAt)
    throw Error(t('manual.stale'));
@@ -156,7 +173,7 @@ async function manualPrediction(outcome){
  await loadStatus();
  return true;
 }
-async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
+async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('connection.lost'),true);return}if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
  case 'reset-profile':
    if(!confirm(t('reset.confirm')))break;
    await api('profile/reset','POST',{confirmed:true});
@@ -173,6 +190,7 @@ async function action(name){if(state.busy&&name!=='quit')return;state.busy=true;
      break;
    }
    if(state.hasUnsaved)await save();
+   if(state.hasUnsaved)break;
    const x=await api('auth','POST',{});
    if(x.code){
      go('settings');
