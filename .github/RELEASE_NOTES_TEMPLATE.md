@@ -2,7 +2,16 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.7
+## What's new in v0.9.8
+
+- Prediction titles, outcomes and betting-window settings can be changed while monitoring runs. An active prediction retains its original betting-window duration; new settings apply to future predictions.
+- Edits made during an in-flight settings save remain marked as unsaved. Start is blocked until the latest draft is saved; overlapping settings and language writes are guarded.
+- Twitch connection checks recover automatically after temporary connectivity failures. Connection loss is visible in the interface, and stale status cannot authorize prediction actions.
+- Refreshed Twitch credentials survive temporary disk-save errors in memory. The app retries saving before allowing API operations and explains storage failures in English and Russian. Already saved authorization is preserved between launches.
+- A slow token refresh no longer blocks connection-status reads. Successful exit or profile reset stops status/replay polling, cancels outstanding requests and ignores late responses.
+- Added regression coverage for credential persistence, concurrent refresh/status access, settings drafts, Go-to-JavaScript status compatibility and interface shutdown. Desktop, Browser and race checks gate publication.
+
+## Architecture from v0.9.7
 
 - Completes the architecture refactor: Engine, Twitch, Dashboard, configuration, storage and HotS correlation have separate package boundaries. The Windows command now contains launchers and dependency composition.
 - Dashboard reads independent state snapshots and invokes application operations. HTTP transport, time, persistence and game-source dependencies can be isolated in tests; Twitch owns synchronized token refresh and credential commits.
