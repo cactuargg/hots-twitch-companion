@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
+	transport "hots-twitch-companion/internal/twitch/transport"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,65 +19,10 @@ import (
 
 var httpClient = &http.Client{Timeout: 20 * time.Second}
 
+// The application owns its HTTP client and typed retryable Twitch errors.
+// The transport package only performs bounded request/response serialization.
 func requestJSON(ctx context.Context, method, urlPath string, form url.Values, body any, token, clientID string, dst any) error {
-	var r io.Reader
-	if form != nil {
-		r = strings.NewReader(form.Encode())
-	} else if body != nil {
-		b, e := json.Marshal(body)
-		if e != nil {
-			return e
-		}
-		r = bytes.NewReader(b)
-	}
-	req, e := http.NewRequestWithContext(ctx, method, urlPath, r)
-	if e != nil {
-		return e
-	}
-	if form != nil {
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	if token != "" {
-		if strings.HasSuffix(urlPath, "/validate") {
-			req.Header.Set("Authorization", "OAuth "+token)
-		} else {
-			req.Header.Set("Authorization", "Bearer "+token)
-		}
-	}
-	if clientID != "" {
-		req.Header.Set("Client-Id", clientID)
-	}
-	res, e := httpClient.Do(req)
-	if e != nil {
-		return e
-	}
-	defer res.Body.Close()
-	raw, e := io.ReadAll(io.LimitReader(res.Body, 2<<20))
-	if e != nil {
-		return e
-	}
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		var errBody struct {
-			Message string `json:"message"`
-			Error   string `json:"error"`
-		}
-		_ = json.Unmarshal(raw, &errBody)
-		msg := errBody.Message
-		if msg == "" {
-			msg = errBody.Error
-		}
-		if msg == "" {
-			msg = res.Status
-		}
-		return responseHTTPError(res, msg)
-	}
-	if dst != nil && len(raw) > 0 {
-		return json.Unmarshal(raw, dst)
-	}
-	return nil
+	return transport.RequestJSON(ctx, httpClient, method, urlPath, form, body, token, clientID, dst, responseHTTPError)
 }
 func startDevice(ctx context.Context, clientID string) (DeviceResponse, error) {
 	var d DeviceResponse
