@@ -15,6 +15,24 @@ import (
 	"time"
 )
 
+
+func TestReadJSONRequestRejectsTrailingValues(t *testing.T) {
+	for _, tc := range []struct{body string; valid bool}{
+		{`{"confirmed":true}`, true},
+		{`{"confirmed":true}   `, true},
+		{`{"confirmed":true} {"confirmed":false}`, false},
+		{`{"confirmed":true} null`, false},
+		{`{"confirmed":true} garbage`, false},
+		{`{"confirmed":true,"unexpected":1}`, false},
+	} {
+		request:=httptest.NewRequest("POST","http://127.0.0.1:1234/api/test",strings.NewReader(tc.body))
+		var body struct{Confirmed bool `json:"confirmed"`}
+		err:=readJSONRequest(request,&body)
+		if tc.valid && (err!=nil || !body.Confirmed) {t.Errorf("valid body %q rejected: %v",tc.body,err)}
+		if !tc.valid && err==nil {t.Errorf("invalid body %q accepted",tc.body)}
+	}
+}
+
 func TestLoopbackDashboardAuthorization(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
