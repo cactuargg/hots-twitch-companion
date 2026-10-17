@@ -20,58 +20,12 @@ func responseHTTPError(response *http.Response, message string) error {
 
 type LobbyEvent = predstate.LobbyEvent
 
-func lobbyWasHandled(s *State, hash string) bool {
-	if hash == "" {
-		return false
-	}
-	if hash == s.LastCreatedLobbySHA {
-		return true
-	}
-	for _, previous := range s.RecentLobbySHAs {
-		if previous == hash {
-			return true
-		}
-	}
-	return false
-}
-
-// PendingLobby is the oldest unconsumed event for compatibility with
-// previously saved state. PendingLobbies holds the remaining FIFO entries.
-const maxPendingLobbies = 32
-
-func pendingLobbySeen(s *State, sha string) bool {
-	if sha == "" {
-		return false
-	}
-	if s.PendingLobby != nil && s.PendingLobby.Snapshot != nil && s.PendingLobby.Snapshot.SHA256 == sha {
-		return true
-	}
-	for _, pending := range s.PendingLobbies {
-		if pending != nil && pending.Snapshot != nil && pending.Snapshot.SHA256 == sha {
-			return true
-		}
-	}
-	return false
-}
-
-func enqueueLobby(s *State, event *LobbyEvent) bool {
-	if event == nil || event.Snapshot == nil || event.Snapshot.SHA256 == "" ||
-		lobbyWasHandled(s, event.Snapshot.SHA256) || pendingLobbySeen(s, event.Snapshot.SHA256) {
-		return false
-	}
-	if s.PendingLobby == nil {
-		s.PendingLobby = event
-		return true
-	}
-	if len(s.PendingLobbies) >= maxPendingLobbies-1 {
-		return false
-	}
-	// Clone to keep the previously persisted State snapshot immutable.
-	s.PendingLobbies = append(append([]*LobbyEvent(nil), s.PendingLobbies...), event)
-	return true
-}
-
-func popPendingLobby(s *State) { predstate.PopPendingLobby(s) }
+// Stateful lobby queue rules are shared across Engine and pure domain tests.
+const maxPendingLobbies = predstate.MaxPendingLobbies
+func lobbyWasHandled(s *State,hash string)bool{return predstate.LobbyWasHandled(s,hash)}
+func pendingLobbySeen(s *State,hash string)bool{return predstate.PendingLobbySeen(s,hash)}
+func enqueueLobby(s *State,event *LobbyEvent)bool{return predstate.EnqueueLobby(s,event)}
+func popPendingLobby(s *State){predstate.PopPendingLobby(s)}
 
 type remoteFinishedError = twitchpkg.RemoteFinishedError
 
