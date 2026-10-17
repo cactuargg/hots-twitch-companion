@@ -1,31 +1,15 @@
 package main
 
 import (
-	"errors"
-	"os"
-	"path/filepath"
+ "errors"
+ "path/filepath"
+ "hots-twitch-companion/internal/storage"
 )
 
-const resetMarker = ".reset-profile"
+const resetMarker = storage.ResetMarker
 
-// Delete only Companion-owned data, before any token or WebView is loaded.
-// Keep the marker until every removal succeeds so a failed reset retries safely.
 func applyProfileReset(p paths) error {
-	marker := filepath.Join(p.dir, resetMarker)
-	if _, err := os.Stat(marker); errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	for _, name := range []string{p.config, p.state, p.secret, p.config + ".new", p.state + ".new", p.secret + ".new", marker + ".new"} {
-		if err := os.Remove(name); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-	}
-	if err := os.RemoveAll(filepath.Join(p.dir, "webview2")); err != nil {
-		return err
-	}
-	return os.Remove(marker)
+ return storage.ApplyProfileReset(p.dir,p.config,p.state,p.secret)
 }
 
 func (d *dashboard) requestProfileReset() error {
