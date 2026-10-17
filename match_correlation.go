@@ -1,6 +1,7 @@
 package main
 
 import (
+	predstate "hots-twitch-companion/internal/prediction"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -14,13 +15,7 @@ import (
 )
 
 // Evidence, not a global Match ID. Never rebind an existing Prediction.
-type MatchBinding struct {
-	Version    int            `json:"version"`
-	Lobby      *LobbySnapshot `json:"lobby"`
-	LobbyKey   string         `json:"lobbyKey"`
-	PlayerToon string         `json:"playerToon"`
-	Ambiguous  bool           `json:"ambiguous,omitempty"`
-}
+type MatchBinding = predstate.MatchBinding
 
 func bindPredictionMatch(lobby *LobbySnapshot, key, toon string) *MatchBinding {
 	binding := &MatchBinding{Version: 1, LobbyKey: key, PlayerToon: strings.TrimSpace(toon)}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	predstate "hots-twitch-companion/internal/prediction"
 	"hots-twitch-companion/internal/storage"
 	"hots-twitch-companion/internal/clock"
 	"context"
@@ -80,36 +81,12 @@ type Token struct {
 	ExpiresIn    int    `json:"expires_in"`
 	SavedAt      int64  `json:"savedAt"`
 }
-type Prediction struct {
-	ID            string `json:"id"`
-	BroadcasterID string `json:"broadcasterId"`
-	WinID         string `json:"winId"`
-	LossID        string `json:"lossId"`
-	StartedAt     int64  `json:"startedAt"`
-	DryRun        bool   `json:"dryRun"`
-	Match         *MatchBinding `json:"match,omitempty"`
-	Settlement    *SettlementAttempt `json:"settlement,omitempty"`
-}
+type Prediction = predstate.Prediction
 // Persisted proof that a real Twitch creation POST may have been sent
 // without a confirmed remote ID. Never automatically retry this POST.
-type CreationAttempt struct {
-	LobbySHA string `json:"lobbySHA"`
-	BroadcasterID string `json:"broadcasterId"`
-	AttemptedAt int64 `json:"attemptedAt"`
-}
+type CreationAttempt = predstate.CreationAttempt
 
-type State struct {
-	UnconfirmedCreation *CreationAttempt `json:"unconfirmedCreation,omitempty"`
-	Active           *Prediction `json:"active"`
-	LastLobby        *LobbySnapshot `json:"lastLobby,omitempty"`
-	LastLobbyKey     string      `json:"lastLobbyKey"`
-	LastSettlementAt int64       `json:"lastSettlementAt"`
-	LastResult       string      `json:"lastResult"`
-	PendingLobby     *LobbyEvent `json:"pendingLobby,omitempty"`
-	PendingLobbies  []*LobbyEvent `json:"pendingLobbies,omitempty"`
-	LastCreatedLobbySHA string `json:"lastCreatedLobbySHA,omitempty"`
-	RecentLobbySHAs []string `json:"recentLobbySHAs,omitempty"`
-}
+type State = predstate.State
 type DeviceResponse struct {
 	DeviceCode      string `json:"device_code"`
 	UserCode        string `json:"user_code"`
