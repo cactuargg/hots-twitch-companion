@@ -36,6 +36,7 @@ type replaySummary struct {
 	Modified string          `json:"modified"`
 	Players  []playerSummary `json:"players,omitempty"`
 	Selected string          `json:"selected,omitempty"`
+	SelectedToonHandle string `json:"selectedToonHandle,omitempty"`
 	Error          string          `json:"error,omitempty"`
 	SelectionError string          `json:"selectionError,omitempty"`
 }
@@ -219,6 +220,7 @@ func (d *dashboard) currentReplays() []replaySummary {
 			if er == nil {
 				s.Result = p.Result
 				s.Selected = p.Name
+				s.SelectedToonHandle = p.ToonHandle
 			} else {
 				s.Result = "unknown"
 				s.SelectionError = er.Error()
