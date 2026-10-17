@@ -2,7 +2,16 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.8
+## What's new in v0.9.9
+
+- Clearer Russian and English setup, settings and recovery messages. The interface explains saved Twitch authorization, the player ID required for automatic results and the difference between a betting window and match duration.
+- Manual result confirmations identify the selected HotS player and use readable paragraphs. Replay preview and Twitch-result checks explain what they do without implying they resolve a Prediction.
+- Stopping monitoring is distinguished from cancelling a Twitch Prediction, and losing the connection to the window is distinguished from stopping background monitoring. Startup diagnostics no longer incorrectly promise simulation mode.
+- Failed creation checks are visible on Home, while uncertain remote creation retains its separate warning and recovery action. Saved Predictions show recovery guidance when monitoring is stopped.
+- Localized visible labels, accessibility names and setup result badges. Added checks for translation coverage and placeholders; all 84 UI tests, Go tests/vet, Desktop, Browser and race checks gate publication.
+- Existing profiles, saved Twitch authorization and prediction recovery rules remain compatible.
+
+## Reliability fixes from v0.9.8
 
 - Prediction titles, outcomes and betting-window settings can be changed while monitoring runs. An active prediction retains its original betting-window duration; new settings apply to future predictions.
 - Edits made during an in-flight settings save remain marked as unsaved. Start is blocked until the latest draft is saved; overlapping settings and language writes are guarded.
