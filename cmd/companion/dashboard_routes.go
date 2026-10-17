@@ -1,12 +1,9 @@
 package main
 
 import (
+ dashview "hots-twitch-companion/internal/dashboard"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"io"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -19,44 +16,11 @@ import (
 // stay in service.go. No request handling behavior changes in this extraction.
 
 func readJSONRequest(r *http.Request, v any) error {
-	if r.ContentLength > 16384 {
-		return errors.New(tr(langEn, "http.request_too_large"))
-	}
-	r.Body = http.MaxBytesReader(nil, r.Body, 16384)
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		return err
-	}
-	// A complete HTTP body must contain exactly one JSON value. Without
-	// the second decode, a valid config followed by another object is
-	// silently accepted even though the request is malformed.
-	var extra any
-	if err := dec.Decode(&extra); err != io.EOF {
-		if err == nil {
-			return errors.New("multiple JSON values in request body")
-		}
-		return err
-	}
-	return nil
+ return dashview.ReadJSONRequest(r, v, tr(langEn, "http.request_too_large"))
 }
-func jsonOutput(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-func requestError(w http.ResponseWriter, err error) {
-	jsonOutput(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-}
-func randomSegment() (string, error) {
-	b := make([]byte, 24)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
+func jsonOutput(w http.ResponseWriter, code int, v any) { dashview.JSONOutput(w, code, v) }
+func requestError(w http.ResponseWriter, err error) { dashview.RequestError(w, err) }
+func randomSegment() (string, error) { return dashview.RandomSegment() }
 func (d *dashboard) routes(addr, secret string) http.Handler {
 	prefix := "/" + secret + "/"
 	web, err := fs.Sub(interfaceFiles, "web")
