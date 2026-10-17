@@ -359,6 +359,8 @@ func TestPreflightFailureRetriesPendingLobbyWithoutDuplicatePost(t *testing.T) {
 	t.Setenv("TEMP", temp)
 	now := time.Now()
 	e, p := liveLifecycleTest(t)
+	e.cfg.PredictionWin = "Win"
+	e.cfg.PredictionLoss = "Loss"
 	s := e.state
 	s.Active = nil
 	s.LastCreatedLobbySHA = ""
