@@ -2,7 +2,6 @@ package credentials
 
 import (
  "encoding/json"
- "errors"
  "fmt"
  "os"
 )
