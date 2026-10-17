@@ -691,7 +691,7 @@ func (e *Engine) updateConfig(cfg Config) error {
 	}
 	// An unresolved real Prediction belongs to a specific Twitch OAuth app.
 	// Changing it would strand the remote Prediction even after reauth.
-	if e.state.Active != nil && !e.state.Active.DryRun && cfg.twitchClientID() != e.cfg.twitchClientID() {
+	if (e.state.Active != nil && !e.state.Active.DryRun || e.state.UnconfirmedCreation != nil) && cfg.twitchClientID() != e.cfg.twitchClientID() {
 		return errors.New("Finish or cancel the active Twitch Prediction before changing the OAuth Client ID")
 	}
 	// Do not rebuild an authorized Twitch client for language or wizard
@@ -747,6 +747,9 @@ func (e *Engine) installTwitchToken(ctx context.Context, expectedClientID string
 		(active.BroadcasterID == "" || active.BroadcasterID != me.UserID) {
 		return TwitchIdentity{}, errors.New("Finish or cancel the active Twitch Prediction before connecting another channel")
 	}
+	if uncertain := e.state.UnconfirmedCreation; uncertain != nil && uncertain.BroadcasterID != me.UserID {
+		return TwitchIdentity{}, errors.New("Reconcile the unconfirmed Prediction before connecting another Twitch channel")
+	}
 	t := e.twitch
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -755,6 +758,37 @@ func (e *Engine) installTwitchToken(ctx context.Context, expectedClientID string
 	}
 	t.broadcasterID, t.login = me.UserID, me.Login
 	return me, nil
+}
+
+// acknowledgeUnconfirmedCreation is the only path that can clear an
+// uncertain creation without a known Prediction ID. The user must explicitly
+// confirm the check, and Twitch must verify that this same broadcaster has
+// no ACTIVE/LOCKED Prediction. No matching by title or blind adoption.
+func (e *Engine) acknowledgeUnconfirmedCreation(ctx context.Context) error {
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
+	e.mu.Lock()
+	s := e.state
+	cfg := e.cfg
+	twitch := e.twitch
+	e.mu.Unlock()
+	if s.UnconfirmedCreation == nil || s.Active != nil || !cfg.RealMode {
+		return errors.New("There is no unconfirmed Twitch creation to reconcile")
+	}
+	identity, err := twitch.preflightCreate(ctx)
+	if err != nil {
+		return fmt.Errorf("Cannot confirm Twitch is clear: %w", err)
+	}
+	if identity.UserID != s.UnconfirmedCreation.BroadcasterID {
+		return errors.New("Authorized Twitch channel does not match the unconfirmed creation")
+	}
+	next := s
+	next.UnconfirmedCreation = nil
+	if err := e.updateAndSave(next); err != nil {
+		return err
+	}
+	e.setReplayScan("checking", "", "")
+	return nil
 }
 
 func (e *Engine) updateAndSave(s State) error {
@@ -864,6 +898,10 @@ func (e *Engine) start() error {
 	if e.running {
 		e.mu.Unlock()
 		return errors.New(tr(e.cfg.lang(), "automation.already_running"))
+	}
+	if e.state.UnconfirmedCreation != nil {
+		e.mu.Unlock()
+		return errors.New("Reconcile the unconfirmed Twitch Prediction before starting automation")
 	}
 	if e.cfg.PlayerName == "" && e.cfg.PlayerToonHandle == "" {
 		e.mu.Unlock()

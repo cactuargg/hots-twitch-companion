@@ -316,6 +316,13 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 			e.scanReplay(ctx, s, now, lastError, lastLog)
 		}
 	}
+	// An unconfirmed remote POST may have already created a live wager.
+	// Do not create ANY other Prediction until the streamer has reconciled
+	// the uncertain operation with Twitch, even when a newer lobby arrives.
+	if s.UnconfirmedCreation != nil && s.Active == nil {
+		e.setReplayScan("create_error", "", "Verify the unconfirmed Prediction on Twitch before resuming automation")
+		return
+	}
 	if s.Active != nil || s.PendingLobby == nil || ctx.Err() != nil {
 		return
 	}
