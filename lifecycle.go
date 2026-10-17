@@ -200,10 +200,10 @@ func remoteOutcome(actual apiPrediction, p *Prediction) string {
 }
 
 func (e *Engine) commitSettlement(s *State, outcome, source string) error {
-	next := *s
-	next.LastSettlementAt = time.Now().UnixMilli()
-	next.LastResult = fmt.Sprintf("%s (%s)", outcome, filepath.Base(source))
-	next.Active = nil
+	next, err := completedPredictionState(*s, outcome, source, time.Now())
+	if err != nil {
+		return err
+	}
 	if err := e.updateAndSave(next); err != nil {
 		return err
 	}
@@ -228,10 +228,10 @@ func (e *Engine) settlePrediction(ctx context.Context, s *State, outcome, source
 		return e.commitSettlement(s, outcome, source)
 	}
 	if s.Active.Settlement == nil {
-		next := *s
-		active := *s.Active
-		active.Settlement = &SettlementAttempt{Outcome: outcome, Source: source}
-		next.Active = &active
+		next, err := pendingSettlementState(*s, outcome, source)
+		if err != nil {
+			return err
+		}
 		if err := e.updateAndSave(next); err != nil {
 			return err
 		}
@@ -247,17 +247,12 @@ func (e *Engine) settlePrediction(ctx context.Context, s *State, outcome, source
 		return e.commitSettlement(s, remoteOutcome(finished.Prediction, s.Active), "Twitch")
 	}
 	if err != nil {
-		next := *s
-		active := *s.Active
-		retry := *intent
-		retry.Failures++
-		retry.RetryAt = time.Now().Add(time.Duration(min(retry.Failures, 6)) * 10 * time.Second).UnixMilli()
+		minRetryAt := int64(0)
 		var rateLimit *twitchHTTPError
 		if errors.As(err, &rateLimit) {
-			retry.RetryAt = max(retry.RetryAt, rateLimit.RetryAt)
+			minRetryAt = rateLimit.RetryAt
 		}
-		active.Settlement = &retry
-		next.Active = &active
+		next := retrySettlementState(*s, time.Now(), minRetryAt)
 		if saveErr := e.updateAndSave(next); saveErr != nil {
 			return fmt.Errorf("%v; save retry: %w", err, saveErr)
 		}
@@ -346,22 +341,11 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 		}
 		broadcasterID = me.UserID
 	}
-	next.LastCreatedLobbySHA = event.Snapshot.SHA256
-	if e.cfg.RealMode {
-		// Commit uncertainty before an irreversible creation request.
-		next.UnconfirmedCreation = &CreationAttempt{
-			LobbySHA: event.Snapshot.SHA256,
-			BroadcasterID: broadcasterID,
-			AttemptedAt: time.Now().UnixMilli(),
-		}
+	next, err = attemptedCreationState(*s, event, broadcasterID, e.cfg.RealMode, time.Now())
+	if err != nil {
+		e.report("error", "prediction_create", err.Error())
+		return
 	}
-	if event.Snapshot.SHA256 != "" {
-		next.RecentLobbySHAs = append(append([]string(nil), s.RecentLobbySHAs...), event.Snapshot.SHA256)
-		if len(next.RecentLobbySHAs) > 64 {
-			next.RecentLobbySHAs = next.RecentLobbySHAs[len(next.RecentLobbySHAs)-64:]
-		}
-	}
-	next.LastLobby = event.Snapshot
 	if err := e.updateAndSave(next); err != nil {
 		e.report("error", "lobby_save", err.Error())
 		return

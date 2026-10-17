@@ -497,15 +497,18 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broad
 		}
 		e.log(tr(e.cfg.lang(), "log.prediction_created", p.ID))
 	}
-	p.Match = bindPredictionMatch(s.LastLobby, lobbyKey, e.cfg.PlayerToonHandle)
-	s.Active = p
-	// Commit the known ID and clear the uncertainty in one state write.
-	s.UnconfirmedCreation = nil
- e.setReplayScan("waiting_replay", "", "")
-	if err := e.updateAndSave(*s); err != nil {
-		// Keep the known remote ID available in this process. The lobby event
-		// was consumed durably before POST, so restart cannot repeat creation.
-		e.mu.Lock(); e.state = *s; e.mu.Unlock()
+	next, err := confirmedCreationState(*s, p, bindPredictionMatch(s.LastLobby, lobbyKey, e.cfg.PlayerToonHandle))
+	if err != nil {
+		return err
+	}
+	// Keep the confirmed ID in memory even if the follow-up state write
+	// fails. The durable attempted marker prevents a duplicate POST.
+	*s = next
+	e.setReplayScan("waiting_replay", "", "")
+	if err := e.updateAndSave(next); err != nil {
+		e.mu.Lock()
+		e.state = next
+		e.mu.Unlock()
 		return err
 	}
 	return nil
