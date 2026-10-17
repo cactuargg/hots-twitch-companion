@@ -236,7 +236,6 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 		JSONOutput(w, 200, map[string]bool{"ok": true})
 		return
 	case "quit":
-		d.engine.StopWatch()
 		d.Close()
 		JSONOutput(w, 200, map[string]bool{"ok": true})
 		return

@@ -252,8 +252,8 @@ func (t *Client) Create(ctx context.Context, windowMinutes int, title, winTitle,
 	return t.CreatePrepared(ctx, me.UserID, windowMinutes, title, winTitle, lossTitle)
 }
 
-// Endpoint transport remains owned by Client until the client migration.
-func (t *Client) finishPrediction(ctx context.Context, p *prediction.Prediction, outcome string) error {
+// End reconciles the exact remote prediction before applying an outcome.
+func (t *Client) End(ctx context.Context, p *prediction.Prediction, outcome string) error {
 	return FinishPrediction(ctx, p, outcome,
 		func(ctx context.Context, broadcaster, id string) (*APIResponse, error) {
 			return t.Prediction(ctx, broadcaster, id)
@@ -263,8 +263,4 @@ func (t *Client) finishPrediction(ctx context.Context, p *prediction.Prediction,
 			err := t.req(ctx, "PATCH", "/predictions", body, &result)
 			return &result, err
 		})
-}
-
-func (t *Client) End(ctx context.Context, p *prediction.Prediction, outcome string) error {
-	return t.finishPrediction(ctx, p, outcome)
 }

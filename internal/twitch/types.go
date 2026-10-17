@@ -1,6 +1,4 @@
-// Package twitch defines the serialized Twitch OAuth and Helix data types.
-// The higher-level client uses them through compatibility aliases during
-// migration from the root package.
+// OAuth and Helix records retain the existing persisted and remote JSON fields.
 package twitch
 
 type Token struct {
@@ -26,14 +24,16 @@ type Identity struct {
 }
 
 type APIPrediction struct {
-		ID               string `json:"id"`
-		Status           string `json:"status"`
-		Title            string `json:"title"`
-		WinningOutcomeID string `json:"winning_outcome_id"`
-		Outcomes         []struct {
-			ID    string `json:"id"`
-			Title string `json:"title"`
-		} `json:"outcomes"`
+	ID               string `json:"id"`
+	Status           string `json:"status"`
+	Title            string `json:"title"`
+	WinningOutcomeID string `json:"winning_outcome_id"`
+	Outcomes         []struct {
+		ID    string `json:"id"`
+		Title string `json:"title"`
+	} `json:"outcomes"`
 }
 
-type APIResponse struct { Data []APIPrediction `json:"data"` }
+type APIResponse struct {
+	Data []APIPrediction `json:"data"`
+}

@@ -10,7 +10,7 @@ import (
 // capability, origin checks, and security headers before invoking API routes.
 func NewHTTPHandler(addr, secret string, api func(http.ResponseWriter, *http.Request, string), activity func()) http.Handler {
 	prefix := "/" + secret + "/"
-	web, err := fs.Sub(WebFiles, "web")
+	web, err := fs.Sub(webFiles, "web")
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +36,7 @@ func NewHTTPHandler(addr, secret string, api func(http.ResponseWriter, *http.Req
 		sub := strings.TrimPrefix(r.URL.Path, prefix)
 		if !strings.HasPrefix(sub, "api/") {
 			if sub == "" {
-				page, err := WebFiles.ReadFile("web/index.html")
+				page, err := webFiles.ReadFile("web/index.html")
 				if err != nil {
 					http.Error(w, "UI unavailable", 500)
 					return

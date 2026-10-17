@@ -142,7 +142,9 @@ go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.
 
 Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe ./cmd/companion`
 
-Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает Desktop, `./build.ps1 -BrowserFallback` — Browser-версию. Desktop использует Wails v2/WebView2 и fyne.io/systray; [инструкция](docs/compact-desktop.ru.md). `service.go` — HTTP/UI-обвязка, `main_windows.go` — окно Edge, `core.go` — логика Twitch/HotS, `replay.go` — MPQ декодер, `i18n.go` — каталог сообщений EN/RU, `web/` — интерфейс.
+Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает Desktop, `./build.ps1 -BrowserFallback` — Browser-версию. Прямые команды Go выше собирают BrowserFallback. Desktop использует Wails v2/WebView2 и fyne.io/systray; [инструкция](docs/compact-desktop.ru.md).
+
+В `cmd/companion` остаются Windows-запуск, трей, композиция и версия. `internal/app` владеет Engine и жизненным циклом ставок; `internal/dashboard` — HTTP-действиями и встроенным интерфейсом `web/`. Конфигурация, переходы Prediction, парсеры и корреляция HotS, Twitch, хранение/DPAPI, часы и переводы находятся в соответствующих пакетах `internal/`. См. [архитектуру, зависимости и гарантии восстановления](docs/architecture.md) и [аудит рефакторинга](docs/refactoring-progress.md).
 
 ## Проверки
 

@@ -31,7 +31,7 @@ type Application interface {
 }
 
 func (d *Dashboard) Routes(addr, secret string) http.Handler {
-	return NewHTTPHandler(addr, secret, func(w http.ResponseWriter, r *http.Request, route string) { d.handleAPIRoute(w, r, route) }, func() { d.mu.Lock(); d.lastActivity = time.Now(); d.mu.Unlock() })
+	return NewHTTPHandler(addr, secret, d.handleAPIRoute, func() { d.mu.Lock(); d.lastActivity = time.Now(); d.mu.Unlock() })
 }
 func (d *Dashboard) RequestProfileReset() error {
 	if err := d.engine.RequestProfileReset(); err != nil {

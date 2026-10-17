@@ -1,6 +1,6 @@
 # Версия пакета и сброс данных
 
-Имена собираемых EXE и ZIP содержат версию из `core.go`: например,
+Имена собираемых EXE и ZIP содержат версию из `cmd/companion/version.go`: например,
 `HotS-Twitch-Companion-v0.9.1.exe` и
 `HotS-Twitch-Companion-v0.9.1-windows-x64.zip`.
 Браузерный вариант содержит также `Browser`. Локальная сборка и CI используют
