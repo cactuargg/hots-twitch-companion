@@ -83,3 +83,29 @@ func TestClockControlsUncertainCreationTimestamp(t *testing.T) {
 	e.scanTick(context.Background(),now.Add(-time.Minute),&lastError,&lastLog)
 	if fake.createCalls!=1 {t.Fatalf("unconfirmed POST retried: %d",fake.createCalls)}
 }
+
+
+func TestClockControlsHundredMinuteTimeoutBoundary(t *testing.T) {
+	temp:=t.TempDir()
+	t.Setenv("TMP",temp)
+	t.Setenv("TEMP",temp)
+	end:=time.Date(2026,10,17,19,0,0,0,time.UTC)
+	e,p:=scanFixture(t,end.Add(-100*time.Minute))
+	clock:=&manualClock{current:end}
+	e.clock=clock
+	lastError:=""
+	lastLog:=time.Time{}
+	e.scanTick(context.Background(),end.Add(-101*time.Minute),&lastError,&lastLog)
+	if e.state.Active==nil {
+		t.Fatal("Prediction canceled at exactly the 100-minute boundary")
+	}
+	clock.Advance(time.Millisecond)
+	e.scanTick(context.Background(),end.Add(-101*time.Minute),&lastError,&lastLog)
+	if e.state.Active!=nil || e.state.LastSettlementAt!=clock.Now().UnixMilli() {
+		t.Fatalf("Prediction was not canceled immediately after timeout: %+v",e.state)
+	}
+	persisted,err:=loadState(p)
+	if err!=nil || persisted.Active!=nil || persisted.LastSettlementAt!=clock.Now().UnixMilli() {
+		t.Fatalf("timeout cancel was not persisted: %+v %v",persisted,err)
+	}
+}
