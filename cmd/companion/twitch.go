@@ -256,6 +256,19 @@ func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle,
 	}
 	return t.createPrepared(ctx, me.UserID, windowMinutes, title, winTitle, lossTitle)
 }
+// Endpoint transport remains owned by Twitch until the client migration.
+func (t *Twitch) finishPrediction(ctx context.Context,p *Prediction,outcome string)error {
+ return twitchpkg.FinishPrediction(ctx,p,outcome,
+  func(ctx context.Context,broadcaster,id string)(*apiResponse,error) {
+   return t.prediction(ctx,broadcaster,id)
+  },
+  func(ctx context.Context,body map[string]any)(*apiResponse,error) {
+   var result apiResponse
+   err:=t.req(ctx,"PATCH","/predictions",body,&result)
+   return &result,err
+  })
+}
+
 func (t *Twitch) end(ctx context.Context, p *Prediction, outcome string) error {
  return t.finishPrediction(ctx, p, outcome)
 }

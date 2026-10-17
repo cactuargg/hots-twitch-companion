@@ -1,11 +1,12 @@
 package main
 
 import (
+ "fmt"
+ twitchpkg "hots-twitch-companion/internal/twitch"
 	transport "hots-twitch-companion/internal/twitch/transport"
 	predstate "hots-twitch-companion/internal/prediction"
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 )
@@ -72,98 +73,16 @@ func enqueueLobby(s *State, event *LobbyEvent) bool {
 
 func popPendingLobby(s *State) { predstate.PopPendingLobby(s) }
 
-type remoteFinishedError struct{ Prediction apiPrediction }
+type remoteFinishedError = twitchpkg.RemoteFinishedError
 
-func (e *remoteFinishedError) Error() string { return "Prediction was already finalized on Twitch" }
-
-func exactPrediction(response *apiResponse, id string) (apiPrediction, error) {
-	if response == nil || len(response.Data) != 1 || response.Data[0].ID != id {
-		return apiPrediction{}, errors.New("Twitch did not return the exact Prediction")
-	}
-	return response.Data[0], nil
+func exactPrediction(response *apiResponse,id string)(apiPrediction,error) {
+ return twitchpkg.ExactPrediction(response,id)
 }
-
-func terminalPrediction(actual apiPrediction, status, winner string) error {
-	if actual.Status == status && (status == "CANCELED" || actual.WinningOutcomeID == winner) {
-		return nil
-	}
-	if actual.Status == "CANCELED" || actual.Status == "RESOLVED" {
-		return &remoteFinishedError{actual}
-	}
-	return errors.New("Twitch has not confirmed the requested final status")
+func terminalPrediction(actual apiPrediction,status,winner string)error {
+ return twitchpkg.TerminalPrediction(actual,status,winner)
 }
-
-// Read-before-write and exact response validation apply to first attempts and
-// recovery alike. A lost response is never grounds to choose another outcome.
-func (t *Twitch) finishPrediction(ctx context.Context, p *Prediction, outcome string) error {
-	if p == nil || p.ID == "" || p.BroadcasterID == "" || (outcome != "win" && outcome != "loss" && outcome != "cancel") {
-		return errors.New("invalid Prediction or outcome")
-	}
-	status, winner := "RESOLVED", p.LossID
-	if outcome == "win" {
-		winner = p.WinID
-	}
-	if outcome == "cancel" {
-		status = "CANCELED"
-		winner = ""
-	}
-	if status == "RESOLVED" && (winner == "" || p.WinID == p.LossID) {
-		return errors.New("invalid Prediction outcome IDs")
-	}
-	response, err := t.prediction(ctx, p.BroadcasterID, p.ID)
-	if err != nil {
-		return err
-	}
-	actual, err := exactPrediction(response, p.ID)
-	if err != nil {
-		return err
-	}
-	if actual.Status == "RESOLVED" || actual.Status == "CANCELED" {
-		return terminalPrediction(actual, status, winner)
-	}
-	if actual.Status != "ACTIVE" && actual.Status != "LOCKED" {
-		return errors.New("unsupported Twitch Prediction status")
-	}
-	body := map[string]any{"broadcaster_id": p.BroadcasterID, "id": p.ID, "status": status}
-	if winner != "" {
-		body["winning_outcome_id"] = winner
-	}
-	var result apiResponse
-	requestErr := t.req(ctx, "PATCH", "/predictions", body, &result)
-	if requestErr == nil {
-		confirmed, err := exactPrediction(&result, p.ID)
-		if err == nil {
-			err = terminalPrediction(confirmed, status, winner)
-		}
-		if err == nil {
-			return nil
-		}
-		// A contradictory PATCH body is not a verified external finalization.
-		// Only the follow-up GET may supply remoteFinishedError on this path.
-		requestErr = fmt.Errorf("unexpected Twitch response: %v", err)
-	}
-	// This request may have committed even if PATCH timed out or its body was bad.
-	response, err = t.prediction(ctx, p.BroadcasterID, p.ID)
-	if err == nil {
-		actual, err = exactPrediction(response, p.ID)
-		if err == nil && (actual.Status == "RESOLVED" || actual.Status == "CANCELED") {
-			return terminalPrediction(actual, status, winner)
-		}
-	}
-	return requestErr
-}
-
-func remoteOutcome(actual apiPrediction, p *Prediction) string {
-	if actual.Status == "CANCELED" {
-		return "cancel"
-	}
-	if actual.WinningOutcomeID == p.WinID {
-		return "win"
-	}
-	if actual.WinningOutcomeID == p.LossID {
-		return "loss"
-	}
-	return "external"
+func remoteOutcome(actual apiPrediction,p *Prediction)string {
+ return twitchpkg.RemoteOutcome(actual,p)
 }
 
 func (e *Engine) commitSettlement(s *State, outcome, source string) error {
