@@ -6,8 +6,8 @@ const path=require('node:path');
 const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
-const html=fs.readFileSync(path.join(root,'cmd/companion/web/index.html'),'utf8');
-const source=fs.readFileSync(path.join(root,'cmd/companion/web/assets/onboarding.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'internal/dashboard/web/index.html'),'utf8');
+const source=fs.readFileSync(path.join(root,'internal/dashboard/web/assets/onboarding.js'),'utf8');
 const start=source.indexOf('const wiz={step:0,max:2,busy:false};');
 assert.ok(start>=0);
 
@@ -63,7 +63,7 @@ function setup(){
     async copyTwitchCode(){},getInputs:()=>({...state.config})
   };
   vm.createContext(ctx);
-  const app=fs.readFileSync(path.join(root,'cmd/companion/web/assets/app.js'),'utf8');
+  const app=fs.readFileSync(path.join(root,'internal/dashboard/web/assets/app.js'),'utf8');
   vm.runInContext(app.slice(app.indexOf('async function startAutomation('),app.indexOf('async function manualPrediction(')),ctx);
   vm.runInContext(source.slice(start),ctx);
   return {ctx,$,calls,state,sections,back};
