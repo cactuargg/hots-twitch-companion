@@ -373,33 +373,21 @@ func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, 
 }
 
 func (e *Engine) start() error {
-	e.mu.Lock()
-	if e.running {
-		e.mu.Unlock()
-		return errors.New(tr(e.cfg.lang(), "automation.already_running"))
-	}
-	if e.state.UnconfirmedCreation != nil {
-		e.mu.Unlock()
-		return errors.New("Reconcile the unconfirmed Twitch Prediction before starting automation")
-	}
-	if e.cfg.PlayerName == "" && e.cfg.PlayerToonHandle == "" {
-		e.mu.Unlock()
-		return errors.New(tr(e.cfg.lang(), "automation.need_player"))
-	}
-	if e.cfg.twitchClientID() == "" && e.cfg.RealMode {
-		e.mu.Unlock()
-		return errors.New(tr(e.cfg.lang(), "automation.need_client_id"))
-	}
-	if e.state.Active != nil && e.state.Active.DryRun == e.cfg.RealMode {
-		e.mu.Unlock()
-		return errors.New(tr(e.cfg.lang(), "automation.mode_conflict"))
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	e.running = true
-	e.stop = cancel
-	e.mu.Unlock()
-	go e.watch(ctx)
-	return nil
+ e.mu.Lock()
+ reason := app.MonitorStartBlockReason(e.running, appconfig.Data(e.cfg), e.cfg.twitchClientID() != "", e.state)
+ if reason != "" {
+  e.mu.Unlock()
+  if reason == app.UnconfirmedCreationBlock {
+   return errors.New("Reconcile the unconfirmed Twitch Prediction before starting automation")
+  }
+  return errors.New(tr(e.cfg.lang(), reason))
+ }
+ ctx, cancel := context.WithCancel(context.Background())
+ e.running = true
+ e.stop = cancel
+ e.mu.Unlock()
+ go e.watch(ctx)
+ return nil
 }
 func (e *Engine) stopWatch() {
 	e.mu.Lock()
