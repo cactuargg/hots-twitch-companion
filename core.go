@@ -621,6 +621,7 @@ type Engine struct {
 	mu      sync.Mutex
 	actionMu sync.Mutex
 	p       paths
+	store   StateStore
 	cfg     Config
 	twitch  *Twitch
 	state   State
@@ -632,21 +633,39 @@ type Engine struct {
 }
 
 func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
-	s, e := loadState(p)
-	if e != nil {
-		return nil, e
+	return newEngineWithStore(p, cfg, log, nil)
+}
+
+// newEngineWithStore allows failure-injection tests to exercise durable state
+// transitions without modifying the OS filesystem. Production uses fileStateStore.
+func newEngineWithStore(p paths, cfg Config, log func(string), store StateStore) (*Engine, error) {
+	e := &Engine{p: p, cfg: cfg, log: log}
+	if store == nil {
+		// Use the engine's path so existing callers that redirect e.p.state
+		// to simulate disk errors keep exercising the production store.
+		store = fileStateStore{p: &e.p}
+	}
+	e.store = store
+	s, err := store.Load()
+	if err != nil {
+		return nil, err
 	}
 	if s.LastCreatedLobbySHA == "" {
 		if s.Active != nil && s.Active.Match != nil && s.Active.Match.Lobby != nil {
 			s.LastCreatedLobbySHA = s.Active.Match.Lobby.SHA256
-		} else if s.LastLobby != nil { s.LastCreatedLobbySHA = s.LastLobby.SHA256 }
+		} else if s.LastLobby != nil {
+			s.LastCreatedLobbySHA = s.LastLobby.SHA256
+		}
 	}
-	if len(s.RecentLobbySHAs)==0 && s.LastCreatedLobbySHA!="" {s.RecentLobbySHAs=[]string{s.LastCreatedLobbySHA}}
-	t, e := newTwitch(p, cfg.twitchClientID(), cfg.lang())
-	if e != nil {
-		return nil, e
+	if len(s.RecentLobbySHAs) == 0 && s.LastCreatedLobbySHA != "" {
+		s.RecentLobbySHAs = []string{s.LastCreatedLobbySHA}
 	}
-	return &Engine{p: p, cfg: cfg, state: s, twitch: t, log: log}, nil
+	twitch, err := newTwitch(p, cfg.twitchClientID(), cfg.lang())
+	if err != nil {
+		return nil, err
+	}
+	e.state, e.twitch = s, twitch
+	return e, nil
 }
 
 // report sends a structured diagnostic when the dashboard is attached, while
@@ -760,7 +779,7 @@ func (e *Engine) installTwitchToken(ctx context.Context, expectedClientID string
 func (e *Engine) updateAndSave(s State) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if err := saveState(e.p, s); err != nil { return err }
+	if err := e.store.Save(s); err != nil { return err }
 	e.state = s
 	return nil
 }
