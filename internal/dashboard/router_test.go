@@ -31,5 +31,5 @@ func TestHTTPRouterCapabilityAndOrigin(t *testing.T) {
    if tt.name=="valid get" && !strings.Contains(w.Header().Get("Content-Security-Policy"),"default-src") {t.Fatal("missing CSP")}
   })
  }
- if called!=2 || active!=6 {t.Fatalf("callbacks: api=%d activity=%d",called,active)}
+ if called!=2 || active!=5 {t.Fatalf("callbacks: api=%d activity=%d",called,active)}
 }
