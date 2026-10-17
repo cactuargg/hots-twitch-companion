@@ -122,22 +122,15 @@ func validateTwitchIdentity(ctx context.Context, accessToken, clientID, lang str
 	if err := requestJSON(ctx, "GET", authURL+"/validate", nil, nil, accessToken, "", &me); err != nil {
 		return me, err
 	}
-	if me.ClientID != clientID {
-		return me, errors.New(tr(lang, "twitch.wrong_client"))
+	switch twitchpkg.IdentityIssue(me,clientID,scope) {
+	case "wrong_client":
+		return me,errors.New(tr(lang,"twitch.wrong_client"))
+	case "no_scope":
+		return me,errors.New(tr(lang,"twitch.no_scope"))
+	case "missing_broadcaster":
+		return me,errors.New("Twitch validation returned no broadcaster ID")
 	}
-	valid := false
-	for _, v := range me.Scopes {
-		if v == scope {
-			valid = true
-		}
-	}
-	if !valid {
-		return me, errors.New(tr(lang, "twitch.no_scope"))
-	}
-	if me.UserID == "" {
-		return me, errors.New("Twitch validation returned no broadcaster ID")
-	}
-	return me, nil
+	return me,nil
 }
 
 func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
@@ -185,10 +178,7 @@ func (t *Twitch) req(ctx context.Context, method, route string, body any, dst an
 	return e
 }
 func (t *Twitch) prediction(ctx context.Context, broadcaster, id string) (*apiResponse, error) {
-	route := "/predictions?broadcaster_id=" + url.QueryEscape(broadcaster) + "&first=5"
-	if id != "" {
-		route = "/predictions?broadcaster_id=" + url.QueryEscape(broadcaster) + "&id=" + url.QueryEscape(id)
-	}
+	route := twitchpkg.PredictionRoute(broadcaster,id)
 	var d apiResponse
 	e := t.req(ctx, "GET", route, nil, &d)
 	return &d, e
@@ -204,10 +194,8 @@ func (t *Twitch) preflightCreate(ctx context.Context) (TwitchIdentity, error) {
 	if err != nil {
 		return TwitchIdentity{}, err
 	}
-	for _, v := range previous.Data {
-		if v.Status == "ACTIVE" || v.Status == "LOCKED" {
-			return TwitchIdentity{}, errors.New(tr(t.language(), "twitch.prediction_exists"))
-		}
+	if twitchpkg.HasOpenPrediction(previous) {
+		return TwitchIdentity{},errors.New(tr(t.language(),"twitch.prediction_exists"))
 	}
 	return me, nil
 }
@@ -215,35 +203,16 @@ func (t *Twitch) preflightCreate(ctx context.Context) (TwitchIdentity, error) {
 // createPrepared must only run after the caller durably records the creation
 // attempt. A lost POST response must never trigger a second POST.
 func (t *Twitch) createPrepared(ctx context.Context, broadcasterID string, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
-	if broadcasterID == "" || winTitle == lossTitle {
-		return nil, errors.New(tr(t.language(), "twitch.outcomes_invalid"))
+	payload,err:=twitchpkg.CreationRequest(broadcasterID,windowMinutes,title,winTitle,lossTitle)
+	if err!=nil {return nil,errors.New(tr(t.language(),"twitch.outcomes_invalid"))}
+	var response apiResponse
+	if err:=t.req(ctx,"POST","/predictions",payload,&response);err!=nil{return nil,err}
+	confirmed,err:=twitchpkg.ParseCreatedPrediction(&response,broadcasterID,winTitle,lossTitle,time.Now().UnixMilli())
+	if errors.Is(err,twitchpkg.ErrMalformedCreateResponse){
+		return nil,errors.New(tr(t.language(),"twitch.create_bad_response"))
 	}
-	var d apiResponse
-	err := t.req(ctx, "POST", "/predictions", map[string]any{
-		"broadcaster_id": broadcasterID,
-		"title": title,
-		"outcomes": []map[string]string{{"title": winTitle}, {"title": lossTitle}},
-		"prediction_window": windowMinutes * 60,
-	}, &d)
-	if err != nil {
-		return nil, err
-	}
-	if len(d.Data) != 1 || len(d.Data[0].Outcomes) != 2 || d.Data[0].Status != "ACTIVE" {
-		return nil, errors.New(tr(t.language(), "twitch.create_bad_response"))
-	}
-	p := &Prediction{ID: d.Data[0].ID, BroadcasterID: broadcasterID, StartedAt: time.Now().UnixMilli()}
-	for _, outcome := range d.Data[0].Outcomes {
-		if outcome.Title == winTitle {
-			p.WinID = outcome.ID
-		}
-		if outcome.Title == lossTitle {
-			p.LossID = outcome.ID
-		}
-	}
-	if p.ID == "" || p.WinID == "" || p.LossID == "" || p.WinID == p.LossID {
-		return nil, errors.New(tr(t.language(), "twitch.outcomes_invalid"))
-	}
-	return p, nil
+	if err!=nil{return nil,errors.New(tr(t.language(),"twitch.outcomes_invalid"))}
+	return confirmed,nil
 }
 
 func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
