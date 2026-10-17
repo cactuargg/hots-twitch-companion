@@ -1,6 +1,7 @@
 package main
 
 import (
+	twitch "hots-twitch-companion/internal/twitch"
 	discovery "hots-twitch-companion/internal/hots/discovery"
 	predstate "hots-twitch-companion/internal/prediction"
 	"hots-twitch-companion/internal/storage"
@@ -75,42 +76,17 @@ func (c Config) predictionTexts() (title, win, loss string) {
 	}
 	return title, win, loss
 }
-type Token struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	SavedAt      int64  `json:"savedAt"`
-}
+type Token = twitch.Token
 type Prediction = predstate.Prediction
 // Persisted proof that a real Twitch creation POST may have been sent
 // without a confirmed remote ID. Never automatically retry this POST.
 type CreationAttempt = predstate.CreationAttempt
 
 type State = predstate.State
-type DeviceResponse struct {
-	DeviceCode      string `json:"device_code"`
-	UserCode        string `json:"user_code"`
-	VerificationURI string `json:"verification_uri"`
-	ExpiresIn       int    `json:"expires_in"`
-	Interval        int    `json:"interval"`
-}
-type TwitchIdentity struct {
-	ClientID string   `json:"client_id"`
-	UserID   string   `json:"user_id"`
-	Login    string   `json:"login"`
-	Scopes   []string `json:"scopes"`
-}
-type apiPrediction struct {
-		ID               string `json:"id"`
-		Status           string `json:"status"`
-		Title            string `json:"title"`
-		WinningOutcomeID string `json:"winning_outcome_id"`
-		Outcomes         []struct {
-			ID    string `json:"id"`
-			Title string `json:"title"`
-		} `json:"outcomes"`
-}
-type apiResponse struct { Data []apiPrediction `json:"data"` }
+type DeviceResponse = twitch.DeviceResponse
+type TwitchIdentity = twitch.Identity
+type apiPrediction = twitch.APIPrediction
+type apiResponse = twitch.APIResponse
 type paths struct{ dir, config, secret, state string }
 
 func pathsForUser() (paths, error) {
