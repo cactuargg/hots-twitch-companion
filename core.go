@@ -244,35 +244,53 @@ func startDevice(ctx context.Context, clientID string) (DeviceResponse, error) {
 	e := requestJSON(ctx, "POST", authURL+"/device", url.Values{"client_id": {clientID}, "scopes": {scope}}, nil, "", "", &d)
 	return d, e
 }
+// Twitch asks Device Flow clients to increase their polling delay by five
+// seconds each time the OAuth endpoint returns slow_down.
+func devicePollRetry(interval time.Duration, err error) (time.Duration, bool) {
+	if err == nil {
+		return interval, false
+	}
+	if strings.Contains(err.Error(), "slow_down") {
+		return interval + 5*time.Second, true
+	}
+	if strings.Contains(err.Error(), "authorization_pending") {
+		return interval, true
+	}
+	return interval, false
+}
+
 func pollDevice(ctx context.Context, clientID, lang string, d DeviceResponse, log func(string)) (Token, error) {
 	if d.Interval < 5 {
 		d.Interval = 5
 	}
+	interval := time.Duration(d.Interval) * time.Second
 	deadline := time.NewTimer(time.Duration(d.ExpiresIn) * time.Second)
 	defer deadline.Stop()
-	ticker := time.NewTicker(time.Duration(d.Interval) * time.Second)
-	defer ticker.Stop()
+	wait := time.NewTimer(interval)
+	defer wait.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return Token{}, ctx.Err()
 		case <-deadline.C:
 			return Token{}, errors.New(tr(lang, "auth.code_expired"))
-		case <-ticker.C:
+		case <-wait.C:
 			var t Token
 			form := url.Values{"client_id": {clientID}, "scopes": {scope}, "device_code": {d.DeviceCode}, "grant_type": {"urn:ietf:params:oauth:grant-type:device_code"}}
-			e := requestJSON(ctx, "POST", authURL+"/token", form, nil, "", "", &t)
-			if e == nil {
+			err := requestJSON(ctx, "POST", authURL+"/token", form, nil, "", "", &t)
+			if err == nil {
 				if t.AccessToken == "" || t.RefreshToken == "" {
 					return Token{}, errors.New(tr(lang, "auth.no_tokens"))
 				}
 				t.SavedAt = time.Now().Unix()
 				return t, nil
 			}
-			if strings.Contains(e.Error(), "authorization_pending") || strings.Contains(e.Error(), "slow_down") {
-				continue
+			next, retry := devicePollRetry(interval, err)
+			if !retry {
+				return Token{}, err
 			}
-			return Token{}, e
+			interval = next
+			wait.Reset(interval)
 		}
 	}
 }

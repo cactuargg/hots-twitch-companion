@@ -321,6 +321,23 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 }
 
 
+
+// Twitch Device Flow must back off on slow_down instead of continuously
+// requesting tokens at the original fixed interval.
+func TestDevicePollBackoff(t *testing.T) {
+	interval := 5*time.Second
+	slow := &twitchHTTPError{Status:400,Message:"slow_down"}
+	pending := &twitchHTTPError{Status:400,Message:"authorization_pending"}
+	next, retry := devicePollRetry(interval, pending)
+	if !retry || next != interval { t.Fatalf("pending must keep interval: %s %t",next,retry) }
+	next, retry = devicePollRetry(interval, slow)
+	if !retry || next != 10*time.Second { t.Fatalf("slow_down must add 5 seconds: %s %t",next,retry) }
+	next, retry = devicePollRetry(next, slow)
+	if !retry || next != 15*time.Second { t.Fatalf("consecutive slow_down must accumulate: %s %t",next,retry) }
+	next, retry = devicePollRetry(next, &twitchHTTPError{Status:403,Message:"invalid_client"})
+	if retry || next != 15*time.Second { t.Fatalf("unrecoverable errors must stop polling: %s %t",next,retry) }
+}
+
 func TestDashboardPhases(t *testing.T) {
 	for _, tt := range []struct {
 		hasToken, validated, pending bool
