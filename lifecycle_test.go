@@ -465,7 +465,7 @@ func TestPreflightFailureRetriesPendingLobbyWithoutDuplicatePost(t *testing.T) {
 		t.Fatalf("preflight consumed retryable lobby: %+v posts=%d", e.state, posts)
 	}
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
-	if e.state.Active == nil || e.state.Active.ID != "created" || e.state.PendingLobby != nil || posts != 1 {
+	if e.state.Active == nil || e.state.Active.ID != "created" || e.state.PendingLobby != nil || posts != 1 || e.state.UnconfirmedCreation != nil {
 		t.Fatalf("preflight retry failed: %+v posts=%d", e.state, posts)
 	}
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
@@ -496,8 +496,8 @@ func TestUncertainCreationIsNeverAutomaticallyRepeated(t *testing.T) {
 		}
 		posts++
 		saved, err := loadState(p)
-		if err != nil || saved.PendingLobby != nil || saved.LastCreatedLobbySHA == "" {
-			t.Fatal("creation event not durably consumed")
+		if err != nil || saved.PendingLobby != nil || saved.LastCreatedLobbySHA == "" || saved.UnconfirmedCreation == nil {
+			t.Fatal("creation event and uncertainty not durably recorded")
 		}
 		return nil, errors.New("POST response lost")
 	})}
@@ -506,6 +506,9 @@ func TestUncertainCreationIsNeverAutomaticallyRepeated(t *testing.T) {
 	started := now.Add(-time.Minute)
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.UnconfirmedCreation == nil || e.state.Active != nil {
+		t.Fatal("uncertain POST must retain durable warning without claiming an active Prediction")
+	}
 	restarted, err := newEngine(p, e.cfg, func(string) {})
 	if err != nil {
 		t.Fatal(err)

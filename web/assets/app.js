@@ -68,7 +68,7 @@ function render(s){
   const stale=!!st.running&&!!st.active&&Number(scan.checkedAt)>0&&
     Date.now()-Number(scan.checkedAt)>20000;
   const blocked=String(scan.code||'').startsWith('correlation_')||scan.code==='settle_error'||scan.code==='create_error';
-  const reason=blocked?scan.code:st.running?(stale?'stalled':(scan.code||'checking')):'paused';
+  const reason=st.creationUnconfirmed?'create_error':blocked?scan.code:st.running?(stale?'stalled':(scan.code||'checking')):'paused';
   const reasonKey='replay.scan.'+reason;
   const scanText=t(reasonKey);
   const detail=scan.detail?String(scan.detail).slice(0,170):'';
@@ -95,8 +95,10 @@ function render(s){
   $('automation-mode-detail').textContent=t('minimal.realDetail');
   const warning=$('overview-alert');
   const authIssue=real&&running&&!connected;
-  const alertText=authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
-  const shouldWarn=real||authIssue;
+  // Persisted uncertain POSTs take priority over generic live notices.
+  const alertText=st.creationUnconfirmed?t('minimal.creationUnconfirmed'):
+    authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
+  const shouldWarn=!!st.creationUnconfirmed||real||authIssue;
   if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
   warning.hidden=!shouldWarn;
   $('start-label').textContent=needsSetup&&!running?t('minimal.configure'):t(running?'start.stop':'start.start');

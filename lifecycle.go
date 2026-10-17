@@ -340,6 +340,14 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 		broadcasterID = me.UserID
 	}
 	next.LastCreatedLobbySHA = event.Snapshot.SHA256
+	if e.cfg.RealMode {
+		// Commit uncertainty before an irreversible creation request.
+		next.UnconfirmedCreation = &CreationAttempt{
+			LobbySHA: event.Snapshot.SHA256,
+			BroadcasterID: broadcasterID,
+			AttemptedAt: time.Now().UnixMilli(),
+		}
+	}
 	if event.Snapshot.SHA256 != "" {
 		next.RecentLobbySHAs = append(append([]string(nil), s.RecentLobbySHAs...), event.Snapshot.SHA256)
 		if len(next.RecentLobbySHAs) > 64 {

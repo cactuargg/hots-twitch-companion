@@ -188,6 +188,7 @@ func (d *dashboard) status() map[string]any {
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
   "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
   "pendingOutcome": pendingOutcome,
+  "creationUnconfirmed": s.UnconfirmedCreation != nil && s.Active == nil,
   "replayScan": scan, "hasTwitchApp": config.twitchClientID() != "",
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs,
 		"updateVersion": updateVersion, "updateURL": updateURL}
