@@ -136,6 +136,19 @@ func TestPredictionTextsAndReplayRootCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Resetting the custom folder must inspect defaults, not the saved custom
+	// path. Check before changing the stored config via the API.
+	defaults, err := d.checkReplayRoot("")
+	if err != nil { t.Fatal(err) }
+	defaultEntries := defaults["entries"].([]replayRootEntry)
+	if defaults["custom"] != false || len(defaultEntries) != len(defaultReplayRoots()) {
+		t.Fatalf("reset should inspect default roots: %+v", defaults)
+	}
+	for i, entry := range defaultEntries {
+		if entry.Path != defaultReplayRoots()[i] || entry.Path == rp || entry.Custom {
+			t.Fatalf("custom replay root leaked into default check: %+v", entry)
+		}
+	}
 	h := d.routes("127.0.0.1:12345", "secret")
 	post := func(route string, body map[string]any) (int, map[string]any) {
 		payload, _ := json.Marshal(body)

@@ -500,12 +500,15 @@ type ReplayFile struct {
 	Size     int64
 }
 
+func defaultReplayRoots() []string {
+	home, _ := os.UserHomeDir()
+	return []string{filepath.Join(home, "Documents", "Heroes of the Storm"), filepath.Join(home, "OneDrive", "Documents", "Heroes of the Storm")}
+}
 func replayRoots(cfg Config) []string {
 	if cfg.ReplayRoot != "" {
 		return []string{cfg.ReplayRoot}
 	}
-	home, _ := os.UserHomeDir()
-	return []string{filepath.Join(home, "Documents", "Heroes of the Storm"), filepath.Join(home, "OneDrive", "Documents", "Heroes of the Storm")}
+	return defaultReplayRoots()
 }
 func replaysAfter(cfg Config, after time.Time, max int) []ReplayFile {
 	var found []ReplayFile
