@@ -2,7 +2,14 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.6
+## What's new in v0.9.7
+
+- Completes the architecture refactor: Engine, Twitch, Dashboard, configuration, storage and HotS correlation have separate package boundaries. The Windows command now contains launchers and dependency composition.
+- Dashboard reads independent state snapshots and invokes application operations. HTTP transport, time, persistence and game-source dependencies can be isolated in tests; Twitch owns synchronized token refresh and credential commits.
+- Existing profiles, DPAPI tokens, API routes and prediction recovery rules remain compatible. Creation uncertainty and saved settlement intent continue to prevent duplicate wagers or conflicting payouts.
+- Preserves all 94 legacy test/fuzz entry points, adds boundary and token-rotation checks, and documents the architecture. Desktop, Browser and race checks must all pass before release publication.
+
+## Custom games from v0.9.6
 
 - Custom 5v5 games with AI participants now settle automatically. Every human lobby slot is still verified by a unique ToonHandle; AI entries carry no verifiable identity, so only their team and outcome are checked (verified on the real `IndustrialDistrict1_98348` match). An unaccounted Hero handle, inconsistent team outcomes or a binding outside the roster still block automatic settlement.
 - Matchmaking games keep the strict ten-human 5v5 verification.
@@ -13,7 +20,7 @@ Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm rep
 
 ## Browser edition from v0.9.4
 
-- The Browser edition is now attached to the release itself as `HotS-Twitch-Companion-Browser-v__TAG__.zip` instead of staying a CI-only artifact, and its SHA-256 is included in `SHA256SUMS.txt`. Use it when WebView2 Runtime is unavailable: it runs the interface in Microsoft Edge app mode or the default browser, without the native title bar and tray.
+- The Browser edition is attached to the release itself as `HotS-Twitch-Companion-Browser-__TAG__.zip`, and its SHA-256 is included in `SHA256SUMS.txt`. Use it when WebView2 Runtime is unavailable: it runs the interface in Microsoft Edge app mode or the default browser, without the native title bar and tray.
 
 ## Update checks from v0.9.3
 
@@ -64,7 +71,7 @@ Connect Twitch and confirm the monitoring launch. When verification is incomplet
 | --- | --- |
 | `HotS-Twitch-Companion.exe` | Portable Windows x64 GUI executable |
 | `HotS-Twitch-Companion-windows-x64.zip` | EXE, READMEs, MIT notices, release notes and checksum |
-| `HotS-Twitch-Companion-Browser-v__TAG__.zip` | Browser edition for systems without WebView2 Runtime |
+| `HotS-Twitch-Companion-Browser-__TAG__.zip` | Browser edition for systems without WebView2 Runtime |
 | `SHA256SUMS.txt` | SHA-256 for the EXE and the Browser edition ZIP |
 
 ```text
