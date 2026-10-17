@@ -275,6 +275,7 @@ type Engine struct {
 	actionMu sync.Mutex
 	p       paths
 	store   StateStore
+	clock   Clock
 	predictions PredictionAPI
 	cfg     Config
 	twitch  *Twitch
@@ -293,7 +294,7 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 // newEngineWithStore allows failure-injection tests to exercise durable state
 // transitions without modifying the OS filesystem. Production uses fileStateStore.
 func newEngineWithStore(p paths, cfg Config, log func(string), store StateStore) (*Engine, error) {
-	e := &Engine{p: p, cfg: cfg, log: log}
+	e := &Engine{p: p, cfg: cfg, log: log, clock: systemClock{}}
 	if store == nil {
 		// Use the engine's path so existing callers that redirect e.p.state
 		// to simulate disk errors keep exercising the production store.
@@ -483,7 +484,7 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broad
 	var p *Prediction
 	var er error
 	if !e.cfg.RealMode {
-		p = &Prediction{ID: "SIMULATION", DryRun: true, StartedAt: max(time.Now().UnixMilli(), s.LastSettlementAt+1)}
+		p = &Prediction{ID: "SIMULATION", DryRun: true, StartedAt: max(e.clock.Now().UnixMilli(), s.LastSettlementAt+1)}
 		e.log(tr(e.cfg.lang(), "log.sim_created"))
 	} else {
 		title, winTitle, lossTitle := e.cfg.predictionTexts()
@@ -553,7 +554,7 @@ func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, 
      result = "external"
     }
    }
-   s.LastSettlementAt = time.Now().UnixMilli()
+   s.LastSettlementAt = e.clock.Now().UnixMilli()
    s.LastResult = result + " (Twitch)"
    s.Active = nil
    if err := e.updateAndSave(s); err != nil { return err }
@@ -627,7 +628,7 @@ func (e *Engine) watch(ctx context.Context) {
 			return
 		}
 	}
-	started := time.Now()
+	started := e.clock.Now()
  lastError := ""
  lastLog := time.Time{}
  // Immediately check any persisted active Prediction on monitoring restart.
@@ -653,12 +654,12 @@ func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *str
  e.mu.Lock()
  s := e.state
  e.mu.Unlock()
- e.scanLifecycle(ctx, &s, started, time.Now(), lastError, lastLog)
+ e.scanLifecycle(ctx, &s, started, e.clock.Now(), lastError, lastLog)
 }
 
 func (e *Engine) setReplayScan(code, file, detail string) {
  e.mu.Lock()
- e.scan = ReplayScan{Code: code, File: file, Detail: detail, CheckedAt: time.Now().UnixMilli()}
+ e.scan = ReplayScan{Code: code, File: file, Detail: detail, CheckedAt: e.clock.Now().UnixMilli()}
  e.mu.Unlock()
 }
 
@@ -696,7 +697,7 @@ func (e *Engine) recheckReplay(ctx context.Context, expectedID string, expectedS
  }
  lastError := ""
  lastLog := time.Time{}
- e.scanReplay(ctx, &s, time.Now(), &lastError, &lastLog)
+ e.scanReplay(ctx, &s, e.clock.Now(), &lastError, &lastLog)
  e.mu.Lock()
  status := e.scan
  e.mu.Unlock()

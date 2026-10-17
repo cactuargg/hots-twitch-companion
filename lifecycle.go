@@ -199,7 +199,7 @@ func remoteOutcome(actual apiPrediction, p *Prediction) string {
 }
 
 func (e *Engine) commitSettlement(s *State, outcome, source string) error {
-	next, err := completedPredictionState(*s, outcome, source, time.Now())
+	next, err := completedPredictionState(*s, outcome, source, e.clock.Now())
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func (e *Engine) settlePrediction(ctx context.Context, s *State, outcome, source
 		*s = next
 	}
 	intent := s.Active.Settlement
-	if intent.RetryAt > time.Now().UnixMilli() {
+	if intent.RetryAt > e.clock.Now().UnixMilli() {
 		return errors.New(tr(e.cfg.lang(), "settle.retry_wait"))
 	}
 	err := e.predictions.end(ctx, s.Active, intent.Outcome)
@@ -251,7 +251,7 @@ func (e *Engine) settlePrediction(ctx context.Context, s *State, outcome, source
 		if errors.As(err, &rateLimit) {
 			minRetryAt = rateLimit.RetryAt
 		}
-		next := retrySettlementState(*s, time.Now(), minRetryAt)
+		next := retrySettlementState(*s, e.clock.Now(), minRetryAt)
 		if saveErr := e.updateAndSave(next); saveErr != nil {
 			return fmt.Errorf("%v; save retry: %w", err, saveErr)
 		}
@@ -340,7 +340,7 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 		}
 		broadcasterID = me.UserID
 	}
-	next, err = attemptedCreationState(*s, event, broadcasterID, e.cfg.RealMode, time.Now())
+	next, err = attemptedCreationState(*s, event, broadcasterID, e.cfg.RealMode, e.clock.Now())
 	if err != nil {
 		e.report("error", "prediction_create", err.Error())
 		return
