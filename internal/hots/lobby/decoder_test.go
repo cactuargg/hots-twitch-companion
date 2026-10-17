@@ -54,7 +54,7 @@ func TestBattleLobbyRejectsUnverifiedBuild(t *testing.T) {
 	if matches < 10 {
 		t.Fatalf("found %d client builds, want at least ten", matches)
 	}
-	got, err := parseBattleLobby(mutated)
+	got, err := Parse(mutated)
 	if err == nil || got.Players != nil || !strings.Contains(err.Error(), "build") {
 		t.Fatalf("accepted unverified layout: %+v %v", got, err)
 	}
