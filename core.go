@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hots-twitch-companion/internal/clock"
 	"context"
 	"encoding/json"
 	"errors"
@@ -275,7 +276,7 @@ type Engine struct {
 	actionMu sync.Mutex
 	p       paths
 	store   StateStore
-	clock   Clock
+	clock   clock.Clock
 	predictions PredictionAPI
 	cfg     Config
 	twitch  *Twitch
@@ -294,7 +295,7 @@ func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
 // newEngineWithStore allows failure-injection tests to exercise durable state
 // transitions without modifying the OS filesystem. Production uses fileStateStore.
 func newEngineWithStore(p paths, cfg Config, log func(string), store StateStore) (*Engine, error) {
-	e := &Engine{p: p, cfg: cfg, log: log, clock: systemClock{}}
+	e := &Engine{p: p, cfg: cfg, log: log, clock: clock.System{}}
 	if store == nil {
 		// Use the engine's path so existing callers that redirect e.p.state
 		// to simulate disk errors keep exercising the production store.
