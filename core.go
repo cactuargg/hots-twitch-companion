@@ -622,6 +622,7 @@ type Engine struct {
 	actionMu sync.Mutex
 	p       paths
 	store   StateStore
+	predictions PredictionAPI
 	cfg     Config
 	twitch  *Twitch
 	state   State
@@ -664,7 +665,7 @@ func newEngineWithStore(p paths, cfg Config, log func(string), store StateStore)
 	if err != nil {
 		return nil, err
 	}
-	e.state, e.twitch = s, twitch
+	e.state, e.twitch, e.predictions = s, twitch, twitch
 	return e, nil
 }
 
@@ -738,6 +739,7 @@ func (e *Engine) updateConfig(cfg Config) error {
 	}
 	e.cfg = cfg
 	e.twitch = t
+	e.predictions = t
 	return nil
 }
 // installTwitchToken validates a new device-flow token *before* persisting it.
@@ -833,9 +835,9 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broad
 	} else {
 		title, winTitle, lossTitle := e.cfg.predictionTexts()
 		if broadcasterID != "" {
-			p, er = e.twitch.createPrepared(ctx, broadcasterID, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+			p, er = e.predictions.createPrepared(ctx, broadcasterID, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
 		} else {
-			p, er = e.twitch.create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+			p, er = e.predictions.create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
 		}
 		if er != nil {
 			return er
@@ -882,7 +884,7 @@ func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, 
   if s.Active.DryRun {
    return errors.New(tr(e.cfg.lang(), "manual.sync_simulation"))
   }
-  remote, err := e.twitch.prediction(ctx, s.Active.BroadcasterID, s.Active.ID)
+  remote, err := e.predictions.prediction(ctx, s.Active.BroadcasterID, s.Active.ID)
   if err != nil { return err }
   for _, p := range remote.Data {
    if p.ID != s.Active.ID { continue }
