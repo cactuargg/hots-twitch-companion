@@ -6,6 +6,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"hots-twitch-companion/internal/config"
+	"hots-twitch-companion/internal/dashboard"
+	"hots-twitch-companion/internal/i18n"
+	"hots-twitch-companion/internal/storage"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -35,8 +39,8 @@ func lockDesktopProfile(dir string) (func(), error) {
 	return func() { syscall.CloseHandle(handle) }, nil
 }
 
-func loadDesktopDashboard(dataDir string) (*dashboard, func(), error) {
-	p, err := pathsForUser()
+func loadDesktopDashboard(dataDir string) (*dashboard.Dashboard, func(), error) {
+	p, err := config.PathsForUser()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -45,37 +49,37 @@ func loadDesktopDashboard(dataDir string) (*dashboard, func(), error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		p = paths{dir: dir, config: filepath.Join(dir, "config.json"), state: filepath.Join(dir, "state.json"), secret: filepath.Join(dir, "tokens.dpapi")}
+		p = config.NewPaths(dir)
 	}
-	if err := os.MkdirAll(p.dir, 0700); err != nil {
+	if err := os.MkdirAll(p.Dir, 0700); err != nil {
 		return nil, nil, err
 	}
-	release, err := lockDesktopProfile(p.dir)
+	release, err := lockDesktopProfile(p.Dir)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := applyProfileReset(p); err != nil {
+	if err := storage.ApplyProfileReset(p.Dir, p.Config, p.State, p.Secret); err != nil {
 		release()
 		return nil, nil, err
 	}
-	cfg, err := readConfig(p)
+	cfg, err := config.Read(p)
 	if err != nil {
 		release()
-		return nil, nil, errors.New(tr(langEn, "error.read_config", err.Error()))
+		return nil, nil, errors.New(i18n.Text(i18n.En, "error.read_config", err.Error()))
 	}
-	if err := migrateLiveProfile(p, cfg); err != nil {
+	if err := migrateProfile(p, cfg); err != nil {
 		release()
 		return nil, nil, err
 	}
-	d, err := newDashboard(p, cfg)
+	d, err := composeDashboard(p, cfg)
 	if err != nil {
 		release()
-		return nil, nil, errors.New(tr(cfg.lang(), "error.startup", err.Error()))
+		return nil, nil, errors.New(i18n.Text(cfg.Language(), "error.startup", err.Error()))
 	}
 	return d, release, nil
 }
 
-func runWindowsApplication(run func(*dashboard) error) {
+func runWindowsApplication(run func(*dashboard.Dashboard) error) {
 	flags := flag.NewFlagSet("HotS Twitch Companion", flag.ContinueOnError)
 	dataDir := flags.String("data-dir", "", "Use a separate profile directory (for testing)")
 	if err := flags.Parse(os.Args[1:]); err != nil {
@@ -92,7 +96,9 @@ func runWindowsApplication(run func(*dashboard) error) {
 		return
 	}
 	defer release()
+	defer d.Close()
+	d.StartBackground()
 	if err := run(d); err != nil {
-		showError(d.tr("error.open_ui", err.Error()))
+		showError(d.Text("error.open_ui", err.Error()))
 	}
 }

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"hots-twitch-companion/internal/dashboard"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,5 +34,5 @@ func launchDesktop(url string) error {
 	return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", url).Start()
 }
 func main() {
-	runWindowsApplication(func(d *dashboard) error { return d.runDesktop(launchDesktop) })
+	runWindowsApplication(func(d *dashboard.Dashboard) error { return d.RunDesktop(launchDesktop) })
 }

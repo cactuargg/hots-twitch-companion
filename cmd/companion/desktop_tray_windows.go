@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	appassets "hots-twitch-companion/assets"
+	"hots-twitch-companion/internal/dashboard"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -30,7 +31,7 @@ func (t *desktopTray) stop() {
 	})
 }
 
-func startDesktopTray(ctx context.Context, d *dashboard) *desktopTray {
+func startDesktopTray(ctx context.Context, d *dashboard.Dashboard) *desktopTray {
 	t := &desktopTray{stopping: make(chan struct{})}
 	// The Windows tray owns a separate message loop; Wails keeps the main thread.
 	go func() {
@@ -41,8 +42,8 @@ func startDesktopTray(ctx context.Context, d *dashboard) *desktopTray {
 			systray.SetTooltip("HotS Twitch Companion")
 			show := func() { wailsruntime.WindowShow(ctx); wailsruntime.WindowUnminimise(ctx) }
 			systray.SetOnTapped(show)
-			open := systray.AddMenuItem(d.tr("shell.open"), "")
-			exit := systray.AddMenuItem(d.tr("shell.exit"), "")
+			open := systray.AddMenuItem(d.Text("shell.open"), "")
+			exit := systray.AddMenuItem(d.Text("shell.exit"), "")
 			t.ready.Store(true)
 			select {
 			case <-t.stopping:

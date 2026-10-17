@@ -1,10 +1,10 @@
-// Package dashboard contains UI-facing projections that do not interact
-// with HTTP, Twitch or the Engine's mutable state.
+// Package dashboard owns the embedded UI, guarded HTTP API and status projections.
+// It accesses the application through operations and independent snapshots.
 package dashboard
 
 import (
-	"time"
 	"hots-twitch-companion/internal/prediction"
+	"time"
 )
 
 func ConnectionPhase(hasToken, validated, pending bool) string {
@@ -45,4 +45,3 @@ func PredictionPhase(p *prediction.Prediction, windowMinutes int, now time.Time)
 	}
 	return "window_estimate", int((remaining + time.Second - 1) / time.Second)
 }
-
