@@ -10,12 +10,12 @@ import (
  "hots-twitch-companion/internal/prediction"
 )
 
-func BindPredictionMatch(lobby *lobby.Snapshot, key, toon string) *prediction.MatchBinding {
+func BindPredictionMatch(snapshot *lobby.Snapshot, key, toon string) *prediction.MatchBinding {
 	binding := &prediction.MatchBinding{Version: 1, LobbyKey: key, PlayerToon: strings.TrimSpace(toon)}
-	if lobby != nil {
-		copyLobby := *lobby
-		if lobby.Data != nil {
-			data := *lobby.Data
+	if snapshot != nil {
+		copyLobby := *snapshot
+		if snapshot.Data != nil {
+			data := *snapshot.Data
 			data.Players = append([]lobby.LobbyPlayer(nil), data.Players...)
 			copyLobby.Data = &data
 		}
