@@ -100,6 +100,7 @@ type State struct {
 	LastSettlementAt int64       `json:"lastSettlementAt"`
 	LastResult       string      `json:"lastResult"`
 	PendingLobby     *LobbyEvent `json:"pendingLobby,omitempty"`
+	PendingLobbies  []*LobbyEvent `json:"pendingLobbies,omitempty"`
 	LastCreatedLobbySHA string `json:"lastCreatedLobbySHA,omitempty"`
 	RecentLobbySHAs []string `json:"recentLobbySHAs,omitempty"`
 }

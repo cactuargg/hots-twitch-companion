@@ -353,6 +353,69 @@ func TestQuickSequentialMatchesKeepNextLobby(t *testing.T) {
 }
 
 
+
+func TestThreeRapidLobbiesSurviveActivePredictionAndRestart(t *testing.T) {
+	temp := t.TempDir()
+	t.Setenv("TMP", temp)
+	t.Setenv("TEMP", temp)
+	now := time.Now()
+	e, p := scanFixture(t, now)
+	s := e.state
+	s.Active = nil
+	if err := e.updateAndSave(s); err != nil { t.Fatal(err) }
+
+	first := realLobbyTest(t)
+	second := append(append([]byte(nil), first...), 0)
+	third := append(append([]byte(nil), second...), 1)
+	lastError := ""
+	lastLog := time.Time{}
+	started := now.Add(-time.Minute)
+
+	lobbyFileTest(t, first, now.Add(-18*time.Second))
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.Active == nil || e.state.Active.Match == nil ||
+		e.state.Active.Match.Lobby.SHA256 != contentSHA(first) {
+		t.Fatalf("first lobby not created: %+v", e.state)
+	}
+	lobbyFileTest(t, second, now.Add(-12*time.Second))
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	lobbyFileTest(t, third, now.Add(-6*time.Second))
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.PendingLobby == nil || e.state.PendingLobby.Snapshot.SHA256 != contentSHA(second) ||
+		len(e.state.PendingLobbies) != 1 || e.state.PendingLobbies[0].Snapshot.SHA256 != contentSHA(third) {
+		t.Fatalf("second lobby overwritten by third: %+v", e.state)
+	}
+	// Re-reading the same lobby must not enqueue a duplicate.
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if len(e.state.PendingLobbies) != 1 { t.Fatalf("duplicate queue entry: %+v",e.state) }
+	restarted, err := newEngine(p, e.cfg, func(string){})
+	if err != nil { t.Fatal(err) }
+	e = restarted
+	original := e.state.Active
+	if err := e.manualOutcome(context.Background(), "win", original.ID, original.StartedAt); err != nil { t.Fatal(err) }
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.Active == nil || e.state.Active.Match == nil ||
+		e.state.Active.Match.Lobby.SHA256 != contentSHA(second) ||
+		e.state.PendingLobby == nil || e.state.PendingLobby.Snapshot.SHA256 != contentSHA(third) ||
+		len(e.state.PendingLobbies) != 0 {
+		t.Fatalf("FIFO did not create second lobby: %+v",e.state)
+	}
+	secondActive := e.state.Active
+	if err := e.manualOutcome(context.Background(), "win", secondActive.ID, secondActive.StartedAt); err != nil {t.Fatal(err)}
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.Active == nil || e.state.Active.Match == nil ||
+		e.state.Active.Match.Lobby.SHA256 != contentSHA(third) ||
+		e.state.PendingLobby != nil || len(e.state.PendingLobbies) != 0 {
+		t.Fatalf("FIFO did not create third lobby: %+v",e.state)
+	}
+	thirdActive:=e.state.Active
+	if err := e.manualOutcome(context.Background(), "win", thirdActive.ID, thirdActive.StartedAt); err != nil {t.Fatal(err)}
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.Active != nil || e.state.PendingLobby != nil {
+		t.Fatal("handled lobby was recreated")
+	}
+}
+
 func TestPreflightFailureRetriesPendingLobbyWithoutDuplicatePost(t *testing.T) {
 	temp := t.TempDir()
 	t.Setenv("TMP", temp)

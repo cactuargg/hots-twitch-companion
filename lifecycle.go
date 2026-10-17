@@ -61,6 +61,50 @@ func lobbyWasHandled(s *State, hash string) bool {
 	return false
 }
 
+// PendingLobby is the oldest unconsumed event for compatibility with
+// previously saved state. PendingLobbies holds the remaining FIFO entries.
+const maxPendingLobbies = 32
+
+func pendingLobbySeen(s *State, sha string) bool {
+	if sha == "" {
+		return false
+	}
+	if s.PendingLobby != nil && s.PendingLobby.Snapshot != nil && s.PendingLobby.Snapshot.SHA256 == sha {
+		return true
+	}
+	for _, pending := range s.PendingLobbies {
+		if pending != nil && pending.Snapshot != nil && pending.Snapshot.SHA256 == sha {
+			return true
+		}
+	}
+	return false
+}
+
+func enqueueLobby(s *State, event *LobbyEvent) bool {
+	if event == nil || event.Snapshot == nil || event.Snapshot.SHA256 == "" ||
+		lobbyWasHandled(s, event.Snapshot.SHA256) || pendingLobbySeen(s, event.Snapshot.SHA256) {
+		return false
+	}
+	if s.PendingLobby == nil {
+		s.PendingLobby = event
+		return true
+	}
+	if len(s.PendingLobbies) >= maxPendingLobbies-1 {
+		return false
+	}
+	// Clone to keep the previously persisted State snapshot immutable.
+	s.PendingLobbies = append(append([]*LobbyEvent(nil), s.PendingLobbies...), event)
+	return true
+}
+
+func popPendingLobby(s *State) {
+	s.PendingLobby = nil
+	if len(s.PendingLobbies) > 0 {
+		s.PendingLobby = s.PendingLobbies[0]
+		s.PendingLobbies = append([]*LobbyEvent(nil), s.PendingLobbies[1:]...)
+	}
+}
+
 type remoteFinishedError struct{ Prediction apiPrediction }
 
 func (e *remoteFinishedError) Error() string { return "Prediction was already finalized on Twitch" }
@@ -237,14 +281,16 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 		next := *s
 		next.LastLobby = snapshot
 		next.LastLobbyKey = key
-		next.PendingLobby = nil
 		if next.Active != nil {
 			next.Active = observeActiveLobby(next.Active, snapshot, key)
 		}
 		fresh := !modified.Before(started.Add(-2*time.Second)) && now.Sub(modified) < 120*time.Second
 		sameActive := next.Active != nil && next.Active.Match != nil && next.Active.Match.Lobby != nil && next.Active.Match.Lobby.SHA256 == snapshot.SHA256
 		if fresh && snapshot.Status != "read_error" && !sameActive && !lobbyWasHandled(&next, snapshot.SHA256) {
-			next.PendingLobby = &LobbyEvent{Key: key, Snapshot: snapshot}
+			if !enqueueLobby(&next, &LobbyEvent{Key: key, Snapshot: snapshot}) &&
+				!pendingLobbySeen(&next, snapshot.SHA256) && !lobbyWasHandled(&next, snapshot.SHA256) {
+				e.report("warning", "lobby_queue_full", "Pending lobby queue is full")
+			}
 		}
 		if err := e.updateAndSave(next); err != nil {
 			e.report("error", "lobby_save", err.Error())
@@ -275,7 +321,7 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 	}
 	event := s.PendingLobby
 	next := *s
-	next.PendingLobby = nil
+	popPendingLobby(&next)
 	if event.Snapshot == nil || now.Sub(time.UnixMilli(event.Snapshot.ModifiedAt)) > 120*time.Second || time.UnixMilli(event.Snapshot.ModifiedAt).After(now) {
 		if err := e.updateAndSave(next); err == nil {
 			*s = next
