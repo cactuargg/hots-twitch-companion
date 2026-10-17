@@ -7,10 +7,10 @@ const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const app=read('web/assets/app.js');
-const onboarding=read('web/assets/onboarding.js');
+const app=read('cmd/companion/web/assets/app.js');
+const onboarding=read('cmd/companion/web/assets/onboarding.js');
 const workflow=read('.github/workflows/windows.yml');
-const html=read('web/index.html');
+const html=read('cmd/companion/web/index.html');
 const start=app.indexOf('async function action(name)');
 const end=app.indexOf('async function checkReplayRoot()',start);
 assert.ok(start>=0&&end>start);

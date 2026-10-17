@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 
-const dir=path.join(__dirname,'..','web');
+const dir=path.join(__dirname,'..','cmd','companion','web');
 const html=fs.readFileSync(path.join(dir,'index.html'),'utf8');
 const names=['core.js','i18n.js','replays.js','diagnostics.js','onboarding.js','app.js'];
 const js=names.map(name=>fs.readFileSync(path.join(dir,'assets',name),'utf8')).join('\n');
