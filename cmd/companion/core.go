@@ -84,12 +84,7 @@ func findLobby() (string,string,time.Time,error) {
 	return file,key,mod,err
 }
 
-type ReplayScan struct {
- Code string `json:"code"`
- File string `json:"file,omitempty"`
- Detail string `json:"detail,omitempty"`
- CheckedAt int64 `json:"checkedAt,omitempty"`
-}
+type ReplayScan = app.ReplayScan
 
 type Engine struct {
 	mu      sync.Mutex
