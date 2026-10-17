@@ -19,7 +19,7 @@ import (
 func TestReadJSONRequestRejectsTrailingValues(t *testing.T) {
 	for _, tc := range []struct{body string; valid bool}{
 		{`{"confirmed":true}`, true},
-		{`{"confirmed":true}   \n\t`, true},
+		{`{"confirmed":true}   `, true},
 		{`{"confirmed":true} {"confirmed":false}`, false},
 		{`{"confirmed":true} null`, false},
 		{`{"confirmed":true} garbage`, false},
