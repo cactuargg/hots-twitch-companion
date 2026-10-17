@@ -7,8 +7,8 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const scriptNames = ['core.js','i18n.js','replays.js','diagnostics.js','onboarding.js','app.js'];
-const source = scriptNames.map(file => fs.readFileSync(path.join(root, 'cmd/companion/web/assets', file), 'utf8')).join('\n');
-const html = fs.readFileSync(path.join(root, 'cmd/companion/web/index.html'), 'utf8');
+const source = scriptNames.map(file => fs.readFileSync(path.join(root, 'internal/dashboard/web/assets', file), 'utf8')).join('\n');
+const html = fs.readFileSync(path.join(root, 'internal/dashboard/web/index.html'), 'utf8');
 
 function section(start, end) {
   const from = source.indexOf(start);

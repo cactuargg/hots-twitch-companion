@@ -6,8 +6,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
-const assets = path.join(root, 'cmd', 'companion', 'web', 'assets');
-const html = fs.readFileSync(path.join(root, 'cmd', 'companion', 'web', 'index.html'), 'utf8');
+const assets = path.join(root, 'internal', 'dashboard', 'web', 'assets');
+const html = fs.readFileSync(path.join(root, 'internal', 'dashboard', 'web', 'index.html'), 'utf8');
 const scripts = ['core.js', 'i18n.js', 'replays.js', 'diagnostics.js', 'onboarding.js', 'desktop.js', 'app.js'];
 const styles = ['style.css', 'wizard.css', 'overview.css', 'onboarding.css', 'diagnostics.css', 'settings.css', 'compact.css'];
 

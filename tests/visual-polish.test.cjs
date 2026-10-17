@@ -7,13 +7,13 @@ const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const app=read('cmd/companion/web/assets/app.js');
-const base=read('cmd/companion/web/assets/style.css');
-const overview=read('cmd/companion/web/assets/overview.css');
-const settings=read('cmd/companion/web/assets/settings.css');
-const wizard=read('cmd/companion/web/assets/wizard.css');
-const onboarding=read('cmd/companion/web/assets/onboarding.css');
-const diagnostics=read('cmd/companion/web/assets/diagnostics.css');
+const app=read('internal/dashboard/web/assets/app.js');
+const base=read('internal/dashboard/web/assets/style.css');
+const overview=read('internal/dashboard/web/assets/overview.css');
+const settings=read('internal/dashboard/web/assets/settings.css');
+const wizard=read('internal/dashboard/web/assets/wizard.css');
+const onboarding=read('internal/dashboard/web/assets/onboarding.css');
+const diagnostics=read('internal/dashboard/web/assets/diagnostics.css');
 const windows=read('cmd/companion/main_windows.go');
 
 function slice(start,end) {

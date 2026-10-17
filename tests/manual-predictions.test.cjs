@@ -6,8 +6,8 @@ const path=require('node:path');
 const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
-const app=fs.readFileSync(path.join(root,'cmd/companion/web/assets/app.js'),'utf8');
-const html=fs.readFileSync(path.join(root,'cmd/companion/web/index.html'),'utf8');
+const app=fs.readFileSync(path.join(root,'internal/dashboard/web/assets/app.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'internal/dashboard/web/index.html'),'utf8');
 
 function harness(status,allow=true){
  const calls=[],confirmations=[],toasts=[];
