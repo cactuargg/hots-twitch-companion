@@ -351,26 +351,17 @@ func (d *dashboard) doAuth() (map[string]any, error) {
 			d.mu.Unlock()
 			return
 		}
-		d.engine.mu.Lock()
-		t := d.engine.twitch
-		d.engine.mu.Unlock()
-		t.mu.Lock()
-		err = t.saveToken(tok)
-		t.mu.Unlock()
+		me, err := d.engine.installTwitchToken(ctx, config.twitchClientID(), tok)
 		if err != nil {
-			d.logEvent("error", "token_store", d.tr("log.token_protect_error", err.Error()))
+			d.logEvent("error", "twitch_auth", d.tr("log.auth_error", err.Error()))
 			d.mu.Lock()
 			d.authPending = false
 			d.authCode = ""
+			d.authStatus = ""
 			d.mu.Unlock()
 			return
 		}
-		me, err := t.identity(ctx)
-		if err != nil {
-			d.logEvent("warning", "twitch_auth", d.tr("log.identity_failed", err.Error()))
-		} else {
-			d.log(d.tr("log.twitch_connected", me.Login))
-		}
+		d.log(d.tr("log.twitch_connected", me.Login))
 		d.mu.Lock()
 		d.authPending = false
 		d.authCode = ""

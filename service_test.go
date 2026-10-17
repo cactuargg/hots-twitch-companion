@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
@@ -377,6 +379,71 @@ func TestConfigSaveKeepsVerifiedTwitchIdentity(t *testing.T) {
 	if st["connected"] != false || st["channel"] != "" {
 		t.Fatalf("identity must not survive an OAuth app change: %#v", st)
 	}
+}
+
+
+func TestTwitchReauthorizationCannotStealActivePrediction(t *testing.T) {
+	d := manualDashboard(t, Config{ClientID: "client", RealMode: true, Lang: "en"})
+	initial := Token{AccessToken: "original", RefreshToken: "original-refresh", ExpiresIn: 3600, SavedAt: time.Now().Unix()}
+	d.engine.twitch.mu.Lock()
+	if err := d.engine.twitch.saveToken(initial); err != nil { d.engine.twitch.mu.Unlock(); t.Fatal(err) }
+	d.engine.twitch.login, d.engine.twitch.broadcasterID = "original-login", "channel-A"
+	d.engine.twitch.mu.Unlock()
+	started := time.Now().UnixMilli()
+	if err := d.engine.updateAndSave(State{Active: &Prediction{ID: "pred-A", BroadcasterID: "channel-A", WinID:"yes", LossID:"no", StartedAt:started}}); err != nil { t.Fatal(err) }
+
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	userID := "channel-B"
+	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path != "/oauth2/validate" { t.Errorf("unexpected request %s",req.URL); return nil, fmt.Errorf("unexpected request") }
+		if req.Header.Get("Authorization") != "OAuth candidate" { t.Errorf("wrong candidate credential: %s",req.Header.Get("Authorization")) }
+		return manualResponse(fmt.Sprintf(`{"client_id":"client","user_id":%q,"login":"candidate-login","scopes":["channel:manage:predictions"]}`, userID)), nil
+	})}
+	candidate := Token{AccessToken:"candidate", RefreshToken:"candidate-refresh", ExpiresIn:3600, SavedAt:time.Now().Unix()}
+	if _, err := d.engine.installTwitchToken(context.Background(), "client", candidate); err == nil {
+		t.Fatal("replacing an active prediction's broadcaster was permitted")
+	}
+	d.engine.twitch.mu.Lock()
+	got := d.engine.twitch.token
+	login := d.engine.twitch.login
+	d.engine.twitch.mu.Unlock()
+	if got.AccessToken != "original" || login != "original-login" {
+		t.Fatalf("rejected auth modified credentials: %+v login=%s", got, login)
+	}
+	reopened, err := newTwitch(d.p, "client", "en")
+	if err != nil || reopened.token.AccessToken != "original" { t.Fatalf("persisted original token lost: %+v %v", reopened, err) }
+	if d.engine.state.Active == nil || d.engine.state.Active.ID != "pred-A" { t.Fatal("active prediction lost") }
+
+	userID = "channel-A"
+	if me, err := d.engine.installTwitchToken(context.Background(), "client", candidate); err != nil || me.UserID != "channel-A" {
+		t.Fatalf("same broadcaster must be able to reconnect: %+v %v", me, err)
+	}
+	reopened, err = newTwitch(d.p, "client", "en")
+	if err != nil || reopened.token.AccessToken != "candidate" { t.Fatalf("replacement was not persisted: %+v %v", reopened, err) }
+}
+
+func TestActiveRealPredictionBlocksClientIDChange(t *testing.T) {
+	d := manualDashboard(t, Config{ClientID:"client", RealMode:true})
+	if err := d.engine.updateAndSave(State{Active:&Prediction{ID:"pred", BroadcasterID:"A", StartedAt:time.Now().UnixMilli()}}); err != nil { t.Fatal(err) }
+	if err := d.engine.updateConfig(Config{ClientID:"different",RealMode:true}); err == nil { t.Fatal("client changed with active prediction") }
+	if d.engine.cfg.ClientID != "client" { t.Fatal("config changed despite refusal") }
+	if err := d.engine.updateConfig(Config{ClientID:"client",RealMode:true,WizardDone:true}); err != nil { t.Fatalf("unrelated config change blocked: %v", err) }
+}
+
+func TestFailedCandidateValidationPreservesCurrentToken(t *testing.T) {
+	d := manualDashboard(t, Config{ClientID:"client",RealMode:true})
+	d.engine.twitch.mu.Lock()
+	if err := d.engine.twitch.saveToken(Token{AccessToken:"keep", RefreshToken:"keep-refresh", ExpiresIn:3600,SavedAt:time.Now().Unix()}); err != nil { t.Fatal(err) }
+	d.engine.twitch.mu.Unlock()
+	oldClient:=httpClient
+	defer func(){httpClient=oldClient}()
+	httpClient=&http.Client{Transport:manualTransport(func(r *http.Request)(*http.Response,error){
+		return manualResponse(`{"client_id":"wrong","user_id":"A","scopes":["channel:manage:predictions"]}`),nil
+	})}
+	if _,err:=d.engine.installTwitchToken(context.Background(),"client",Token{AccessToken:"candidate",RefreshToken:"refresh"});err==nil { t.Fatal("wrong OAuth client accepted") }
+	reopened,err:=newTwitch(d.p,"client","en")
+	if err!=nil || reopened.token.AccessToken!="keep" {t.Fatalf("token overwritten: %+v %v",reopened,err)}
 }
 
 func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
