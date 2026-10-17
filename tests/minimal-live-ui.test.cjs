@@ -63,6 +63,14 @@ test('Home shows real viewer points with the latest match and one action',()=>{
  assert.equal(btn.dataset.action,'toggle');
  assert.equal(get('start-label').textContent,'start.stop');
 });
+test('uncertain Twitch creation stays visible after restart',()=>{
+ const {context,get}=harness();
+ context.render({running:false,active:false,realMode:true,connected:true,
+  twitchPhase:'connected',monitorPhase:'off',creationUnconfirmed:true,logs:[]});
+ assert.equal(get('overview-alert').hidden,false);
+ assert.equal(get('overview-alert').textContent,'minimal.creationUnconfirmed');
+ assert.equal(get('prediction-scan-message').textContent,'replay.scan.create_error');
+});
 test('real viewer-point mode remains visibly warned; missing player opens setup',()=>{
  const {context,get,btn}=harness();
  context.render({running:true,active:true,realMode:true,connected:false,

@@ -93,7 +93,16 @@ type Prediction struct {
 	Match         *MatchBinding `json:"match,omitempty"`
 	Settlement    *SettlementAttempt `json:"settlement,omitempty"`
 }
+// Persisted proof that a real Twitch creation POST may have been sent
+// without a confirmed remote ID. Never automatically retry this POST.
+type CreationAttempt struct {
+	LobbySHA string `json:"lobbySHA"`
+	BroadcasterID string `json:"broadcasterId"`
+	AttemptedAt int64 `json:"attemptedAt"`
+}
+
 type State struct {
+	UnconfirmedCreation *CreationAttempt `json:"unconfirmedCreation,omitempty"`
 	Active           *Prediction `json:"active"`
 	LastLobby        *LobbySnapshot `json:"lastLobby,omitempty"`
 	LastLobbyKey     string      `json:"lastLobbyKey"`
@@ -770,6 +779,8 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broad
 	}
 	p.Match = bindPredictionMatch(s.LastLobby, lobbyKey, e.cfg.PlayerToonHandle)
 	s.Active = p
+	// Commit the known ID and clear the uncertainty in one state write.
+	s.UnconfirmedCreation = nil
  e.setReplayScan("waiting_replay", "", "")
 	if err := e.updateAndSave(*s); err != nil {
 		// Keep the known remote ID available in this process. The lobby event
