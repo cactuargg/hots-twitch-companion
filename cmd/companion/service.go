@@ -1,11 +1,11 @@
 package main
 
 import (
-	dashview "hots-twitch-companion/internal/dashboard"
- "hots-twitch-companion/internal/hots/discovery"
 	"context"
 	"errors"
 	"fmt"
+	dashview "hots-twitch-companion/internal/dashboard"
+	"hots-twitch-companion/internal/hots/discovery"
 	"net"
 	"net/http"
 	"net/url"
@@ -26,15 +26,15 @@ type event struct {
 	Code    string `json:"code,omitempty"`
 }
 type replaySummary struct {
-	File     string          `json:"file"`
-	Map      string          `json:"map"`
-	Result   string          `json:"result"`
-	Modified string          `json:"modified"`
-	Players  []playerSummary `json:"players,omitempty"`
-	Selected string          `json:"selected,omitempty"`
-	SelectedToonHandle string `json:"selectedToonHandle,omitempty"`
-	Error          string          `json:"error,omitempty"`
-	SelectionError string          `json:"selectionError,omitempty"`
+	File               string          `json:"file"`
+	Map                string          `json:"map"`
+	Result             string          `json:"result"`
+	Modified           string          `json:"modified"`
+	Players            []playerSummary `json:"players,omitempty"`
+	Selected           string          `json:"selected,omitempty"`
+	SelectedToonHandle string          `json:"selectedToonHandle,omitempty"`
+	Error              string          `json:"error,omitempty"`
+	SelectionError     string          `json:"selectionError,omitempty"`
 }
 type playerSummary struct {
 	Name       string `json:"name"`
@@ -43,7 +43,7 @@ type playerSummary struct {
 }
 
 type dashboard struct {
-	postMu sync.Mutex
+	postMu                                sync.Mutex
 	hideToTray                            func() error
 	mu                                    sync.Mutex
 	engine                                *Engine
@@ -71,11 +71,11 @@ func newDashboard(p paths, c Config) (*dashboard, error) {
 	go d.watchUpdates()
 	// Verify restored tokens in the background; do not block the dashboard on network.
 	twitch := e.twitch
-	if twitch.token.AccessToken != "" {
+	if twitch.Connection().HasToken {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
-			if who, err := twitch.identity(ctx); err == nil {
+			if who, err := twitch.Identity(ctx); err == nil {
 				d.log(tr(c.lang(), "log.twitch_connected", who.Login))
 			} else {
 				d.logEvent("warning", "twitch_auth", tr(c.lang(), "log.token_check", err.Error()))
@@ -123,13 +123,10 @@ func (d *dashboard) status() map[string]any {
 	running, config, s, scan := e.running, e.cfg, e.state, e.scan
 	tw := e.twitch
 	e.mu.Unlock()
-	tw.mu.Lock()
-	// The encrypted DPAPI file is never sent to the UI.
-	hasToken := tw.token.AccessToken != ""
-	channel := tw.login
+	connection := tw.Connection()
+	hasToken, channel := connection.HasToken, connection.Login
 	validated := channel != ""
 	connected := hasToken && validated
-	tw.mu.Unlock()
 	d.mu.Lock()
 	logs := append([]event{}, d.logs...)
 	authCode, authStatus, authPending := d.authCode, d.authStatus, d.authPending
@@ -137,26 +134,28 @@ func (d *dashboard) status() map[string]any {
 	d.mu.Unlock()
 	active := s.Active != nil
 	activeDry := false
- activeID := ""
- activeStartedAt := int64(0)
- pendingOutcome := ""
- if active {
-  activeDry = s.Active.DryRun
-  activeID = s.Active.ID
-  activeStartedAt = s.Active.StartedAt
-  if s.Active.Settlement != nil {pendingOutcome=s.Active.Settlement.Outcome}
- }
+	activeID := ""
+	activeStartedAt := int64(0)
+	pendingOutcome := ""
+	if active {
+		activeDry = s.Active.DryRun
+		activeID = s.Active.ID
+		activeStartedAt = s.Active.StartedAt
+		if s.Active.Settlement != nil {
+			pendingOutcome = s.Active.Settlement.Outcome
+		}
+	}
 	phase, secondsLeft := predictionPhase(s.Active, config.predictionWindowMinutes(), time.Now())
 	return map[string]any{"version": appVersion, "running": running, "realMode": config.RealMode, "connected": connected, "channel": channel,
-		"twitchPhase": connectionPhase(hasToken, validated, authPending),
-		"monitorPhase": monitorPhase(running, active),
+		"twitchPhase":     connectionPhase(hasToken, validated, authPending),
+		"monitorPhase":    monitorPhase(running, active),
 		"predictionPhase": phase, "predictionWindowSecondsLeft": secondsLeft,
 		"playerName": config.PlayerName, "playerToonHandle": config.PlayerToonHandle,
 		"lastResult": s.LastResult, "active": active, "activeDryRun": activeDry,
-  "activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
-  "pendingOutcome": pendingOutcome,
-  "creationUnconfirmed": s.UnconfirmedCreation != nil && s.Active == nil,
-  "replayScan": scan, "hasTwitchApp": config.twitchClientID() != "",
+		"activePredictionId": activeID, "activePredictionStartedAt": activeStartedAt,
+		"pendingOutcome":      pendingOutcome,
+		"creationUnconfirmed": s.UnconfirmedCreation != nil && s.Active == nil,
+		"replayScan":          scan, "hasTwitchApp": config.twitchClientID() != "",
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs,
 		"updateVersion": updateVersion, "updateURL": updateURL}
 }
