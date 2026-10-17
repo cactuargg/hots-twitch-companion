@@ -25,6 +25,10 @@ const apiURL = "https://api.twitch.tv/helix"
 // Existing caller methods will be removed when Engine moves into internal/app.
 type Config appconfig.Data
 
+// Existing command HTTP validators still use these named limits.
+const defaultPredictionWindow = appconfig.DefaultPredictionWindow
+const maxPredictionWindow = appconfig.MaxPredictionWindow
+
 // The release build may embed a public OAuth Client ID via -ldflags.
 var defaultTwitchClientID string
 
