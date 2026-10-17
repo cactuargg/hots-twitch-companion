@@ -105,11 +105,11 @@ Client ID **не является секретом** и доступен люб�
 - `onboarding.js` — мастер, выбор игрока и предпросмотр Prediction
 - `app.js` — отрисовка состояний и запуск приложения
 
-Стили разделены на `style.css` (основа), `wizard.css`, `overview.css`, `onboarding.css` и `diagnostics.css`. **Порядок подключений в `web/index.html` важен.** Директива `go:embed` автоматически включает все новые файлы каталога `web/assets/`.
+Стили разделены на `style.css` (основа), `wizard.css`, `overview.css`, `onboarding.css` и `diagnostics.css`. **Порядок подключений в `cmd/companion/web/index.html` важен.** Директива `go:embed` автоматически включает все новые файлы каталога `cmd/companion/web/assets/`.
 
 По вкладкам можно перемещаться с клавиатуры клавишами ←/→, Home/End. Текущая вкладка обозначена через `aria-selected`, а фокус перемещается вместе с выбором.
 
-Разработчику для проверки доступны `go test ./...`, `node --test` и `node --check web/assets/app.js`. В GitHub Actions проверяются **все** JS-файлы и выполняются все тесты перед сборкой Windows. Node.js нужен только при разработке, конечным пользователям не требуется.
+Разработчику для проверки доступны `go test ./...`, `node --test` и `node --check cmd/companion/web/assets/app.js`. В GitHub Actions проверяются **все** JS-файлы и выполняются все тесты перед сборкой Windows. Node.js нужен только при разработке, конечным пользователям не требуется.
 
 ## Запуск
 
@@ -137,10 +137,10 @@ Client ID **не является секретом** и доступен люб�
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe ./cmd/companion
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe ./cmd/companion`
 
 Go 1.25+, Node.js 18+ для проверок. `./build.ps1` собирает Desktop, `./build.ps1 -BrowserFallback` — Browser-версию. Desktop использует Wails v2/WebView2 и fyne.io/systray; [инструкция](docs/compact-desktop.ru.md). `service.go` — HTTP/UI-обвязка, `main_windows.go` — окно Edge, `core.go` — логика Twitch/HotS, `replay.go` — MPQ декодер, `i18n.go` — каталог сообщений EN/RU, `web/` — интерфейс.
 
@@ -190,7 +190,7 @@ git push origin v0.3.0
 
 Исходный код проекта распространяется на условиях **MIT License** — см. файл [LICENSE](LICENSE). Это разрешает использование, модификацию и распространение исходного кода, включая коммерческое, при сохранении текста лицензии и уведомления об авторских правах. В `LICENSE` указан коллективный правообладатель `HotS Twitch Companion contributors`; перед публикацией при желании замени его своим именем или названием организации.
 
-Лицензия MIT **не даёт прав на торговые марки, логотипы или сторонние графические материалы** Blizzard и Twitch. Проверь происхождение файлов в `web/assets/` и свои права на их публикацию. Приложение неофициальное и не связано с Blizzard Entertainment или Twitch.
+Лицензия MIT **не даёт прав на торговые марки, логотипы или сторонние графические материалы** Blizzard и Twitch. Проверь происхождение файлов в `cmd/companion/web/assets/` и свои права на их публикацию. Приложение неофициальное и не связано с Blizzard Entertainment или Twitch.
 
 
 GitHub Actions и Windows GUI требуют проверки реального запуска на Windows. `.exe` не подписан Authenticode; SHA256 фиксирует содержимое, но не доказывает отсутствие вредоносного кода.

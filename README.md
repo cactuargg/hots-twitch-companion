@@ -113,11 +113,11 @@ The old monolithic frontend is now organized into standalone files, loaded in or
 - `onboarding.js` — setup wizard, player picker and Prediction preview
 - `app.js` — status rendering, actions and application startup
 
-CSS follows the same pattern: `style.css` foundation, then `wizard.css`, `overview.css`, `onboarding.css`, and `diagnostics.css`. Their order in `web/index.html` is intentional. The existing Go embed directive includes every file in `web/assets/`.
+CSS follows the same pattern: `style.css` foundation, then `wizard.css`, `overview.css`, `onboarding.css`, and `diagnostics.css`. Their order in `cmd/companion/web/index.html` is intentional. The existing Go embed directive includes every file in `cmd/companion/web/assets/`.
 
 Tabs support keyboard Left/Right, Home/End, track focus, and expose their selected state to assistive technologies.
 
-For contributors, run `go test ./...`, `node --test`, and `node --check web/assets/app.js`. GitHub Actions performs syntax checks on **all** JS files and runs all tests before building the Windows executable. Node.js is only needed for development and CI.
+For contributors, run `go test ./...`, `node --test`, and `node --check cmd/companion/web/assets/app.js`. GitHub Actions performs syntax checks on **all** JS files and runs all tests before building the Windows executable. Node.js is only needed for development and CI.
 
 ## Getting started
 
@@ -146,10 +146,10 @@ The logic from the older Go version (MPQ zlib/BZip2 handling, Twitch OAuth, Pred
 
 ```powershell
 go test ./...
-go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe .
+go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe ./cmd/companion
 ```
 
-Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe .`
+Linux cross-compile: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-H=windowsgui -s -w" -o HotS-Twitch-Companion-v0.9.6.exe ./cmd/companion`
 
 Go 1.25+, Node.js 18+ for checks. Run `./build.ps1` for Desktop or `./build.ps1 -BrowserFallback` for the Browser edition package. Desktop uses Wails v2/WebView2 and fyne.io/systray; see [Desktop build instructions](docs/compact-desktop.ru.md). `service.go` — HTTP/UI wiring, `main_windows.go` — Edge window, `core.go` — Twitch/HotS logic, `replay.go` — MPQ decoder, `i18n.go` — EN/RU message catalog, `web/` — the interface.
 
@@ -188,7 +188,7 @@ Before publishing, check `git status` and the list of tracked files: **do not co
 
 The project source code is distributed under the **MIT License** — see [LICENSE](LICENSE). This permits use, modification, and redistribution of the source code, including commercial use, provided the license text and copyright notice are retained. `LICENSE` names `HotS Twitch Companion contributors` as the collective copyright holder; replace it with your name or organization before publishing if you prefer.
 
-The MIT License **does not grant rights to trademarks, logos, or third-party artwork** of Blizzard and Twitch. Verify the origin of files in `web/assets/` and your rights to publish them. This application is unofficial and is not affiliated with Blizzard Entertainment or Twitch.
+The MIT License **does not grant rights to trademarks, logos, or third-party artwork** of Blizzard and Twitch. Verify the origin of files in `cmd/companion/web/assets/` and your rights to publish them. This application is unofficial and is not affiliated with Blizzard Entertainment or Twitch.
 
 GitHub Actions and the Windows GUI require verification on a real Windows run. The `.exe` is not Authenticode-signed; SHA256 pins the content but does not prove the absence of malicious code.
 
