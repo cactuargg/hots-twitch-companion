@@ -660,6 +660,10 @@ func (e *Engine) safeLiveChange(cfg Config) bool {
 		cfg.PredictionLoss == e.cfg.PredictionLoss
 }
 func (e *Engine) updateConfig(cfg Config) error {
+	// All scanner/settlement actions read cfg and twitch while holding
+	// actionMu. Serialize live configuration changes with those actions.
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.running && !e.safeLiveChange(cfg) {
@@ -868,13 +872,19 @@ func (e *Engine) watch(ctx context.Context) {
 	defer func() {
 		e.mu.Lock()
 		e.running = false
+		lang := e.cfg.lang()
 		e.mu.Unlock()
-		e.log(tr(e.cfg.lang(), "log.watch_stopped"))
+		e.log(tr(lang, "log.watch_stopped"))
 	}()
-	lang := e.cfg.lang()
-	e.log(tr(lang, "log.watch_started", tr(lang, map[bool]string{true: "mode.real", false: "mode.simulation"}[e.cfg.RealMode])))
-	if e.cfg.RealMode {
-		if _, err := e.twitch.identity(ctx); err != nil {
+	// Snapshot startup values under the engine lock. A safe live settings
+	// change can otherwise replace cfg/twitch during OAuth validation.
+	e.mu.Lock()
+	config, twitch := e.cfg, e.twitch
+	e.mu.Unlock()
+	lang := config.lang()
+	e.log(tr(lang, "log.watch_started", tr(lang, map[bool]string{true: "mode.real", false: "mode.simulation"}[config.RealMode])))
+	if config.RealMode {
+		if _, err := twitch.identity(ctx); err != nil {
 			e.report("error", "twitch_auth", "Twitch: " + err.Error())
 			return
 		}
