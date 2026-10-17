@@ -14,7 +14,7 @@ const settings=read('cmd/companion/web/assets/settings.css');
 const wizard=read('cmd/companion/web/assets/wizard.css');
 const onboarding=read('cmd/companion/web/assets/onboarding.css');
 const diagnostics=read('cmd/companion/web/assets/diagnostics.css');
-const windows=read('main_windows.go');
+const windows=read('cmd/companion/main_windows.go');
 
 function slice(start,end) {
  const a=app.indexOf(start),b=app.indexOf(end,a+start.length);
