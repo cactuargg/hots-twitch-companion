@@ -63,6 +63,22 @@ func TestResetRejectsRunningOrActivePrediction(t *testing.T) {
 	}
 }
 
+func TestResetCannotEraseUnconfirmedTwitchCreation(t *testing.T) {
+	d := manualDashboard(t, Config{RealMode:true})
+	state := State{UnconfirmedCreation:&CreationAttempt{
+		LobbySHA:"pending",BroadcasterID:"channel",AttemptedAt:123,
+	}}
+	if err:=d.engine.updateAndSave(state);err!=nil {t.Fatal(err)}
+	if err:=d.requestProfileReset();err==nil {t.Fatal("reset erased an unverified Twitch wager")}
+	persisted,err:=loadState(d.p)
+	if err!=nil || persisted.UnconfirmedCreation==nil {
+		t.Fatalf("unconfirmed wager was forgotten: %+v %v",persisted,err)
+	}
+	if _,err:=os.Stat(filepath.Join(d.p.dir,resetMarker));!os.IsNotExist(err) {
+		t.Fatal("unsafe reset marker created")
+	}
+}
+
 func TestResetFailureRetainsMarkerForRetry(t *testing.T) {
 	d := manualDashboard(t, Config{})
 	if err := d.requestProfileReset(); err != nil {
