@@ -15,14 +15,16 @@ function openExternalLink(raw){
  else window.open(url.href,'_blank','noopener,noreferrer');
 }
 
-function toast(message, error = false){ const n=$('toast'); n.textContent=message; n.className='toast show'+(error?' error':''); clearTimeout(toastTimer); toastTimer=setTimeout(()=>n.className='toast',4600); }
+function toast(message, error = false){ if(state.closing)return;const n=$('toast'); n.textContent=message; n.className='toast show'+(error?' error':''); clearTimeout(toastTimer); toastTimer=setTimeout(()=>n.className='toast',4600); }
 function safe(v){return v==null?'':String(v)}
 async function api(route, method='GET', data){
+ if(state.closing)throw Error('Application closed');
  const options={method,headers:{'X-Companion':'1'},cache:'no-store'};
  if(data!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(data)}
  const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),45000); options.signal=controller.signal;
- try{const r=await fetch(base+'api/'+route,options);const x=await r.json();if(!r.ok||x.error)throw Error(x.error||'HTTP '+r.status);return x}
- finally{clearTimeout(timeout)}
+ (state.requestControllers??=new Set()).add(controller);
+ try{const r=await fetch(base+'api/'+route,options);const x=await r.json();if(state.closing)throw Error('Application closed');if(!r.ok||x.error)throw Error(x.error||'HTTP '+r.status);return x}
+ finally{clearTimeout(timeout);state.requestControllers.delete(controller)}
 }
 function getInputs(){return {clientId:$('clientId').value.trim(),playerName:$('playerName').value.trim(),playerToonHandle:$('toonHandle').value.trim(),replayRoot:$('replayRoot').value.trim(),realMode:true,lang:$('lang').value,predictionWindowMin:parseInt($('predictionWindow').value,10)||2,wizardDone:!!(state.config&&state.config.wizardDone),predictionTitle:$('predTitle').value.trim(),predictionWin:$('predWin').value.trim(),predictionLoss:$('predLoss').value.trim()}}
 function setInputs(c){$('clientId').value=c.clientId||'';$('playerName').value=c.playerName||'';$('toonHandle').value=c.playerToonHandle||'';$('replayRoot').value=c.replayRoot||'';$('lang').value=c.lang||lang;$('predictionWindow').value=String(c.predictionWindowMin||2);$('predTitle').value=c.predictionTitle||'';$('predWin').value=c.predictionWin||'';$('predLoss').value=c.predictionLoss||'';state.hasUnsaved=false;renderPredictionPreviews();renderPlayerPickers();renderSettingsDraft();}

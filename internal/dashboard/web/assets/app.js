@@ -30,6 +30,7 @@ function setActionBusy(name, busy){
 }
 
 function render(s){
+ if(state.closing)return;
  if(s?.version)$('app-version').textContent='v'+s.version;
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
@@ -124,13 +125,18 @@ function render(s){
   if(!$('wizard').hidden)renderWizard();
 }
 async function loadStatus(){
- if(state.statusPending)return;
+ if(state.closing||state.statusPending)return;
  state.statusPending=true;
- try{const status=await api('status');state.connectionLost=false;render(status)}
- catch(e){state.connectionLost=true;render(state.status)}
+ try{const status=await api('status');if(state.closing)return;state.connectionLost=false;render(status)}
+ catch(e){if(state.closing)return;state.connectionLost=true;render(state.status)}
  finally{state.statusPending=false}
 }
-async function reloadReplays(){try{const x=await api('replays');showReplays(x.replays||[])}catch(e){toast(e.message,true)}}
+async function reloadReplays(){if(state.closing)return;try{const x=await api('replays');if(!state.closing)showReplays(x.replays||[])}catch(e){if(!state.closing)toast(e.message,true)}}
+function stopPolling(){
+ state.closing=true;
+ clearInterval(state.statusTimer);clearInterval(state.replaysTimer);
+ for(const controller of state.requestControllers||[])controller.abort();
+}
 async function save(over={}){
  if(state.saving||state.languageSaving)throw Error(t('settings.wait'));
  const draft=JSON.stringify(getInputs());
@@ -177,6 +183,7 @@ async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('con
  case 'reset-profile':
    if(!confirm(t('reset.confirm')))break;
    await api('profile/reset','POST',{confirmed:true});
+   stopPolling();
    try{localStorage.clear()}catch(e){}
    document.body.replaceChildren(line(t('reset.done'),'empty-mini'));
    break;
@@ -247,7 +254,7 @@ async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('con
     await checkReplayRoot();
     break;
   case 'update':if(state.status?.updateURL)openExternalLink(state.status.updateURL);break;
-  case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
+  case 'quit':if(!confirm(t('confirm.quit')))break;await api('quit','POST',{});stopPolling();window.close();document.body.innerHTML='<div style="font:18px Segoe UI;color:#ccdaee;margin:70px;text-align:center">'+safe(t('quit.message'))+'</div>';break;
  }}catch(e){toast(e.message||t('toast.request_error'),true)}finally{state.busy=false;setActionBusy(name,false)}}
 
 async function checkReplayRoot(){
@@ -302,10 +309,11 @@ window.addEventListener('DOMContentLoaded',async()=>{
  applyI18n();
  render(null);
  try{
-   const b=await api('bootstrap');state.config=b.config;setInputs(b.config);
+   const b=await api('bootstrap');if(state.closing)return;state.config=b.config;setInputs(b.config);
    if(b.config.lang){lang=b.config.lang;try{localStorage.setItem('hots-lang',lang)}catch(e){}applyI18n();}
    render(b.status);showReplays(b.replays||[]);
    if(!b.config.wizardDone)openWizard();
  }catch(e){toast(t('toast.connect_fail',{err:e.message}),true)}
- setInterval(loadStatus,2500);setInterval(reloadReplays,30000);
+ if(!state.closing){state.statusTimer=setInterval(loadStatus,2500);state.replaysTimer=setInterval(reloadReplays,30000);}
 });
+window.addEventListener('pagehide',stopPolling);

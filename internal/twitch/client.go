@@ -3,6 +3,7 @@ package twitch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"hots-twitch-companion/internal/i18n"
 	"hots-twitch-companion/internal/prediction"
 	"hots-twitch-companion/internal/storage/credentials"
@@ -19,12 +20,15 @@ const AuthURL = "https://id.twitch.tv/oauth2"
 const APIURL = "https://api.twitch.tv/helix"
 
 type Client struct {
+	// Credential mutations are serialized separately from status snapshots.
+	refreshMu            sync.Mutex
 	mu                   sync.Mutex
 	clientID             string
 	lang                 string
 	tokens               TokenStore
 	request              JSONRequest
 	token                Token
+	pendingToken         *Token
 	broadcasterID, login string
 }
 
@@ -73,6 +77,8 @@ func (t *Client) SetLanguage(lang string) {
 // AcceptValidatedToken commits credentials only after the application has
 // checked prediction ownership against the validated identity.
 func (t *Client) AcceptValidatedToken(token Token, identity Identity) error {
+	t.refreshMu.Lock()
+	defer t.refreshMu.Unlock()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if err := t.saveToken(token); err != nil {
@@ -104,9 +110,24 @@ func (t *Client) saveToken(token Token) error {
 		return err
 	}
 	t.token = token
+	t.pendingToken = nil
+	return nil
+}
+
+// Keep a remotely rotated pair until it is durable. Callers must not use it
+// for API operations or retry the old refresh token while saving fails.
+func (t *Client) persistPendingToken() error {
+	if t.pendingToken == nil {
+		return nil
+	}
+	if err := t.saveToken(*t.pendingToken); err != nil {
+		return fmt.Errorf("%s: %w", i18n.Text(t.lang, "twitch.token_save_error"), err)
+	}
 	return nil
 }
 func (t *Client) tokenFor(ctx context.Context) (access string, err error) {
+	t.refreshMu.Lock()
+	defer t.refreshMu.Unlock()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	defer func() {
@@ -115,6 +136,9 @@ func (t *Client) tokenFor(ctx context.Context) (access string, err error) {
 			t.login, t.broadcasterID = "", ""
 		}
 	}()
+	if err := t.persistPendingToken(); err != nil {
+		return "", err
+	}
 	if t.token.AccessToken == "" {
 		return "", errors.New(i18n.Text(t.lang, "twitch.connect_first"))
 	}
@@ -126,14 +150,19 @@ func (t *Client) tokenFor(ctx context.Context) (access string, err error) {
 	}
 	form := url.Values{"client_id": {t.clientID}, "grant_type": {"refresh_token"}, "refresh_token": {t.token.RefreshToken}}
 	var token Token
-	if e := t.request(ctx, "POST", AuthURL+"/token", form, nil, "", "", &token); e != nil {
+	// Keep refresh serialization while allowing Connection and language reads.
+	t.mu.Unlock()
+	requestErr := t.request(ctx, "POST", AuthURL+"/token", form, nil, "", "", &token)
+	t.mu.Lock()
+	if e := requestErr; e != nil {
 		return "", errors.New(i18n.Text(t.lang, "twitch.refresh_error", e.Error()))
 	}
 	if token.AccessToken == "" || token.RefreshToken == "" {
 		return "", errors.New(i18n.Text(t.lang, "twitch.incomplete_tokens"))
 	}
 	token.SavedAt = time.Now().Unix()
-	if e := t.saveToken(token); e != nil {
+	t.pendingToken = &token
+	if e := t.persistPendingToken(); e != nil {
 		return "", e
 	}
 	return token.AccessToken, nil
@@ -192,7 +221,9 @@ func (t *Client) req(ctx context.Context, method, route string, body any, dst an
 	var httpError *transport.HTTPError
 	if errors.As(e, &httpError) && httpError.Status == 401 {
 		t.mu.Lock()
-		t.token.SavedAt = 0
+		if t.token.AccessToken == token {
+			t.token.SavedAt = 0
+		}
 		t.mu.Unlock()
 		token, e = t.tokenFor(ctx)
 		if e != nil {
