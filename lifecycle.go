@@ -241,7 +241,7 @@ func (e *Engine) settlePrediction(ctx context.Context, s *State, outcome, source
 	if intent.RetryAt > time.Now().UnixMilli() {
 		return errors.New(tr(e.cfg.lang(), "settle.retry_wait"))
 	}
-	err := e.twitch.end(ctx, s.Active, intent.Outcome)
+	err := e.predictions.end(ctx, s.Active, intent.Outcome)
 	var finished *remoteFinishedError
 	if errors.As(err, &finished) {
 		return e.commitSettlement(s, remoteOutcome(finished.Prediction, s.Active), "Twitch")
@@ -339,7 +339,7 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 	// creation attempt is persisted, a POST failure remains non-retryable.
 	broadcasterID := ""
 	if e.cfg.RealMode {
-		me, err := e.twitch.preflightCreate(ctx)
+		me, err := e.predictions.preflightCreate(ctx)
 		if err != nil {
 			e.setReplayScan("create_error", "", err.Error())
 			return
