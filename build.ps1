@@ -17,7 +17,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Desktop Go tests failed' }
     & go vet -tags 'wails,production,wv2runtime.error' ./...
     if ($LASTEXITCODE -ne 0) { throw 'Desktop Go vet failed' }
-    Get-ChildItem 'web/assets' -Filter *.js | ForEach-Object {
+    Get-ChildItem 'cmd/companion/web/assets' -Filter *.js | ForEach-Object {
         & node --check $_.FullName
         if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax check failed: $($_.Name)" }
     }
@@ -38,7 +38,7 @@ try {
     $exeName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion.exe" } else { "HotS-Twitch-Companion-$buildVersion.exe" }
     $zipName = if ($BrowserFallback) { "HotS-Twitch-Companion-Browser-$buildVersion.zip" } else { "HotS-Twitch-Companion-$buildVersion-windows-x64.zip" }
     $buildTags = if ($BrowserFallback) { @() } else { @('-tags', 'wails,production,wv2runtime.error') }
-    & go build @buildTags -trimpath "-ldflags=$ldflags" -o "$out/$exeName" .
+    & go build @buildTags -trimpath "-ldflags=$ldflags" -o "$out/$exeName" ./cmd/companion
     if ($LASTEXITCODE -ne 0) { throw 'Go build failed' }
 
     Copy-Item 'README.md','README.ru.md','LICENSE','THIRD_PARTY_NOTICES.txt','docs/compact-desktop.ru.md','docs/profile-reset.ru.md','docs/live-predictions.ru.md' $out -Force

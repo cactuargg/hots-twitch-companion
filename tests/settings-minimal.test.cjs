@@ -6,9 +6,9 @@ const path=require('node:path');
 const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
-const html=fs.readFileSync(path.join(root,'web/index.html'),'utf8');
-const source=fs.readFileSync(path.join(root,'web/assets/app.js'),'utf8');
-const core=fs.readFileSync(path.join(root,'web/assets/core.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'cmd/companion/web/index.html'),'utf8');
+const source=fs.readFileSync(path.join(root,'cmd/companion/web/assets/app.js'),'utf8');
+const core=fs.readFileSync(path.join(root,'cmd/companion/web/assets/core.js'),'utf8');
 function slice(start,end){
  const a=source.indexOf(start),b=source.indexOf(end,a+start.length);
  assert.ok(a>=0&&b>a,'Missing source region: '+start);

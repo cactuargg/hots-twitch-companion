@@ -1,8 +1,8 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const app=fs.readFileSync('web/assets/app.js','utf8');
-const i18n=fs.readFileSync('web/assets/i18n.js','utf8');
-const html=fs.readFileSync('web/index.html','utf8');
+const app=fs.readFileSync('cmd/companion/web/assets/app.js','utf8');
+const i18n=fs.readFileSync('cmd/companion/web/assets/i18n.js','utf8');
+const html=fs.readFileSync('cmd/companion/web/index.html','utf8');
 const action=app.slice(app.indexOf('async function action(name)'),app.indexOf('async function checkReplayRoot()'));
 
 test('footer badge exists and is wired to the update action',()=>{

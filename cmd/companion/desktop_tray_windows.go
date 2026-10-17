@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	_ "embed"
+	appassets "hots-twitch-companion/assets"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -13,8 +13,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-//go:embed assets/app.ico
-var desktopIcon []byte
+var desktopIcon = appassets.Icon
 
 type desktopTray struct {
 	ready    atomic.Bool

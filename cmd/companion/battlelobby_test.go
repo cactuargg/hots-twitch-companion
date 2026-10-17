@@ -27,7 +27,7 @@ func TestRealBattleLobbies(t *testing.T) {
 		{"IndustrialDistrict1_98348", 98348, 427522310, 0, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			raw, err := os.ReadFile(filepath.Join("testdata", "battlelobby", "replay.server."+tc.name+".battlelobby"))
+			raw, err := os.ReadFile(filepath.Join("..", "..", "testdata", "battlelobby", "replay.server."+tc.name+".battlelobby"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestRealBattleLobbies(t *testing.T) {
 }
 
 func TestBattleLobbyCapturePersistence(t *testing.T) {
-	raw, err := os.ReadFile("testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
+	raw, err := os.ReadFile("../../testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestBattleLobbyCapturePersistence(t *testing.T) {
 }
 
 func TestBattleLobbyRejectsInvalid(t *testing.T) {
-	raw, err := os.ReadFile("testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
+	raw, err := os.ReadFile("../../testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestScannerPersistsLobbyWithoutChangingActivePrediction(t *testing.T) {
 	if err := os.MkdirAll(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile("testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
+	raw, err := os.ReadFile("../../testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestScannerPersistsLobbyWithoutChangingActivePrediction(t *testing.T) {
 }
 
 func FuzzBattleLobby(f *testing.F) {
-	raw, _ := os.ReadFile("testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
+	raw, _ := os.ReadFile("../../testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
 	f.Add(raw)
 	f.Add([]byte{})
 	f.Fuzz(func(t *testing.T, b []byte) {

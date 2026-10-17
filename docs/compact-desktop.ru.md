@@ -23,7 +23,7 @@ v1.12.2 с отдельным потоком сообщений Windows; при 
 Названия пунктов берутся из языка профиля при запуске.
 
 Встроенная иконка EXE и значок трея повторяют текущий H-знак интерфейса.
-SVG и Go-генератор находятся в assets/ и web/assets/app-icon.svg.
+SVG и Go-генератор находятся в assets/ и cmd/companion/web/assets/app-icon.svg.
 Перегенерация: `./assets/generate.ps1` (go-winres v0.3.3, RT_GROUP_ICON #3 для Wails).
 Сгенерированный rsrc_windows_amd64.syso хранится в Git; обычная сборка не требует
 генератора. Ресурс включает версию, запуск без повышения прав и PerMonitorV2 DPI.

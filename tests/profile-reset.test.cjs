@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const app=fs.readFileSync('web/assets/app.js','utf8');
+const app=fs.readFileSync('cmd/companion/web/assets/app.js','utf8');
 const action=app.slice(app.indexOf('async function action(name)'),app.indexOf('async function checkReplayRoot()'));
 function harness(confirmed,failed=false){
  const calls=[];

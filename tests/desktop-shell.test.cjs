@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const core=fs.readFileSync('web/assets/core.js','utf8');
+const core=fs.readFileSync('cmd/companion/web/assets/core.js','utf8');
 const helper=core.slice(core.indexOf('function openExternalLink('),core.indexOf('\nfunction toast('));
 test('Twitch links use native system browser or safe browser fallback',()=>{
  for(const native of [true,false]){
@@ -19,7 +19,7 @@ test('Twitch links use native system browser or safe browser fallback',()=>{
  }
 });
 
-const desktop=fs.readFileSync('web/assets/desktop.js','utf8');
+const desktop=fs.readFileSync('cmd/companion/web/assets/desktop.js','utf8');
 function shellHarness(native=true){
  const calls=[],classes=[];
  const titlebar={hidden:true,addEventListener:(name,fn)=>{titlebar.click=fn}};

@@ -17,7 +17,7 @@ import (
 
 func realLobbyTest(t *testing.T) []byte {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/battlelobby/replay.server.StormLeague1_89566.battlelobby")
+	raw, err := os.ReadFile("../../testdata/battlelobby/replay.server.StormLeague1_89566.battlelobby")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func boundScanFixture(t *testing.T, at time.Time) (*Engine, paths, []byte) {
 
 func TestRealPairedLobbyAndReplay(t *testing.T) {
 	raw := realLobbyTest(t)
-	archive, err := os.ReadFile("testdata/battlelobby/HanamuraSL1_89566.StormReplay")
+	archive, err := os.ReadFile("../../testdata/battlelobby/HanamuraSL1_89566.StormReplay")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestCorrelationCandidates(t *testing.T) {
 
 func realARAMLobbyTest(t *testing.T) []byte {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
+	raw, err := os.ReadFile("../../testdata/battlelobby/replay.server.ARAM1_89754.battlelobby")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
 
 func customLobbyTest(t *testing.T) []byte {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/battlelobby/replay.server.IndustrialDistrict1_98348.battlelobby")
+	raw, err := os.ReadFile("../../testdata/battlelobby/replay.server.IndustrialDistrict1_98348.battlelobby")
 	if err != nil {
 		t.Fatal(err)
 	}
