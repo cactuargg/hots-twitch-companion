@@ -2,6 +2,7 @@ package main
 
 import (
 	dashview "hots-twitch-companion/internal/dashboard"
+ "hots-twitch-companion/internal/hots/discovery"
 	"context"
 	"errors"
 	"fmt"
@@ -223,24 +224,7 @@ type replayRootEntry struct {
 	Custom  bool   `json:"custom"`
 }
 
-func countStormReplays(root string) int {
-	count := 0
-	visited := 0
-	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return filepath.SkipDir
-		}
-		visited++
-		if visited > 20000 {
-			return filepath.SkipAll
-		}
-		if !d.IsDir() && strings.HasSuffix(strings.ToLower(d.Name()), ".stormreplay") {
-			count++
-		}
-		return nil
-	})
-	return count
-}
+func countStormReplays(root string) int { return discovery.CountStormReplays(root) }
 
 // checkReplayRoot verifies a candidate folder (or the defaults when empty)
 // so the UI can confirm the path before saving.
