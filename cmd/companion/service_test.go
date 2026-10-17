@@ -1,11 +1,11 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,9 +15,11 @@ import (
 	"time"
 )
 
-
 func TestReadJSONRequestRejectsTrailingValues(t *testing.T) {
-	for _, tc := range []struct{body string; valid bool}{
+	for _, tc := range []struct {
+		body  string
+		valid bool
+	}{
 		{`{"confirmed":true}`, true},
 		{`{"confirmed":true}   `, true},
 		{`{"confirmed":true} {"confirmed":false}`, false},
@@ -25,11 +27,17 @@ func TestReadJSONRequestRejectsTrailingValues(t *testing.T) {
 		{`{"confirmed":true} garbage`, false},
 		{`{"confirmed":true,"unexpected":1}`, false},
 	} {
-		request:=httptest.NewRequest("POST","http://127.0.0.1:1234/api/test",strings.NewReader(tc.body))
-		var body struct{Confirmed bool `json:"confirmed"`}
-		err:=readJSONRequest(request,&body)
-		if tc.valid && (err!=nil || !body.Confirmed) {t.Errorf("valid body %q rejected: %v",tc.body,err)}
-		if !tc.valid && err==nil {t.Errorf("invalid body %q accepted",tc.body)}
+		request := httptest.NewRequest("POST", "http://127.0.0.1:1234/api/test", strings.NewReader(tc.body))
+		var body struct {
+			Confirmed bool `json:"confirmed"`
+		}
+		err := readJSONRequest(request, &body)
+		if tc.valid && (err != nil || !body.Confirmed) {
+			t.Errorf("valid body %q rejected: %v", tc.body, err)
+		}
+		if !tc.valid && err == nil {
+			t.Errorf("invalid body %q accepted", tc.body)
+		}
 	}
 }
 
@@ -157,7 +165,9 @@ func TestPredictionTextsAndReplayRootCheck(t *testing.T) {
 	// Resetting the custom folder must inspect defaults, not the saved custom
 	// path. Check before changing the stored config via the API.
 	defaults, err := d.checkReplayRoot("")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	defaultEntries := defaults["entries"].([]replayRootEntry)
 	if defaults["custom"] != false || len(defaultEntries) != len(defaultReplayRoots()) {
 		t.Fatalf("reset should inspect default roots: %+v", defaults)
@@ -338,28 +348,34 @@ func TestDashboardReplayAndAssetDelivery(t *testing.T) {
 	}
 }
 
-
-
 // Twitch Device Flow must back off on slow_down instead of continuously
 // requesting tokens at the original fixed interval.
 func TestDevicePollBackoff(t *testing.T) {
-	interval := 5*time.Second
-	slow := &twitchHTTPError{Status:400,Message:"slow_down"}
-	pending := &twitchHTTPError{Status:400,Message:"authorization_pending"}
+	interval := 5 * time.Second
+	slow := &twitchHTTPError{Status: 400, Message: "slow_down"}
+	pending := &twitchHTTPError{Status: 400, Message: "authorization_pending"}
 	next, retry := devicePollRetry(interval, pending)
-	if !retry || next != interval { t.Fatalf("pending must keep interval: %s %t",next,retry) }
+	if !retry || next != interval {
+		t.Fatalf("pending must keep interval: %s %t", next, retry)
+	}
 	next, retry = devicePollRetry(interval, slow)
-	if !retry || next != 10*time.Second { t.Fatalf("slow_down must add 5 seconds: %s %t",next,retry) }
+	if !retry || next != 10*time.Second {
+		t.Fatalf("slow_down must add 5 seconds: %s %t", next, retry)
+	}
 	next, retry = devicePollRetry(next, slow)
-	if !retry || next != 15*time.Second { t.Fatalf("consecutive slow_down must accumulate: %s %t",next,retry) }
-	next, retry = devicePollRetry(next, &twitchHTTPError{Status:403,Message:"invalid_client"})
-	if retry || next != 15*time.Second { t.Fatalf("unrecoverable errors must stop polling: %s %t",next,retry) }
+	if !retry || next != 15*time.Second {
+		t.Fatalf("consecutive slow_down must accumulate: %s %t", next, retry)
+	}
+	next, retry = devicePollRetry(next, &twitchHTTPError{Status: 403, Message: "invalid_client"})
+	if retry || next != 15*time.Second {
+		t.Fatalf("unrecoverable errors must stop polling: %s %t", next, retry)
+	}
 }
 
 func TestDashboardPhases(t *testing.T) {
 	for _, tt := range []struct {
 		hasToken, validated, pending bool
-		want string
+		want                         string
 	}{
 		{false, false, false, "disconnected"},
 		{false, false, true, "authorizing"},
@@ -373,7 +389,7 @@ func TestDashboardPhases(t *testing.T) {
 	}
 	for _, tt := range []struct {
 		running, active bool
-		want string
+		want            string
 	}{
 		{false, false, "off"},
 		{false, true, "off"},
@@ -405,133 +421,175 @@ func TestConfigSaveKeepsVerifiedTwitchIdentity(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
 	d, err := newDashboard(p, Config{RealMode: true})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Completed device authorization: token persisted, identity verified.
 	tok := Token{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600, SavedAt: time.Now().Unix()}
-	d.engine.twitch.mu.Lock()
-	if err := d.engine.twitch.saveToken(tok); err != nil { t.Fatal(err) }
-	d.engine.twitch.login = "demo"
-	d.engine.twitch.broadcasterID = "42"
-	d.engine.twitch.mu.Unlock()
+
+	if err := d.engine.twitch.AcceptValidatedToken(tok, TwitchIdentity{}); err != nil {
+		t.Fatal(err)
+	}
+	testTokenPaths.Store(d.engine.twitch, d.p.secret)
+	seedIdentity(d.engine.twitch, "demo", "42")
+
 	// Saving settings (e.g. finishing setup or the launch step) rebuilds the
 	// Twitch client from disk; the verified login must survive it.
-	if err := d.engine.updateConfig(Config{RealMode: true, WizardDone: true}); err != nil { t.Fatal(err) }
+	if err := d.engine.updateConfig(Config{RealMode: true, WizardDone: true}); err != nil {
+		t.Fatal(err)
+	}
 	st := d.status()
 	if st["connected"] != true || st["twitchPhase"] != "connected" || st["channel"] != "demo" {
 		t.Fatalf("config save dropped the verified Twitch identity: %#v", st)
 	}
 	// Switching to another OAuth application invalidates the identity: the
 	// stored token belongs to the previous app and must be re-authorized.
-	if err := d.engine.updateConfig(Config{ClientID: "other-app", RealMode: true, WizardDone: true}); err != nil { t.Fatal(err) }
+	if err := d.engine.updateConfig(Config{ClientID: "other-app", RealMode: true, WizardDone: true}); err != nil {
+		t.Fatal(err)
+	}
 	st = d.status()
 	if st["connected"] != false || st["channel"] != "" {
 		t.Fatalf("identity must not survive an OAuth app change: %#v", st)
 	}
 }
 
-
 func TestTwitchReauthorizationCannotStealActivePrediction(t *testing.T) {
 	d := manualDashboard(t, Config{ClientID: "client", RealMode: true, Lang: "en"})
 	initial := Token{AccessToken: "original", RefreshToken: "original-refresh", ExpiresIn: 3600, SavedAt: time.Now().Unix()}
-	d.engine.twitch.mu.Lock()
-	if err := d.engine.twitch.saveToken(initial); err != nil { d.engine.twitch.mu.Unlock(); t.Fatal(err) }
-	d.engine.twitch.login, d.engine.twitch.broadcasterID = "original-login", "channel-A"
-	d.engine.twitch.mu.Unlock()
+
+	if err := d.engine.twitch.AcceptValidatedToken(initial, TwitchIdentity{}); err != nil {
+		t.Fatal(err)
+	}
+	testTokenPaths.Store(d.engine.twitch, d.p.secret)
+	seedIdentity(d.engine.twitch, "original-login", "channel-A")
+
 	started := time.Now().UnixMilli()
-	if err := d.engine.updateAndSave(State{Active: &Prediction{ID: "pred-A", BroadcasterID: "channel-A", WinID:"yes", LossID:"no", StartedAt:started}}); err != nil { t.Fatal(err) }
+	if err := d.engine.updateAndSave(State{Active: &Prediction{ID: "pred-A", BroadcasterID: "channel-A", WinID: "yes", LossID: "no", StartedAt: started}}); err != nil {
+		t.Fatal(err)
+	}
 
 	oldClient := httpClient
 	defer func() { httpClient = oldClient }()
 	userID := "channel-B"
 	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
-		if req.URL.Path != "/oauth2/validate" { t.Errorf("unexpected request %s",req.URL); return nil, fmt.Errorf("unexpected request") }
-		if req.Header.Get("Authorization") != "OAuth candidate" { t.Errorf("wrong candidate credential: %s",req.Header.Get("Authorization")) }
+		if req.URL.Path != "/oauth2/validate" {
+			t.Errorf("unexpected request %s", req.URL)
+			return nil, fmt.Errorf("unexpected request")
+		}
+		if req.Header.Get("Authorization") != "OAuth candidate" {
+			t.Errorf("wrong candidate credential: %s", req.Header.Get("Authorization"))
+		}
 		return manualResponse(fmt.Sprintf(`{"client_id":"client","user_id":%q,"login":"candidate-login","scopes":["channel:manage:predictions"]}`, userID)), nil
 	})}
-	candidate := Token{AccessToken:"candidate", RefreshToken:"candidate-refresh", ExpiresIn:3600, SavedAt:time.Now().Unix()}
+	candidate := Token{AccessToken: "candidate", RefreshToken: "candidate-refresh", ExpiresIn: 3600, SavedAt: time.Now().Unix()}
 	if _, err := d.engine.installTwitchToken(context.Background(), "client", candidate); err == nil {
 		t.Fatal("replacing an active prediction's broadcaster was permitted")
 	}
-	d.engine.twitch.mu.Lock()
-	got := d.engine.twitch.token
-	login := d.engine.twitch.login
-	d.engine.twitch.mu.Unlock()
+
+	got := testToken(d.engine.twitch)
+	login := d.engine.twitch.Connection().Login
+
 	if got.AccessToken != "original" || login != "original-login" {
 		t.Fatalf("rejected auth modified credentials: %+v login=%s", got, login)
 	}
-	reopened, err := newTwitch(d.p, "client", "en")
-	if err != nil || reopened.token.AccessToken != "original" { t.Fatalf("persisted original token lost: %+v %v", reopened, err) }
-	if d.engine.state.Active == nil || d.engine.state.Active.ID != "pred-A" { t.Fatal("active prediction lost") }
+	reopened, err := newTestTwitch(d.p, "client", "en")
+	if err != nil || testToken(reopened).AccessToken != "original" {
+		t.Fatalf("persisted original token lost: %+v %v", reopened, err)
+	}
+	if d.engine.state.Active == nil || d.engine.state.Active.ID != "pred-A" {
+		t.Fatal("active prediction lost")
+	}
 
 	userID = "channel-A"
 	if me, err := d.engine.installTwitchToken(context.Background(), "client", candidate); err != nil || me.UserID != "channel-A" {
 		t.Fatalf("same broadcaster must be able to reconnect: %+v %v", me, err)
 	}
-	reopened, err = newTwitch(d.p, "client", "en")
-	if err != nil || reopened.token.AccessToken != "candidate" { t.Fatalf("replacement was not persisted: %+v %v", reopened, err) }
+	reopened, err = newTestTwitch(d.p, "client", "en")
+	if err != nil || testToken(reopened).AccessToken != "candidate" {
+		t.Fatalf("replacement was not persisted: %+v %v", reopened, err)
+	}
 }
 
 func TestActiveRealPredictionBlocksClientIDChange(t *testing.T) {
-	d := manualDashboard(t, Config{ClientID:"client", RealMode:true})
-	if err := d.engine.updateAndSave(State{Active:&Prediction{ID:"pred", BroadcasterID:"A", StartedAt:time.Now().UnixMilli()}}); err != nil { t.Fatal(err) }
-	if err := d.engine.updateConfig(Config{ClientID:"different",RealMode:true}); err == nil { t.Fatal("client changed with active prediction") }
-	if d.engine.cfg.ClientID != "client" { t.Fatal("config changed despite refusal") }
-	if err := d.engine.updateConfig(Config{ClientID:"client",RealMode:true,WizardDone:true}); err != nil { t.Fatalf("unrelated config change blocked: %v", err) }
+	d := manualDashboard(t, Config{ClientID: "client", RealMode: true})
+	if err := d.engine.updateAndSave(State{Active: &Prediction{ID: "pred", BroadcasterID: "A", StartedAt: time.Now().UnixMilli()}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.engine.updateConfig(Config{ClientID: "different", RealMode: true}); err == nil {
+		t.Fatal("client changed with active prediction")
+	}
+	if d.engine.cfg.ClientID != "client" {
+		t.Fatal("config changed despite refusal")
+	}
+	if err := d.engine.updateConfig(Config{ClientID: "client", RealMode: true, WizardDone: true}); err != nil {
+		t.Fatalf("unrelated config change blocked: %v", err)
+	}
 }
 
 func TestFailedCandidateValidationPreservesCurrentToken(t *testing.T) {
-	d := manualDashboard(t, Config{ClientID:"client",RealMode:true})
-	d.engine.twitch.mu.Lock()
-	if err := d.engine.twitch.saveToken(Token{AccessToken:"keep", RefreshToken:"keep-refresh", ExpiresIn:3600,SavedAt:time.Now().Unix()}); err != nil { t.Fatal(err) }
-	d.engine.twitch.mu.Unlock()
-	oldClient:=httpClient
-	defer func(){httpClient=oldClient}()
-	httpClient=&http.Client{Transport:manualTransport(func(r *http.Request)(*http.Response,error){
-		return manualResponse(`{"client_id":"wrong","user_id":"A","scopes":["channel:manage:predictions"]}`),nil
-	})}
-	if _,err:=d.engine.installTwitchToken(context.Background(),"client",Token{AccessToken:"candidate",RefreshToken:"refresh"});err==nil { t.Fatal("wrong OAuth client accepted") }
-	reopened,err:=newTwitch(d.p,"client","en")
-	if err!=nil || reopened.token.AccessToken!="keep" {t.Fatalf("token overwritten: %+v %v",reopened,err)}
-}
+	d := manualDashboard(t, Config{ClientID: "client", RealMode: true})
 
-
-func TestConfigLanguageChangeReusesLiveTwitchTokenOwner(t *testing.T) {
-	d := manualDashboard(t, Config{ClientID:"client",RealMode:true,Lang:"ru"})
-	twitch := d.engine.twitch
-	twitch.mu.Lock()
-	if err := twitch.saveToken(Token{AccessToken:"original",RefreshToken:"original-refresh",ExpiresIn:3600,SavedAt:time.Now().Unix()}); err != nil {
-		twitch.mu.Unlock()
+	if err := d.engine.twitch.AcceptValidatedToken(Token{AccessToken: "keep", RefreshToken: "keep-refresh", ExpiresIn: 3600, SavedAt: time.Now().Unix()}, TwitchIdentity{}); err != nil {
 		t.Fatal(err)
 	}
-	twitch.login, twitch.broadcasterID = "streamer", "channel"
-	twitch.mu.Unlock()
-	if err := d.engine.updateConfig(Config{ClientID:"client",RealMode:true,Lang:"en",WizardDone:true}); err != nil {
+
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	httpClient = &http.Client{Transport: manualTransport(func(r *http.Request) (*http.Response, error) {
+		return manualResponse(`{"client_id":"wrong","user_id":"A","scopes":["channel:manage:predictions"]}`), nil
+	})}
+	if _, err := d.engine.installTwitchToken(context.Background(), "client", Token{AccessToken: "candidate", RefreshToken: "refresh"}); err == nil {
+		t.Fatal("wrong OAuth client accepted")
+	}
+	reopened, err := newTestTwitch(d.p, "client", "en")
+	if err != nil || testToken(reopened).AccessToken != "keep" {
+		t.Fatalf("token overwritten: %+v %v", reopened, err)
+	}
+}
+
+func TestConfigLanguageChangeReusesLiveTwitchTokenOwner(t *testing.T) {
+	d := manualDashboard(t, Config{ClientID: "client", RealMode: true, Lang: "ru"})
+	twitch := d.engine.twitch
+	registerTestTwitch(d.engine)
+
+	if err := twitch.AcceptValidatedToken(Token{AccessToken: "original", RefreshToken: "original-refresh", ExpiresIn: 3600, SavedAt: time.Now().Unix()}, TwitchIdentity{}); err != nil {
+
+		t.Fatal(err)
+	}
+	testTokenPaths.Store(twitch, d.p.secret)
+	seedIdentity(twitch, "streamer", "channel")
+
+	if err := d.engine.updateConfig(Config{ClientID: "client", RealMode: true, Lang: "en", WizardDone: true}); err != nil {
 		t.Fatal(err)
 	}
 	if d.engine.twitch != twitch {
 		t.Fatal("non-OAuth settings replaced the live Twitch token owner")
 	}
-	twitch.mu.Lock()
-	lang,login,channel,token := twitch.lang,twitch.login,twitch.broadcasterID,twitch.token
-	twitch.mu.Unlock()
-	if lang!="en" || login!="streamer" || channel!="channel" || token.AccessToken!="original" {
-		t.Fatalf("settings lost live Twitch credentials: lang=%s login=%s channel=%s token=%+v",lang,login,channel,token)
+
+	lang, login, channel, token := d.engine.cfg.lang(), twitch.Connection().Login, twitch.Connection().BroadcasterID, testToken(twitch)
+
+	if lang != "en" || login != "streamer" || channel != "channel" || token.AccessToken != "original" {
+		t.Fatalf("settings lost live Twitch credentials: lang=%s login=%s channel=%s token=%+v", lang, login, channel, token)
 	}
 }
 
 func TestInvalidTwitchCredentialsCannotPartiallySaveNewOAuthClient(t *testing.T) {
-	d := manualDashboard(t, Config{ClientID:"original",RealMode:true,Lang:"en"})
+	d := manualDashboard(t, Config{ClientID: "original", RealMode: true, Lang: "en"})
 	original := d.engine.cfg
-	if err:=writeConfig(d.p,original);err!=nil {t.Fatal(err)}
+	if err := writeConfig(d.p, original); err != nil {
+		t.Fatal(err)
+	}
 	// Loading a new Twitch instance fails if a previously saved token file
 	// is corrupt. This must not commit the requested Client ID to config.json.
-	if err:=os.WriteFile(d.p.secret,[]byte("corrupt-token-file"),0600);err!=nil {t.Fatal(err)}
-	if err:=d.engine.updateConfig(Config{ClientID:"replacement",RealMode:true,Lang:"en"});err==nil {
+	if err := os.WriteFile(d.p.secret, []byte("corrupt-token-file"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.engine.updateConfig(Config{ClientID: "replacement", RealMode: true, Lang: "en"}); err == nil {
 		t.Fatal("expected token-decryption failure")
 	}
-	after,err:=readConfig(d.p)
-	if err!=nil || after.ClientID!="original" || d.engine.cfg.ClientID!="original" {
-		t.Fatalf("configuration changed despite failed Twitch client load: on disk=%+v runtime=%+v err=%v",after,d.engine.cfg,err)
+	after, err := readConfig(d.p)
+	if err != nil || after.ClientID != "original" || d.engine.cfg.ClientID != "original" {
+		t.Fatalf("configuration changed despite failed Twitch client load: on disk=%+v runtime=%+v err=%v", after, d.engine.cfg, err)
 	}
 }
 
@@ -539,23 +597,28 @@ func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
 	d, err := newDashboard(p, Config{})
-	if err != nil { t.Fatal(err) }
-	d.engine.twitch.mu.Lock()
-	d.engine.twitch.token.AccessToken = "not-validated"
-	d.engine.twitch.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testTokenPaths.Store(d.engine.twitch, d.p.secret)
+
+	seedToken(d.engine.twitch, Token{AccessToken: "not-validated"})
+
 	st := d.status()
 	if st["connected"] != false || st["twitchPhase"] != "unverified" {
 		t.Fatalf("token should not mean a verified connection: %#v", st)
 	}
-	d.engine.twitch.mu.Lock()
-	d.engine.twitch.login = "demo"
-	d.engine.twitch.mu.Unlock()
+
+	testTokenPaths.Store(d.engine.twitch, d.p.secret)
+
+	seedIdentity(d.engine.twitch, "demo", "")
+
 	st = d.status()
 	if st["connected"] != true || st["twitchPhase"] != "connected" {
 		t.Fatalf("verified connection not reflected: %#v", st)
 	}
 }
-
 
 func TestBrowserFallbackInitializesIdleClockBeforeOpeningBrowser(t *testing.T) {
 	d := manualDashboard(t, Config{Lang: "en"})
@@ -572,7 +635,9 @@ func TestBrowserFallbackInitializesIdleClockBeforeOpeningBrowser(t *testing.T) {
 		d.shutdownOnce.Do(func() { close(d.shutdown) })
 		return nil
 	})
-	if err != nil || !opened { t.Fatalf("browser fallback failed: opened=%v error=%v", opened, err) }
+	if err != nil || !opened {
+		t.Fatalf("browser fallback failed: opened=%v error=%v", opened, err)
+	}
 }
 
 func TestStructuredDiagnostics(t *testing.T) {

@@ -1,12 +1,12 @@
 package main
 
 import (
- "fmt"
- twitchpkg "hots-twitch-companion/internal/twitch"
-	transport "hots-twitch-companion/internal/twitch/transport"
-	predstate "hots-twitch-companion/internal/prediction"
 	"context"
 	"errors"
+	"fmt"
+	predstate "hots-twitch-companion/internal/prediction"
+	twitchpkg "hots-twitch-companion/internal/twitch"
+	transport "hots-twitch-companion/internal/twitch/transport"
 	"net/http"
 	"time"
 )
@@ -14,29 +14,31 @@ import (
 type SettlementAttempt = predstate.SettlementAttempt
 
 type twitchHTTPError = transport.HTTPError
+
 func responseHTTPError(response *http.Response, message string) error {
-	return transport.ResponseHTTPError(response,message)
+	return transport.ResponseHTTPError(response, message)
 }
 
 type LobbyEvent = predstate.LobbyEvent
 
 // Stateful lobby queue rules are shared across Engine and pure domain tests.
 const maxPendingLobbies = predstate.MaxPendingLobbies
-func lobbyWasHandled(s *State,hash string)bool{return predstate.LobbyWasHandled(s,hash)}
-func pendingLobbySeen(s *State,hash string)bool{return predstate.PendingLobbySeen(s,hash)}
-func enqueueLobby(s *State,event *LobbyEvent)bool{return predstate.EnqueueLobby(s,event)}
-func popPendingLobby(s *State){predstate.PopPendingLobby(s)}
+
+func lobbyWasHandled(s *State, hash string) bool    { return predstate.LobbyWasHandled(s, hash) }
+func pendingLobbySeen(s *State, hash string) bool   { return predstate.PendingLobbySeen(s, hash) }
+func enqueueLobby(s *State, event *LobbyEvent) bool { return predstate.EnqueueLobby(s, event) }
+func popPendingLobby(s *State)                      { predstate.PopPendingLobby(s) }
 
 type remoteFinishedError = twitchpkg.RemoteFinishedError
 
-func exactPrediction(response *apiResponse,id string)(apiPrediction,error) {
- return twitchpkg.ExactPrediction(response,id)
+func exactPrediction(response *apiResponse, id string) (apiPrediction, error) {
+	return twitchpkg.ExactPrediction(response, id)
 }
-func terminalPrediction(actual apiPrediction,status,winner string)error {
- return twitchpkg.TerminalPrediction(actual,status,winner)
+func terminalPrediction(actual apiPrediction, status, winner string) error {
+	return twitchpkg.TerminalPrediction(actual, status, winner)
 }
-func remoteOutcome(actual apiPrediction,p *Prediction)string {
- return twitchpkg.RemoteOutcome(actual,p)
+func remoteOutcome(actual apiPrediction, p *Prediction) string {
+	return twitchpkg.RemoteOutcome(actual, p)
 }
 
 func (e *Engine) commitSettlement(s *State, outcome, source string) error {
@@ -81,7 +83,7 @@ func (e *Engine) settlePrediction(ctx context.Context, s *State, outcome, source
 	if intent.RetryAt > e.clock.Now().UnixMilli() {
 		return errors.New(tr(e.cfg.lang(), "settle.retry_wait"))
 	}
-	err := e.predictions.end(ctx, s.Active, intent.Outcome)
+	err := e.predictions.End(ctx, s.Active, intent.Outcome)
 	var finished *remoteFinishedError
 	if errors.As(err, &finished) {
 		return e.commitSettlement(s, remoteOutcome(finished.Prediction, s.Active), "Twitch")
@@ -174,7 +176,7 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 	// creation attempt is persisted, a POST failure remains non-retryable.
 	broadcasterID := ""
 	if e.cfg.RealMode {
-		me, err := e.predictions.preflightCreate(ctx)
+		me, err := e.predictions.PreflightCreate(ctx)
 		if err != nil {
 			e.setReplayScan("create_error", "", err.Error())
 			return

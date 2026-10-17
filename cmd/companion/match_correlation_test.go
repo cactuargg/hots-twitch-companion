@@ -290,14 +290,17 @@ func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
 	active.BroadcasterID = "channel"
 	active.WinID = "winning"
 	active.LossID = "losing"
-	e.twitch.token = Token{AccessToken: "fake-token", ExpiresIn: 3600, SavedAt: now.Unix()}
+	testTokenPaths.Store(e.twitch, e.p.secret)
+	seedToken(e.twitch, Token{AccessToken: "fake-token", ExpiresIn: 3600, SavedAt: now.Unix()})
 	writeCorrelationFile(t, p.dir, "valid", correlationMPQTest(correlationDetailsTest(t, lobby, now.Add(-time.Minute), true), lobby), now.Add(-10*time.Second))
 	oldClient := httpClient
 	defer func() { httpClient = oldClient }()
 	requests := 0
 	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
 		requests++
-		if req.Method=="GET" {return manualResponse(`{"data":[{"id":"bound-prediction","status":"ACTIVE"}]}`),nil}
+		if req.Method == "GET" {
+			return manualResponse(`{"data":[{"id":"bound-prediction","status":"ACTIVE"}]}`), nil
+		}
 		var payload map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 			t.Fatal(err)

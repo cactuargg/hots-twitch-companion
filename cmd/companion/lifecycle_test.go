@@ -23,7 +23,8 @@ func liveLifecycleTest(t *testing.T) (*Engine, paths) {
 	e, p := scanFixture(t, time.Now().Add(-time.Minute))
 	e.cfg.ClientID = "client"
 	e.cfg.RealMode = true
-	e.twitch.clientID = "client"
+	e.twitch, _ = newTestTwitch(p, "client", e.cfg.lang())
+	e.predictions = e.twitch
 	active := *e.state.Active
 	active.ID = "tracked"
 	active.DryRun = false
@@ -35,7 +36,8 @@ func liveLifecycleTest(t *testing.T) (*Engine, paths) {
 	if err := e.updateAndSave(s); err != nil {
 		t.Fatal(err)
 	}
-	e.twitch.token = Token{AccessToken: "fake", ExpiresIn: 3600, SavedAt: time.Now().Unix()}
+	testTokenPaths.Store(e.twitch, e.p.secret)
+	seedToken(e.twitch, Token{AccessToken: "fake", ExpiresIn: 3600, SavedAt: time.Now().Unix()})
 	return e, p
 }
 
@@ -167,7 +169,8 @@ func TestUnknownSettlementKeepsOutcomeAcrossRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted.twitch.token = e.twitch.token
+	testTokenPaths.Store(restarted.twitch, restarted.p.secret)
+	seedToken(restarted.twitch, testToken(e.twitch))
 	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
 		if req.Method != "GET" {
 			t.Fatal("already committed outcome was patched twice")
@@ -257,7 +260,8 @@ func TestPersistenceFailuresDoNotForgetRemoteDecision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restored.twitch.token = e.twitch.token
+	testTokenPaths.Store(restored.twitch, restored.p.secret)
+	seedToken(restored.twitch, testToken(e.twitch))
 	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
 		if req.Method != "GET" {
 			t.Fatal("duplicate PATCH after failed final save")
@@ -353,8 +357,6 @@ func TestQuickSequentialMatchesKeepNextLobby(t *testing.T) {
 	}
 }
 
-
-
 func TestThreeRapidLobbiesSurviveActivePredictionAndRestart(t *testing.T) {
 	temp := t.TempDir()
 	t.Setenv("TMP", temp)
@@ -363,7 +365,9 @@ func TestThreeRapidLobbiesSurviveActivePredictionAndRestart(t *testing.T) {
 	e, p := scanFixture(t, now)
 	s := e.state
 	s.Active = nil
-	if err := e.updateAndSave(s); err != nil { t.Fatal(err) }
+	if err := e.updateAndSave(s); err != nil {
+		t.Fatal(err)
+	}
 
 	first := realLobbyTest(t)
 	second := append(append([]byte(nil), first...), 0)
@@ -388,29 +392,39 @@ func TestThreeRapidLobbiesSurviveActivePredictionAndRestart(t *testing.T) {
 	}
 	// Re-reading the same lobby must not enqueue a duplicate.
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
-	if len(e.state.PendingLobbies) != 1 { t.Fatalf("duplicate queue entry: %+v",e.state) }
-	restarted, err := newEngine(p, e.cfg, func(string){})
-	if err != nil { t.Fatal(err) }
+	if len(e.state.PendingLobbies) != 1 {
+		t.Fatalf("duplicate queue entry: %+v", e.state)
+	}
+	restarted, err := newEngine(p, e.cfg, func(string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
 	e = restarted
 	original := e.state.Active
-	if err := e.manualOutcome(context.Background(), "win", original.ID, original.StartedAt); err != nil { t.Fatal(err) }
+	if err := e.manualOutcome(context.Background(), "win", original.ID, original.StartedAt); err != nil {
+		t.Fatal(err)
+	}
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
 	if e.state.Active == nil || e.state.Active.Match == nil ||
 		e.state.Active.Match.Lobby.SHA256 != contentSHA(second) ||
 		e.state.PendingLobby == nil || e.state.PendingLobby.Snapshot.SHA256 != contentSHA(third) ||
 		len(e.state.PendingLobbies) != 0 {
-		t.Fatalf("FIFO did not create second lobby: %+v",e.state)
+		t.Fatalf("FIFO did not create second lobby: %+v", e.state)
 	}
 	secondActive := e.state.Active
-	if err := e.manualOutcome(context.Background(), "win", secondActive.ID, secondActive.StartedAt); err != nil {t.Fatal(err)}
+	if err := e.manualOutcome(context.Background(), "win", secondActive.ID, secondActive.StartedAt); err != nil {
+		t.Fatal(err)
+	}
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
 	if e.state.Active == nil || e.state.Active.Match == nil ||
 		e.state.Active.Match.Lobby.SHA256 != contentSHA(third) ||
 		e.state.PendingLobby != nil || len(e.state.PendingLobbies) != 0 {
-		t.Fatalf("FIFO did not create third lobby: %+v",e.state)
+		t.Fatalf("FIFO did not create third lobby: %+v", e.state)
 	}
-	thirdActive:=e.state.Active
-	if err := e.manualOutcome(context.Background(), "win", thirdActive.ID, thirdActive.StartedAt); err != nil {t.Fatal(err)}
+	thirdActive := e.state.Active
+	if err := e.manualOutcome(context.Background(), "win", thirdActive.ID, thirdActive.StartedAt); err != nil {
+		t.Fatal(err)
+	}
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
 	if e.state.Active != nil || e.state.PendingLobby != nil {
 		t.Fatal("handled lobby was recreated")
@@ -429,7 +443,9 @@ func TestPreflightFailureRetriesPendingLobbyWithoutDuplicatePost(t *testing.T) {
 	s.Active = nil
 	s.LastCreatedLobbySHA = ""
 	s.RecentLobbySHAs = nil
-	if err := e.updateAndSave(s); err != nil { t.Fatal(err) }
+	if err := e.updateAndSave(s); err != nil {
+		t.Fatal(err)
+	}
 	lobbyFileTest(t, realLobbyTest(t), now.Add(-5*time.Second))
 
 	oldClient := httpClient
@@ -470,7 +486,9 @@ func TestPreflightFailureRetriesPendingLobbyWithoutDuplicatePost(t *testing.T) {
 		t.Fatalf("preflight retry failed: %+v posts=%d", e.state, posts)
 	}
 	e.scanTick(context.Background(), started, &lastError, &lastLog)
-	if posts != 1 { t.Fatalf("duplicate prediction POST: %d", posts) }
+	if posts != 1 {
+		t.Fatalf("duplicate prediction POST: %d", posts)
+	}
 }
 
 func TestUncertainCreationIsNeverAutomaticallyRepeated(t *testing.T) {
@@ -514,13 +532,13 @@ func TestUncertainCreationIsNeverAutomaticallyRepeated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted.twitch.token = e.twitch.token
+	testTokenPaths.Store(restarted.twitch, restarted.p.secret)
+	seedToken(restarted.twitch, testToken(e.twitch))
 	restarted.scanTick(context.Background(), started, &lastError, &lastLog)
 	if posts != 1 || restarted.state.Active != nil {
 		t.Fatalf("unknown creation retried/adopted: posts=%d %+v", posts, restarted.state)
 	}
 }
-
 
 // An uncertain POST must fail closed for ALL later lobbies, including across
 // restart. Only an explicit, remote-verified reconciliation can remove it.
@@ -534,48 +552,69 @@ func TestUnconfirmedCreationBlocksOtherLobbiesUntilTwitchChecked(t *testing.T) {
 	s.Active = nil
 	s.LastCreatedLobbySHA = ""
 	s.RecentLobbySHAs = nil
-	s.UnconfirmedCreation = &CreationAttempt{LobbySHA:"old-lobby",BroadcasterID:"channel",AttemptedAt:now.Add(-time.Minute).UnixMilli()}
-	if err := e.updateAndSave(s); err != nil {t.Fatal(err)}
-	fresh := realLobbyTest(t)
-	lobbyFileTest(t,fresh,now.Add(-5*time.Second))
-	old := httpClient
-	defer func(){httpClient=old}()
-	requests:=0
-	remoteStatus:="ACTIVE"
-	remoteUser:="channel"
-	httpClient=&http.Client{Transport:manualTransport(func(req *http.Request)(*http.Response,error){
-		requests++
-		if req.URL.Path=="/oauth2/validate" {
-			return manualResponse(fmt.Sprintf(`{"client_id":"client","user_id":%q,"scopes":["channel:manage:predictions"]}`,remoteUser)),nil
-		}
-		if req.Method=="GET" {
-			if remoteStatus=="ACTIVE" {return manualResponse(`{"data":[{"id":"remote-open","status":"ACTIVE"}]}`),nil}
-			return manualResponse(`{"data":[]}`),nil
-		}
-		t.Fatalf("unexpected mutation during reconciliation: %s",req.Method)
-		return nil,nil
-	})}
-	lastError:=""
-	lastLog:=time.Time{}
-	started:=now.Add(-time.Minute)
-	e.scanTick(context.Background(),started,&lastError,&lastLog)
-	if requests!=0 || e.state.Active!=nil || e.state.PendingLobby==nil {
-		t.Fatalf("new lobby created or lost despite uncertain prior POST: %+v calls=%d",e.state,requests)
+	s.UnconfirmedCreation = &CreationAttempt{LobbySHA: "old-lobby", BroadcasterID: "channel", AttemptedAt: now.Add(-time.Minute).UnixMilli()}
+	if err := e.updateAndSave(s); err != nil {
+		t.Fatal(err)
 	}
-	if err:=e.start();err==nil {t.Fatal("automation restarted with an unresolved creation")}
-	if err:=e.updateConfig(Config{ClientID:"another",RealMode:true});err==nil {t.Fatal("OAuth app switched during reconciliation")}
-	if err:=e.acknowledgeUnconfirmedCreation(context.Background());err==nil {t.Fatal("acknowledged despite live Twitch Prediction")}
-	if e.state.UnconfirmedCreation==nil {t.Fatal("failed acknowledgment cleared marker")}
-	remoteStatus="none"
-	remoteUser="another-channel"
-	if err:=e.acknowledgeUnconfirmedCreation(context.Background());err==nil {t.Fatal("another broadcaster was accepted")}
-	remoteUser="channel"
-	restarted,err:=newEngine(p,e.cfg,func(string){})
-	if err!=nil {t.Fatal(err)}
-	restarted.twitch.token=e.twitch.token
-	if err:=restarted.acknowledgeUnconfirmedCreation(context.Background());err!=nil {t.Fatal(err)}
-	persisted,err:=loadState(p)
-	if err!=nil || persisted.UnconfirmedCreation!=nil || persisted.PendingLobby==nil {t.Fatalf("reconciliation did not persist or forgot next lobby: %+v %v",persisted,err)}
+	fresh := realLobbyTest(t)
+	lobbyFileTest(t, fresh, now.Add(-5*time.Second))
+	old := httpClient
+	defer func() { httpClient = old }()
+	requests := 0
+	remoteStatus := "ACTIVE"
+	remoteUser := "channel"
+	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
+		requests++
+		if req.URL.Path == "/oauth2/validate" {
+			return manualResponse(fmt.Sprintf(`{"client_id":"client","user_id":%q,"scopes":["channel:manage:predictions"]}`, remoteUser)), nil
+		}
+		if req.Method == "GET" {
+			if remoteStatus == "ACTIVE" {
+				return manualResponse(`{"data":[{"id":"remote-open","status":"ACTIVE"}]}`), nil
+			}
+			return manualResponse(`{"data":[]}`), nil
+		}
+		t.Fatalf("unexpected mutation during reconciliation: %s", req.Method)
+		return nil, nil
+	})}
+	lastError := ""
+	lastLog := time.Time{}
+	started := now.Add(-time.Minute)
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if requests != 0 || e.state.Active != nil || e.state.PendingLobby == nil {
+		t.Fatalf("new lobby created or lost despite uncertain prior POST: %+v calls=%d", e.state, requests)
+	}
+	if err := e.start(); err == nil {
+		t.Fatal("automation restarted with an unresolved creation")
+	}
+	if err := e.updateConfig(Config{ClientID: "another", RealMode: true}); err == nil {
+		t.Fatal("OAuth app switched during reconciliation")
+	}
+	if err := e.acknowledgeUnconfirmedCreation(context.Background()); err == nil {
+		t.Fatal("acknowledged despite live Twitch Prediction")
+	}
+	if e.state.UnconfirmedCreation == nil {
+		t.Fatal("failed acknowledgment cleared marker")
+	}
+	remoteStatus = "none"
+	remoteUser = "another-channel"
+	if err := e.acknowledgeUnconfirmedCreation(context.Background()); err == nil {
+		t.Fatal("another broadcaster was accepted")
+	}
+	remoteUser = "channel"
+	restarted, err := newEngine(p, e.cfg, func(string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	testTokenPaths.Store(restarted.twitch, restarted.p.secret)
+	seedToken(restarted.twitch, testToken(e.twitch))
+	if err := restarted.acknowledgeUnconfirmedCreation(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := loadState(p)
+	if err != nil || persisted.UnconfirmedCreation != nil || persisted.PendingLobby == nil {
+		t.Fatalf("reconciliation did not persist or forgot next lobby: %+v %v", persisted, err)
+	}
 }
 
 func TestCreationRefusesOpenOrMalformedPredictions(t *testing.T) {
@@ -615,7 +654,7 @@ func TestCreationRefusesOpenOrMalformedPredictions(t *testing.T) {
 				}
 				return manualResponse(tc.reply), nil
 			})}
-			p, err := e.twitch.create(context.Background(), 2, "Test", "W", "L")
+			p, err := e.twitch.Create(context.Background(), 2, "Test", "W", "L")
 			if (err == nil) != tc.success || (p != nil) != tc.success || posts != tc.posts {
 				t.Fatalf("creation %+v %v posts=%d", p, err, posts)
 			}

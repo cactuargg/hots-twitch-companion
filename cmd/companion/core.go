@@ -1,16 +1,16 @@
 package main
 
 import (
- appconfig "hots-twitch-companion/internal/config"
- app "hots-twitch-companion/internal/app"
-	twitch "hots-twitch-companion/internal/twitch"
-	discovery "hots-twitch-companion/internal/hots/discovery"
-	predstate "hots-twitch-companion/internal/prediction"
-	"hots-twitch-companion/internal/storage"
-	"hots-twitch-companion/internal/clock"
 	"context"
 	"errors"
 	"fmt"
+	app "hots-twitch-companion/internal/app"
+	"hots-twitch-companion/internal/clock"
+	appconfig "hots-twitch-companion/internal/config"
+	discovery "hots-twitch-companion/internal/hots/discovery"
+	predstate "hots-twitch-companion/internal/prediction"
+	"hots-twitch-companion/internal/storage"
+	twitch "hots-twitch-companion/internal/twitch"
 	"path/filepath"
 	"sync"
 	"time"
@@ -33,12 +33,18 @@ const maxPredictionWindow = appconfig.MaxPredictionWindow
 // The release build may embed a public OAuth Client ID via -ldflags.
 var defaultTwitchClientID string
 
-func (c Config) twitchClientID() string {return appconfig.Data(c).TwitchClientID(defaultTwitchClientID)}
-func (c Config) lang() string {return appconfig.Data(c).Language()}
-func (c Config) predictionWindowMinutes() int {return appconfig.Data(c).PredictionWindowMinutes()}
-func (c Config) predictionTexts() (string,string,string) {return appconfig.Data(c).PredictionTexts()}
+func (c Config) twitchClientID() string {
+	return appconfig.Data(c).TwitchClientID(defaultTwitchClientID)
+}
+func (c Config) lang() string                 { return appconfig.Data(c).Language() }
+func (c Config) predictionWindowMinutes() int { return appconfig.Data(c).PredictionWindowMinutes() }
+func (c Config) predictionTexts() (string, string, string) {
+	return appconfig.Data(c).PredictionTexts()
+}
+
 type Token = twitch.Token
 type Prediction = predstate.Prediction
+
 // Persisted proof that a real Twitch creation POST may have been sent
 // without a confirmed remote ID. Never automatically retry this POST.
 type CreationAttempt = predstate.CreationAttempt
@@ -51,56 +57,60 @@ type apiResponse = twitch.APIResponse
 type paths struct{ dir, config, secret, state string }
 
 func (p paths) packagePaths() appconfig.Paths {
- return appconfig.Paths{Dir:p.dir,Config:p.config,Secret:p.secret,State:p.state}
+	return appconfig.Paths{Dir: p.dir, Config: p.config, Secret: p.secret, State: p.state}
 }
 
-func pathsForUser() (paths,error) {
- p,err:=appconfig.PathsForUser()
- if err!=nil {return paths{},err}
- return paths{dir:p.Dir,config:p.Config,secret:p.Secret,state:p.State},nil
+func pathsForUser() (paths, error) {
+	p, err := appconfig.PathsForUser()
+	if err != nil {
+		return paths{}, err
+	}
+	return paths{dir: p.Dir, config: p.Config, secret: p.Secret, state: p.State}, nil
 }
-func saveJSON(path string, v any) error {return storage.SaveJSON(path,v)}
-func loadJSON(path string, v any) error {return storage.LoadJSON(path,v)}
-func readConfig(p paths) (Config,error) {
- c,err:=appconfig.Read(p.packagePaths())
- return Config(c),err
+func saveJSON(path string, v any) error { return storage.SaveJSON(path, v) }
+func loadJSON(path string, v any) error { return storage.LoadJSON(path, v) }
+func readConfig(p paths) (Config, error) {
+	c, err := appconfig.Read(p.packagePaths())
+	return Config(c), err
 }
-func writeConfig(p paths,c Config) error {return appconfig.Write(p.packagePaths(),appconfig.Data(c))}
-func loadState(p paths) (State, error)    { var s State; e := loadJSON(p.state, &s); return s, e }
-func saveState(p paths, s State) error    { return saveJSON(p.state, s) }
+func writeConfig(p paths, c Config) error {
+	return appconfig.Write(p.packagePaths(), appconfig.Data(c))
+}
+func loadState(p paths) (State, error) { var s State; e := loadJSON(p.state, &s); return s, e }
+func saveState(p paths, s State) error { return saveJSON(p.state, s) }
 
 type ReplayFile = discovery.ReplayFile
 
-func defaultReplayRoots() []string { return discovery.DefaultReplayRoots() }
+func defaultReplayRoots() []string    { return discovery.DefaultReplayRoots() }
 func replayRoots(cfg Config) []string { return discovery.ReplayRoots(cfg.ReplayRoot) }
 func replaysAfter(cfg Config, after time.Time, max int) []ReplayFile {
-	return discovery.ReplaysAfter(cfg.ReplayRoot,after,max)
+	return discovery.ReplaysAfter(cfg.ReplayRoot, after, max)
 }
-func findLobby() (string,string,time.Time,error) {
-	file,key,mod,err:=discovery.FindLobby()
-	if errors.Is(err,discovery.ErrLobbyNotFound) {
-		return "", "", time.Time{}, errors.New(tr(langEn,"lobby.not_found"))
+func findLobby() (string, string, time.Time, error) {
+	file, key, mod, err := discovery.FindLobby()
+	if errors.Is(err, discovery.ErrLobbyNotFound) {
+		return "", "", time.Time{}, errors.New(tr(langEn, "lobby.not_found"))
 	}
-	return file,key,mod,err
+	return file, key, mod, err
 }
 
 type ReplayScan = app.ReplayScan
 
 type Engine struct {
-	mu      sync.Mutex
-	actionMu sync.Mutex
-	p       paths
-	store   StateStore
-	clock   clock.Clock
+	mu          sync.Mutex
+	actionMu    sync.Mutex
+	p           paths
+	store       StateStore
+	clock       clock.Clock
 	predictions PredictionAPI
-	cfg     Config
-	twitch  *Twitch
-	state   State
-	scan    ReplayScan
-	running bool
-	stop    context.CancelFunc
-	log      func(string)
-	logEvent func(level, code, message string)
+	cfg         Config
+	twitch      *Twitch
+	state       State
+	scan        ReplayScan
+	running     bool
+	stop        context.CancelFunc
+	log         func(string)
+	logEvent    func(level, code, message string)
 }
 
 func newEngine(p paths, cfg Config, log func(string)) (*Engine, error) {
@@ -153,7 +163,7 @@ func (e *Engine) report(level, code, message string) {
 // language or wizard completion. Such changes stay allowed while monitoring
 // runs so the UI can switch language or finish setup live.
 func (e *Engine) safeLiveChange(cfg Config) bool {
- return app.LiveConfigChangeAllowed(appconfig.Data(e.cfg), appconfig.Data(cfg))
+	return app.LiveConfigChangeAllowed(appconfig.Data(e.cfg), appconfig.Data(cfg))
 }
 func (e *Engine) updateConfig(cfg Config) error {
 	// All scanner/settlement actions read cfg and twitch while holding
@@ -180,9 +190,7 @@ func (e *Engine) updateConfig(cfg Config) error {
 		if err := writeConfig(e.p, cfg); err != nil {
 			return err
 		}
-		e.twitch.mu.Lock()
-		e.twitch.lang = cfg.lang()
-		e.twitch.mu.Unlock()
+		e.twitch.SetLanguage(cfg.lang())
 		e.cfg = cfg
 		return nil
 	}
@@ -201,6 +209,7 @@ func (e *Engine) updateConfig(cfg Config) error {
 	e.predictions = t
 	return nil
 }
+
 // installTwitchToken validates a new device-flow token *before* persisting it.
 // actionMu serializes with manual/replay settlement, so the active Prediction
 // cannot change between checking ownership and replacing the credentials.
@@ -231,12 +240,9 @@ func (e *Engine) installTwitchToken(ctx context.Context, expectedClientID string
 		return TwitchIdentity{}, errors.New("Reconcile the unconfirmed Prediction before connecting another Twitch channel")
 	}
 	t := e.twitch
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if err := t.saveToken(token); err != nil {
+	if err := t.AcceptValidatedToken(token, me); err != nil {
 		return TwitchIdentity{}, err
 	}
-	t.broadcasterID, t.login = me.UserID, me.Login
 	return me, nil
 }
 
@@ -255,7 +261,7 @@ func (e *Engine) acknowledgeUnconfirmedCreation(ctx context.Context) error {
 	if s.UnconfirmedCreation == nil || s.Active != nil || !cfg.RealMode {
 		return errors.New("There is no unconfirmed Twitch creation to reconcile")
 	}
-	identity, err := twitch.preflightCreate(ctx)
+	identity, err := twitch.PreflightCreate(ctx)
 	if err != nil {
 		return fmt.Errorf("Cannot confirm Twitch is clear: %w", err)
 	}
@@ -274,7 +280,9 @@ func (e *Engine) acknowledgeUnconfirmedCreation(ctx context.Context) error {
 func (e *Engine) updateAndSave(s State) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if err := e.store.Save(s); err != nil { return err }
+	if err := e.store.Save(s); err != nil {
+		return err
+	}
 	e.state = s
 	return nil
 }
@@ -294,9 +302,9 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broad
 	} else {
 		title, winTitle, lossTitle := e.cfg.predictionTexts()
 		if broadcasterID != "" {
-			p, er = e.predictions.createPrepared(ctx, broadcasterID, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+			p, er = e.predictions.CreatePrepared(ctx, broadcasterID, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
 		} else {
-			p, er = e.predictions.create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+			p, er = e.predictions.Create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
 		}
 		if er != nil {
 			return er
@@ -320,74 +328,83 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broad
 	return nil
 }
 func (e *Engine) doSettle(ctx context.Context, s *State, outcome string, source string) error {
- return e.settlePrediction(ctx, s, outcome, source)
+	return e.settlePrediction(ctx, s, outcome, source)
 }
+
 // manualOutcome is serialized with the replay scanner. The caller supplies the
 // exact active prediction identity so a delayed click can never settle a newer game.
 func (e *Engine) manualOutcome(ctx context.Context, outcome, expectedID string, expectedStartedAt int64) error {
- if outcome != "win" && outcome != "loss" && outcome != "cancel" && outcome != "sync" {
-  return errors.New(tr(e.cfg.lang(), "manual.invalid"))
- }
- if expectedID == "" || expectedStartedAt <= 0 {
-  return errors.New(tr(e.cfg.lang(), "manual.stale"))
- }
- e.actionMu.Lock()
- defer e.actionMu.Unlock()
- e.mu.Lock()
- s := e.state
- e.mu.Unlock()
- if s.Active == nil {
-  return errors.New(tr(e.cfg.lang(), "settle.none_active"))
- }
- if s.Active.ID != expectedID || s.Active.StartedAt != expectedStartedAt {
-  return errors.New(tr(e.cfg.lang(), "manual.stale"))
- }
- if outcome == "sync" {
-  if s.Active.DryRun {
-   return errors.New(tr(e.cfg.lang(), "manual.sync_simulation"))
-  }
-  remote, err := e.predictions.prediction(ctx, s.Active.BroadcasterID, s.Active.ID)
-  if err != nil { return err }
-  for _, p := range remote.Data {
-   if p.ID != s.Active.ID { continue }
-   if p.Status != "RESOLVED" && p.Status != "CANCELED" {
-    return errors.New(tr(e.cfg.lang(), "manual.still_open"))
-   }
-   // Use the same immutable completion transition as automatic settlement.
-   // The result mapping also stays shared with recovery from an external
-   // Twitch resolution; do not maintain a second outcome state machine.
-   next, err := completedPredictionState(s, remoteOutcome(p, s.Active), "Twitch", e.clock.Now())
-   if err != nil { return err }
-   if err := e.updateAndSave(next); err != nil { return err }
-   e.report("info", "prediction_synced", tr(e.cfg.lang(), "manual.synced", p.Status))
-   return nil
-  }
-  return errors.New(tr(e.cfg.lang(), "manual.remote_missing"))
- }
- if err := e.doSettle(ctx, &s, outcome, "manual"); err != nil {
-  e.report("error", "prediction_settle", tr(e.cfg.lang(), "manual.failed", err.Error()))
-  return err
- }
- e.report("info", "prediction_manual", tr(e.cfg.lang(), "manual.completed", s.LastResult))
- return nil
+	if outcome != "win" && outcome != "loss" && outcome != "cancel" && outcome != "sync" {
+		return errors.New(tr(e.cfg.lang(), "manual.invalid"))
+	}
+	if expectedID == "" || expectedStartedAt <= 0 {
+		return errors.New(tr(e.cfg.lang(), "manual.stale"))
+	}
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
+	e.mu.Lock()
+	s := e.state
+	e.mu.Unlock()
+	if s.Active == nil {
+		return errors.New(tr(e.cfg.lang(), "settle.none_active"))
+	}
+	if s.Active.ID != expectedID || s.Active.StartedAt != expectedStartedAt {
+		return errors.New(tr(e.cfg.lang(), "manual.stale"))
+	}
+	if outcome == "sync" {
+		if s.Active.DryRun {
+			return errors.New(tr(e.cfg.lang(), "manual.sync_simulation"))
+		}
+		remote, err := e.predictions.Prediction(ctx, s.Active.BroadcasterID, s.Active.ID)
+		if err != nil {
+			return err
+		}
+		for _, p := range remote.Data {
+			if p.ID != s.Active.ID {
+				continue
+			}
+			if p.Status != "RESOLVED" && p.Status != "CANCELED" {
+				return errors.New(tr(e.cfg.lang(), "manual.still_open"))
+			}
+			// Use the same immutable completion transition as automatic settlement.
+			// The result mapping also stays shared with recovery from an external
+			// Twitch resolution; do not maintain a second outcome state machine.
+			next, err := completedPredictionState(s, remoteOutcome(p, s.Active), "Twitch", e.clock.Now())
+			if err != nil {
+				return err
+			}
+			if err := e.updateAndSave(next); err != nil {
+				return err
+			}
+			e.report("info", "prediction_synced", tr(e.cfg.lang(), "manual.synced", p.Status))
+			return nil
+		}
+		return errors.New(tr(e.cfg.lang(), "manual.remote_missing"))
+	}
+	if err := e.doSettle(ctx, &s, outcome, "manual"); err != nil {
+		e.report("error", "prediction_settle", tr(e.cfg.lang(), "manual.failed", err.Error()))
+		return err
+	}
+	e.report("info", "prediction_manual", tr(e.cfg.lang(), "manual.completed", s.LastResult))
+	return nil
 }
 
 func (e *Engine) start() error {
- e.mu.Lock()
- reason := app.MonitorStartBlockReason(e.running, appconfig.Data(e.cfg), e.cfg.twitchClientID() != "", e.state)
- if reason != "" {
-  e.mu.Unlock()
-  if reason == app.UnconfirmedCreationBlock {
-   return errors.New("Reconcile the unconfirmed Twitch Prediction before starting automation")
-  }
-  return errors.New(tr(e.cfg.lang(), reason))
- }
- ctx, cancel := context.WithCancel(context.Background())
- e.running = true
- e.stop = cancel
- e.mu.Unlock()
- go e.watch(ctx)
- return nil
+	e.mu.Lock()
+	reason := app.MonitorStartBlockReason(e.running, appconfig.Data(e.cfg), e.cfg.twitchClientID() != "", e.state)
+	if reason != "" {
+		e.mu.Unlock()
+		if reason == app.UnconfirmedCreationBlock {
+			return errors.New("Reconcile the unconfirmed Twitch Prediction before starting automation")
+		}
+		return errors.New(tr(e.cfg.lang(), reason))
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	e.running = true
+	e.stop = cancel
+	e.mu.Unlock()
+	go e.watch(ctx)
+	return nil
 }
 func (e *Engine) stopWatch() {
 	e.mu.Lock()
@@ -412,17 +429,17 @@ func (e *Engine) watch(ctx context.Context) {
 	lang := config.lang()
 	e.log(tr(lang, "log.watch_started", tr(lang, map[bool]string{true: "mode.real", false: "mode.simulation"}[config.RealMode])))
 	if config.RealMode {
-		if _, err := twitch.identity(ctx); err != nil {
-			e.report("error", "twitch_auth", "Twitch: " + err.Error())
+		if _, err := twitch.Identity(ctx); err != nil {
+			e.report("error", "twitch_auth", "Twitch: "+err.Error())
 			return
 		}
 	}
 	started := e.clock.Now()
- lastError := ""
- lastLog := time.Time{}
- // Immediately check any persisted active Prediction on monitoring restart.
- e.scanTick(ctx, started, &lastError, &lastLog)
- ticker := time.NewTicker(4 * time.Second)
+	lastError := ""
+	lastLog := time.Time{}
+	// Immediately check any persisted active Prediction on monitoring restart.
+	e.scanTick(ctx, started, &lastError, &lastLog)
+	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
@@ -437,58 +454,70 @@ func (e *Engine) watch(ctx context.Context) {
 // scanTick and manualOutcome share actionMu so a manual decision cannot race
 // the replay scanner or accidentally restore a previously settled prediction.
 func (e *Engine) scanTick(ctx context.Context, started time.Time, lastError *string, lastLog *time.Time) {
- e.actionMu.Lock()
- defer e.actionMu.Unlock()
- if ctx.Err() != nil { return }
- e.mu.Lock()
- s := e.state
- e.mu.Unlock()
- e.scanLifecycle(ctx, &s, started, e.clock.Now(), lastError, lastLog)
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
+	if ctx.Err() != nil {
+		return
+	}
+	e.mu.Lock()
+	s := e.state
+	e.mu.Unlock()
+	e.scanLifecycle(ctx, &s, started, e.clock.Now(), lastError, lastLog)
 }
 
 func (e *Engine) setReplayScan(code, file, detail string) {
- e.mu.Lock()
- e.scan = ReplayScan{Code: code, File: file, Detail: detail, CheckedAt: e.clock.Now().UnixMilli()}
- e.mu.Unlock()
+	e.mu.Lock()
+	e.scan = ReplayScan{Code: code, File: file, Detail: detail, CheckedAt: e.clock.Now().UnixMilli()}
+	e.mu.Unlock()
 }
 
 // scanReplay applies the same correlation gate for background and manual rechecks.
 func (e *Engine) scanReplay(ctx context.Context, s *State, now time.Time, lastError *string, lastLog *time.Time) {
- if s.Active == nil { return }
- match, code, file, detail := correlatePrediction(e.cfg, s.Active, now)
- if match == nil {
-  if code == "correlation_ambiguous" && s.Active.Match != nil && !s.Active.Match.Ambiguous {
-   s.Active = ambiguousMatch(s.Active)
-   if err := e.updateAndSave(*s); err != nil { e.mu.Lock(); e.state = *s; e.mu.Unlock(); e.report("error", "correlation_save", err.Error()) }
-  }
-  e.setReplayScan(code, file, detail)
-  return
- }
- if err := ctx.Err(); err != nil { return }
- if err := e.doSettle(ctx, s, match.Player.Result, match.Path); err != nil {
-  e.setReplayScan("settle_error", filepath.Base(match.Path), err.Error())
-  e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", err.Error()))
-  return
- }
- e.setReplayScan("settled", filepath.Base(match.Path), "")
- e.log(tr(e.cfg.lang(), "log.settled", s.LastResult))
+	if s.Active == nil {
+		return
+	}
+	match, code, file, detail := correlatePrediction(e.cfg, s.Active, now)
+	if match == nil {
+		if code == "correlation_ambiguous" && s.Active.Match != nil && !s.Active.Match.Ambiguous {
+			s.Active = ambiguousMatch(s.Active)
+			if err := e.updateAndSave(*s); err != nil {
+				e.mu.Lock()
+				e.state = *s
+				e.mu.Unlock()
+				e.report("error", "correlation_save", err.Error())
+			}
+		}
+		e.setReplayScan(code, file, detail)
+		return
+	}
+	if err := ctx.Err(); err != nil {
+		return
+	}
+	if err := e.doSettle(ctx, s, match.Player.Result, match.Path); err != nil {
+		e.setReplayScan("settle_error", filepath.Base(match.Path), err.Error())
+		e.report("error", "prediction_settle", tr(e.cfg.lang(), "log.cancel_error", err.Error()))
+		return
+	}
+	e.setReplayScan("settled", filepath.Base(match.Path), "")
+	e.log(tr(e.cfg.lang(), "log.settled", s.LastResult))
 }
+
 // recheckReplay only evaluates completed replay files. It never creates a new
 // Prediction and refuses stale UI requests for a different active game.
 func (e *Engine) recheckReplay(ctx context.Context, expectedID string, expectedStartedAt int64) (ReplayScan, error) {
- e.actionMu.Lock()
- defer e.actionMu.Unlock()
- e.mu.Lock()
- s := e.state
- e.mu.Unlock()
- if s.Active == nil || s.Active.ID != expectedID || s.Active.StartedAt != expectedStartedAt || expectedID == "" {
-  return ReplayScan{}, errors.New(tr(e.cfg.lang(), "manual.stale"))
- }
- lastError := ""
- lastLog := time.Time{}
- e.scanReplay(ctx, &s, e.clock.Now(), &lastError, &lastLog)
- e.mu.Lock()
- status := e.scan
- e.mu.Unlock()
- return status, nil
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
+	e.mu.Lock()
+	s := e.state
+	e.mu.Unlock()
+	if s.Active == nil || s.Active.ID != expectedID || s.Active.StartedAt != expectedStartedAt || expectedID == "" {
+		return ReplayScan{}, errors.New(tr(e.cfg.lang(), "manual.stale"))
+	}
+	lastError := ""
+	lastLog := time.Time{}
+	e.scanReplay(ctx, &s, e.clock.Now(), &lastError, &lastLog)
+	e.mu.Lock()
+	status := e.scan
+	e.mu.Unlock()
+	return status, nil
 }
