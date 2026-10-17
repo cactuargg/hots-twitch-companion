@@ -403,42 +403,68 @@ func (t *Twitch) prediction(ctx context.Context, broadcaster, id string) (*apiRe
 	e := t.req(ctx, "GET", route, nil, &d)
 	return &d, e
 }
-func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
-	if winTitle == lossTitle { return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid")) }
-	me, e := t.identity(ctx)
-	if e != nil {
-		return nil, e
+// preflightCreate performs all fallible read-only checks before a lobby is
+// consumed. A failure here is safe to retry: no creation POST has been sent.
+func (t *Twitch) preflightCreate(ctx context.Context) (TwitchIdentity, error) {
+	me, err := t.identity(ctx)
+	if err != nil {
+		return TwitchIdentity{}, err
 	}
-	previous, e := t.prediction(ctx, me.UserID, "")
-	if e != nil {
-		return nil, e
+	previous, err := t.prediction(ctx, me.UserID, "")
+	if err != nil {
+		return TwitchIdentity{}, err
 	}
 	for _, v := range previous.Data {
 		if v.Status == "ACTIVE" || v.Status == "LOCKED" {
-			return nil, errors.New(tr(t.lang, "twitch.prediction_exists"))
+			return TwitchIdentity{}, errors.New(tr(t.lang, "twitch.prediction_exists"))
 		}
 	}
+	return me, nil
+}
+
+// createPrepared must only run after the caller durably records the creation
+// attempt. A lost POST response must never trigger a second POST.
+func (t *Twitch) createPrepared(ctx context.Context, broadcasterID string, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
+	if broadcasterID == "" || winTitle == lossTitle {
+		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
+	}
 	var d apiResponse
-	e = t.req(ctx, "POST", "/predictions", map[string]any{"broadcaster_id": me.UserID, "title": title, "outcomes": []map[string]string{{"title": winTitle}, {"title": lossTitle}}, "prediction_window": windowMinutes * 60}, &d)
-	if e != nil {
-		return nil, e
+	err := t.req(ctx, "POST", "/predictions", map[string]any{
+		"broadcaster_id": broadcasterID,
+		"title": title,
+		"outcomes": []map[string]string{{"title": winTitle}, {"title": lossTitle}},
+		"prediction_window": windowMinutes * 60,
+	}, &d)
+	if err != nil {
+		return nil, err
 	}
 	if len(d.Data) != 1 || len(d.Data[0].Outcomes) != 2 || d.Data[0].Status != "ACTIVE" {
 		return nil, errors.New(tr(t.lang, "twitch.create_bad_response"))
 	}
-	p := &Prediction{ID: d.Data[0].ID, BroadcasterID: me.UserID, StartedAt: time.Now().UnixMilli()}
-	for _, o := range d.Data[0].Outcomes {
-		if o.Title == winTitle {
-			p.WinID = o.ID
+	p := &Prediction{ID: d.Data[0].ID, BroadcasterID: broadcasterID, StartedAt: time.Now().UnixMilli()}
+	for _, outcome := range d.Data[0].Outcomes {
+		if outcome.Title == winTitle {
+			p.WinID = outcome.ID
 		}
-		if o.Title == lossTitle {
-			p.LossID = o.ID
+		if outcome.Title == lossTitle {
+			p.LossID = outcome.ID
 		}
 	}
 	if p.ID == "" || p.WinID == "" || p.LossID == "" || p.WinID == p.LossID {
 		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
 	}
 	return p, nil
+}
+
+func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
+	if winTitle == lossTitle {
+		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
+	}
+	me, err := t.preflightCreate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return t.createPrepared(ctx, me.UserID, windowMinutes, title, winTitle, lossTitle)
 }
 func (t *Twitch) end(ctx context.Context, p *Prediction, outcome string) error {
  return t.finishPrediction(ctx, p, outcome)
@@ -628,6 +654,10 @@ func (e *Engine) updateAndSave(s State) error {
 	return nil
 }
 func (e *Engine) doCreate(ctx context.Context, s *State, lobbyKey string) error {
+	return e.doCreatePrepared(ctx, s, lobbyKey, "")
+}
+
+func (e *Engine) doCreatePrepared(ctx context.Context, s *State, lobbyKey, broadcasterID string) error {
 	if s.Active != nil {
 		return nil
 	}
@@ -638,7 +668,11 @@ func (e *Engine) doCreate(ctx context.Context, s *State, lobbyKey string) error 
 		e.log(tr(e.cfg.lang(), "log.sim_created"))
 	} else {
 		title, winTitle, lossTitle := e.cfg.predictionTexts()
-		p, er = e.twitch.create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+		if broadcasterID != "" {
+			p, er = e.twitch.createPrepared(ctx, broadcasterID, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+		} else {
+			p, er = e.twitch.create(ctx, e.cfg.predictionWindowMinutes(), title, winTitle, lossTitle)
+		}
 		if er != nil {
 			return er
 		}
