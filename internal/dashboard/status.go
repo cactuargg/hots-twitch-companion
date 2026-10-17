@@ -38,7 +38,12 @@ func PredictionPhase(p *prediction.Prediction, windowMinutes int, now time.Time)
 		return "simulation", 0
 	}
 	// The betting window is an estimate: remote Twitch status is not polled here.
-	deadline := time.UnixMilli(p.StartedAt).Add(time.Duration(windowMinutes) * time.Minute)
+	window := time.Duration(p.WindowSeconds) * time.Second
+	if p.WindowSeconds <= 0 {
+		// Legacy profiles have no per-prediction duration yet.
+		window = time.Duration(windowMinutes) * time.Minute
+	}
+	deadline := time.UnixMilli(p.StartedAt).Add(window)
 	remaining := deadline.Sub(now)
 	if remaining <= 0 {
 		return "awaiting_result", 0

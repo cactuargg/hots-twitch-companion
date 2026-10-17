@@ -41,10 +41,16 @@ func (d *Dashboard) RequestProfileReset() error {
 	return nil
 }
 func (d *Dashboard) Close() {
+	d.mu.Lock()
+	d.shutdownOnce.Do(func() { close(d.shutdown) })
+	cancel := d.backgroundCancel
+	d.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 	if d.engine != nil {
 		d.engine.StopWatch()
 	}
-	d.shutdownOnce.Do(func() { close(d.shutdown) })
 }
 func (d *Dashboard) Done() <-chan struct{}           { return d.shutdown }
 func (d *Dashboard) ProfileDir() string              { return d.p.Dir }

@@ -92,9 +92,7 @@ func (e *Engine) report(level, code, message string) {
 	e.log(message)
 }
 
-// safeLiveChange reports whether cfg differs from the stored config only by
-// language or wizard completion. Such changes stay allowed while monitoring
-// runs so the UI can switch language or finish setup live.
+// safeLiveChange permits future prediction settings while preserving identity.
 func (e *Engine) safeLiveChange(cfg config.Data) bool {
 	return LiveConfigChangeAllowed(e.cfg, cfg)
 }
@@ -115,6 +113,18 @@ func (e *Engine) UpdateConfig(cfg config.Data) error {
 	// Changing it would strand the remote Prediction even after reauth.
 	if (e.state.Active != nil && !e.state.Active.DryRun || e.state.UnconfirmedCreation != nil) && cfg.TwitchClientID(e.defaultClientID) != e.cfg.TwitchClientID(e.defaultClientID) {
 		return errors.New("Finish or cancel the active Twitch Prediction before changing the OAuth Client ID")
+	}
+	// Preserve the best known duration of a legacy active prediction before
+	// replacing its fallback config. A failed state write must block the change.
+	if active := e.state.Active; active != nil && !active.DryRun && active.WindowSeconds <= 0 && cfg.PredictionWindowMinutes() != e.cfg.PredictionWindowMinutes() {
+		next := e.state
+		copy := *active
+		copy.WindowSeconds = e.cfg.PredictionWindowMinutes() * 60
+		next.Active = &copy
+		if err := e.store.Save(next); err != nil {
+			return err
+		}
+		e.state = next
 	}
 	// Do not rebuild an authorized Twitch client for language or wizard
 	// changes: an in-flight token refresh could otherwise update the old
@@ -244,7 +254,10 @@ func (e *Engine) doCreatePrepared(ctx context.Context, s *prediction.State, lobb
 		}
 		e.log(i18n.Text(e.cfg.Language(), "log.prediction_created", p.ID))
 	}
-	next, err := prediction.ConfirmedCreation(*s, p, correlation.BindPredictionMatch(s.LastLobby, lobbyKey, e.cfg.PlayerToonHandle))
+	// Keep duration with this prediction; later settings apply only to new ones.
+	confirmed := *p
+	confirmed.WindowSeconds = e.cfg.PredictionWindowMinutes() * 60
+	next, err := prediction.ConfirmedCreation(*s, &confirmed, correlation.BindPredictionMatch(s.LastLobby, lobbyKey, e.cfg.PlayerToonHandle))
 	if err != nil {
 		return err
 	}

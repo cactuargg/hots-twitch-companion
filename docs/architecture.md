@@ -79,7 +79,11 @@ Pure transitions remain in `internal/prediction`; Engine controls the ordering o
 
 Engine owns configuration, lifecycle state, replay scan status and monitoring state. `actionMu` serializes scanner ticks, manual outcomes/rechecks, token installation, configuration changes and reset authorization. `mu` protects shared in-memory fields. Lock order is `actionMu` then `mu`, followed by the Twitch client's private lock when needed. The Twitch client owns its token and validated identity and serializes refresh and credential commits.
 
-Language/wizard changes reuse the live Twitch client. Changing its OAuth application requires monitoring to stop and cannot strand an active real prediction or unconfirmed creation. Failed configuration or credential saves do not commit a replacement in memory.
+Language, wizard and future prediction settings reuse the live Twitch client. Title, outcome labels and duration may change while monitoring; the action lock prevents changes midway through creation. Player identity, replay source, mode and OAuth application remain fixed during monitoring. Changing the OAuth application cannot strand an active real prediction or unconfirmed creation. Failed configuration or credential saves do not commit a replacement in memory.
+
+New predictions persist their own `windowSeconds` estimate. Existing profiles without that optional field use the saved configuration until the duration is changed; the previous duration is then written to the active prediction before saving the new configuration. A failed state write blocks that change. This additive field preserves compatibility with older profiles and prevents settings for the next wager from rewriting the active timer.
+
+Dashboard validates saved Twitch credentials on startup and once a minute, with cancellation at shutdown. Failures clear the cached connected identity while retaining credentials for a later retry; these checks never start monitoring or create predictions. The UI marks a failed status request as a lost connection, preserves the last known data with an explicit warning and blocks mutation actions until polling succeeds again.
 
 Dashboard owns its logs, replay cache, authorization progress, activity timer and shutdown signal. Its POST mutex serializes user operations, including the reset-to-shutdown sequence. Engine authorizes reset under the lifecycle action lock and rejects it while monitoring, an active prediction or unconfirmed creation exists.
 

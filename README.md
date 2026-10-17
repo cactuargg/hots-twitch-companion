@@ -72,6 +72,8 @@ Choose your HotS player, connect Twitch, then confirm **Start Twitch Predictions
 
 ## Simplified settings
 
+Prediction title, outcomes and duration can be saved while monitoring; they apply to the next prediction. An active prediction keeps its own duration across restarts. Stop monitoring before changing the player, replay folder or OAuth application. Twitch connection checks retry once a minute after network failures; they do not start monitoring automatically.
+
 Three cards: Twitch connection, HotS player and Prediction duration/preview. Technical fields remain in Advanced settings. Saving settings does not start monitoring; starting real Predictions requires explicit confirmation. Manual outcomes keep their own confirmations.
 
 ## Minimal production interface

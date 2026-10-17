@@ -8,18 +8,12 @@ import (
 
 // LiveConfigChangeAllowed reports whether a running monitor can safely
 // accept the new configuration without rebuilding its dependencies.
-// Only language or wizard completion may change during active monitoring.
+// Presentation and future prediction settings may change during monitoring.
+// Identity, replay source, OAuth application and mode remain fixed.
 func LiveConfigChangeAllowed(current, next config.Data) bool {
-	if current.Language() == next.Language() && current.WizardDone == next.WizardDone {
-		return false
-	}
 	return current.ClientID == next.ClientID &&
 		current.PlayerName == next.PlayerName &&
 		current.PlayerToonHandle == next.PlayerToonHandle &&
 		current.ReplayRoot == next.ReplayRoot &&
-		current.RealMode == next.RealMode &&
-		current.PredictionWindowMin == next.PredictionWindowMin &&
-		current.PredictionTitle == next.PredictionTitle &&
-		current.PredictionWin == next.PredictionWin &&
-		current.PredictionLoss == next.PredictionLoss
+		current.RealMode == next.RealMode
 }

@@ -106,9 +106,15 @@ func (t *Client) saveToken(token Token) error {
 	t.token = token
 	return nil
 }
-func (t *Client) tokenFor(ctx context.Context) (string, error) {
+func (t *Client) tokenFor(ctx context.Context) (access string, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	defer func() {
+		if err != nil {
+			// A cached login is not a current connection after a failed refresh.
+			t.login, t.broadcasterID = "", ""
+		}
+	}()
 	if t.token.AccessToken == "" {
 		return "", errors.New(i18n.Text(t.lang, "twitch.connect_first"))
 	}
