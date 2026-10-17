@@ -1,6 +1,7 @@
 package main
 
 import (
+	dashview "hots-twitch-companion/internal/dashboard"
 	"context"
 	"embed"
 	"errors"
@@ -107,42 +108,13 @@ func (d *dashboard) logEvent(level, code, message string) {
 // User-facing phases derived from persisted engine state. These describe what we
 // know locally, not a live verification of Twitch's current Prediction status.
 func connectionPhase(hasToken, validated, pending bool) string {
-	if pending {
-		return "authorizing"
-	}
-	if !hasToken {
-		return "disconnected"
-	}
-	if validated {
-		return "connected"
-	}
-	return "unverified"
+	return dashview.ConnectionPhase(hasToken, validated, pending)
 }
-
 func monitorPhase(running, tracking bool) string {
-	if !running {
-		return "off"
-	}
-	if tracking {
-		return "tracking"
-	}
-	return "watching"
+	return dashview.MonitorPhase(running, tracking)
 }
-
 func predictionPhase(p *Prediction, windowMinutes int, now time.Time) (string, int) {
-	if p == nil {
-		return "none", 0
-	}
-	if p.DryRun {
-		return "simulation", 0
-	}
-	// The betting window is an estimate: remote Twitch status is not polled here.
-	deadline := time.UnixMilli(p.StartedAt).Add(time.Duration(windowMinutes) * time.Minute)
-	remaining := deadline.Sub(now)
-	if remaining <= 0 {
-		return "awaiting_result", 0
-	}
-	return "window_estimate", int((remaining + time.Second - 1) / time.Second)
+	return dashview.PredictionPhase(p, windowMinutes, now)
 }
 
 func (d *dashboard) status() map[string]any {
