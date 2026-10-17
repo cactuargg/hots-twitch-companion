@@ -1,9 +1,9 @@
 package main
 
 import (
+	"hots-twitch-companion/internal/storage"
 	"hots-twitch-companion/internal/clock"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -148,30 +148,8 @@ func pathsForUser() (paths, error) {
 	dir := filepath.Join(home, "HotSTwitchCompanion")
 	return paths{dir, filepath.Join(dir, "config.json"), filepath.Join(dir, "tokens.dpapi"), filepath.Join(dir, "state.json")}, nil
 }
-func saveJSON(path string, v any) error {
-	b, e := json.MarshalIndent(v, "", "  ")
-	if e != nil {
-		return e
-	}
-	tmp := path + ".new"
-	f, e := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if e != nil { return e }
-	if _, e = f.Write(b); e == nil { e = f.Sync() }
-	closeErr := f.Close()
-	if e != nil { return e }
-	if closeErr != nil { return closeErr }
-	return os.Rename(tmp, path)
-}
-func loadJSON(path string, v any) error {
-	b, e := os.ReadFile(path)
-	if errors.Is(e, os.ErrNotExist) {
-		return nil
-	}
-	if e != nil {
-		return e
-	}
-	return json.Unmarshal(b, v)
-}
+func saveJSON(path string, v any) error { return storage.SaveJSON(path, v) }
+func loadJSON(path string, v any) error { return storage.LoadJSON(path, v) }
 func readConfig(p paths) (Config, error) {
 	var c Config
 	err := loadJSON(p.config, &c)
