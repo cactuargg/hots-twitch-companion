@@ -1,3 +1,10 @@
+// A replay can contain two participants with the same display name.
+// Prefer the stable ToonHandle selected by the backend over name matching.
+function isSelectedReplayPlayer(replay, player){
+  if(!replay.selected)return false;
+  if(replay.selectedToonHandle)return replay.selectedToonHandle===player.toonHandle;
+  return replay.selected===(player.name||'');
+}
 function playerRow(p, selected){
   const row=document.createElement('div');row.className='player-row'+(selected?' you':'');
   const name=document.createElement('span');name.className='player-name';name.textContent=p.name||'—';
@@ -27,7 +34,7 @@ function matchDetail(r){
   head.append(Object.assign(document.createElement('small'),{textContent:(r.file||'')+' · '+(r.modified?new Date(r.modified).toLocaleString(lang==='ru'?'ru-RU':'en-US'):'')}));
   box.append(head);
   const list=document.createElement('div');list.className='player-list';
-  (r.players&&r.players.length?r.players:[]).forEach(p=>list.append(playerRow(p,!!r.selected&&r.selected===(p.name||''))));
+  (r.players&&r.players.length?r.players:[]).forEach(p=>list.append(playerRow(p,isSelectedReplayPlayer(r,p))));
   if(!list.childNodes.length)list.append(line(t('match.error'),'empty-mini'));
   box.append(list);
   return box;
