@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"hots-twitch-companion/internal/dashboard"
 	"path/filepath"
 	"sync"
 
@@ -17,20 +18,20 @@ import (
 
 func main() { runWindowsApplication(runNativeDesktop) }
 
-func runNativeDesktop(d *dashboard) error {
+func runNativeDesktop(d *dashboard.Dashboard) error {
 	var mu sync.Mutex
 	var appContext context.Context
 	var tray *desktopTray
-	d.hideToTray = func() error {
+	d.SetHideToTray(func() error {
 		mu.Lock()
 		defer mu.Unlock()
 		if appContext == nil || tray == nil || !tray.ready.Load() {
-			return errors.New(d.tr("shell.tray_unavailable"))
+			return errors.New(d.Text("shell.tray_unavailable"))
 		}
 		wailsruntime.WindowHide(appContext)
 		return nil
-	}
-	handler, err := d.nativeAssetHandler()
+	})
+	handler, err := d.NativeAssetHandler()
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func runNativeDesktop(d *dashboard) error {
 		Frameless:        true,
 		BackgroundColour: options.NewRGB(12, 16, 29),
 		AssetServer:      &assetserver.Options{Handler: handler},
-		Windows:          &windows.Options{WebviewUserDataPath: filepath.Join(d.p.dir, "webview2"), Theme: windows.Dark},
+		Windows:          &windows.Options{WebviewUserDataPath: filepath.Join(d.ProfileDir(), "webview2"), Theme: windows.Dark},
 		OnStartup: func(ctx context.Context) {
 			mu.Lock()
 			appContext = ctx
@@ -49,18 +50,18 @@ func runNativeDesktop(d *dashboard) error {
 			mu.Unlock()
 			go func() {
 				select {
-				case <-d.shutdown:
+				case <-d.Done():
 					wailsruntime.Quit(ctx)
 				case <-ctx.Done():
 				}
 			}()
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
-			if !d.closeRequested() {
+			if !d.CloseRequested() {
 				return false
 			}
 			choice, err := wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-				Type: wailsruntime.QuestionDialog, Title: "HotS Twitch Companion", Message: d.tr("shell.close_active"),
+				Type: wailsruntime.QuestionDialog, Title: "HotS Twitch Companion", Message: d.Text("shell.close_active"),
 				Buttons: []string{"Yes", "No"}, DefaultButton: "No", CancelButton: "No",
 			})
 			return err != nil || choice != "Yes"
@@ -71,8 +72,7 @@ func runNativeDesktop(d *dashboard) error {
 				tray.stop()
 			}
 			mu.Unlock()
-			d.engine.stopWatch()
-			d.shutdownOnce.Do(func() { close(d.shutdown) })
+			d.Close()
 		},
 	})
 }
