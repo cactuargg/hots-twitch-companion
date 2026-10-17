@@ -34,9 +34,10 @@ func TestResetFailureRetainsMarker(t *testing.T) {
  state:=filepath.Join(dir,"state.json")
  marker:=filepath.Join(dir,ResetMarker)
  if err:=os.WriteFile(marker,[]byte("true"),0600);err!=nil{t.Fatal(err)}
- // os.Remove cannot remove a directory; this simulates a partial reset
- // on every supported OS without permissions-dependent error handling.
+ // A nonempty directory cannot be removed as a file on any supported OS;
+ // this exercises a partial reset without permissions-dependent behavior.
  if err:=os.Mkdir(state,0700);err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(filepath.Join(state,"blocker"),[]byte("keep"),0600);err!=nil{t.Fatal(err)}
  if err:=ApplyProfileReset(dir,filepath.Join(dir,"config.json"),state,filepath.Join(dir,"token"));err==nil{t.Fatal("expected removal error")}
  if _,err:=os.Stat(marker);err!=nil{t.Fatal("failed reset lost durable marker",err)}
 }
