@@ -729,6 +729,14 @@ func (d *dashboard) runDesktop(open func(string) error) error {
 		return err
 	}
 	defer d.stop(srv)
+	// Start the idle clock even if the browser never reaches the API.
+	// Otherwise a failed browser launch leaves the companion process alive
+	// indefinitely because lastActivity stays zero.
+	d.mu.Lock()
+	if d.lastActivity.IsZero() {
+		d.lastActivity = time.Now()
+	}
+	d.mu.Unlock()
 	if err = open(url); err != nil {
 		return err
 	}

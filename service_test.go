@@ -497,6 +497,25 @@ func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
 	}
 }
 
+
+func TestBrowserFallbackInitializesIdleClockBeforeOpeningBrowser(t *testing.T) {
+	d := manualDashboard(t, Config{Lang: "en"})
+	opened := false
+	err := d.runDesktop(func(url string) error {
+		opened = true
+		d.mu.Lock()
+		activity := d.lastActivity
+		d.mu.Unlock()
+		if activity.IsZero() || url == "" {
+			t.Error("browser fallback must start its idle clock before opening")
+		}
+		// Exit immediately instead of waiting for the idle watchdog.
+		d.shutdownOnce.Do(func() { close(d.shutdown) })
+		return nil
+	})
+	if err != nil || !opened { t.Fatalf("browser fallback failed: opened=%v error=%v", opened, err) }
+}
+
 func TestStructuredDiagnostics(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
