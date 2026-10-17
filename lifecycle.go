@@ -1,39 +1,20 @@
 package main
 
 import (
+	transport "hots-twitch-companion/internal/twitch/transport"
 	predstate "hots-twitch-companion/internal/prediction"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 )
 
 type SettlementAttempt = predstate.SettlementAttempt
 
-type twitchHTTPError struct {
-	Status  int
-	Message string
-	RetryAt int64
-}
-
-func (e *twitchHTTPError) Error() string {
-	return fmt.Sprintf("Twitch HTTP %d: %s", e.Status, e.Message)
-}
+type twitchHTTPError = transport.HTTPError
 func responseHTTPError(response *http.Response, message string) error {
-	failure := &twitchHTTPError{Status: response.StatusCode, Message: message}
-	if response.StatusCode == 429 {
-		if seconds, err := strconv.ParseInt(response.Header.Get("Retry-After"), 10, 64); err == nil && seconds >= 0 && seconds < 86400 {
-			failure.RetryAt = time.Now().Add(time.Duration(seconds) * time.Second).UnixMilli()
-		} else if at, err := http.ParseTime(response.Header.Get("Retry-After")); err == nil {
-			failure.RetryAt = at.UnixMilli()
-		}
-		if reset, err := strconv.ParseInt(response.Header.Get("Ratelimit-Reset"), 10, 64); err == nil && reset > 0 && reset < 1<<40 {
-			failure.RetryAt = max(failure.RetryAt, reset*1000)
-		}
-	}
-	return failure
+	return transport.ResponseHTTPError(response,message)
 }
 
 type LobbyEvent = predstate.LobbyEvent
