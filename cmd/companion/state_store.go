@@ -1,21 +1,18 @@
 package main
 
-// StateStore is the durable boundary for the Prediction lifecycle. The caller
-// commits state before irreversible Twitch requests; Save must report failures
-// rather than making an operation appear persisted.
-type StateStore interface {
-	Load() (State, error)
-	Save(State) error
-}
+import (
+ "hots-twitch-companion/internal/storage"
+)
 
-type fileStateStore struct {
-	p *paths
-}
+// StateStore stays as a transitional alias for Engine tests and callers.
+type StateStore = storage.StateStore
 
-func (s fileStateStore) Load() (State, error) {
-	return loadState(*s.p)
+// This adapter deliberately keeps the reference to Engine paths: tests that
+// redirect e.p.state still exercise the production StateStore.
+type fileStateStore struct{p *paths}
+func (s fileStateStore) Load()(State,error) {
+ return storage.FileStateStore{Path:s.p.state}.Load()
 }
-
-func (s fileStateStore) Save(state State) error {
-	return saveState(*s.p, state)
+func (s fileStateStore) Save(state State)error {
+ return storage.FileStateStore{Path:s.p.state}.Save(state)
 }
