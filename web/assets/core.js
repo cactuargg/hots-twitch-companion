@@ -9,7 +9,8 @@ let toastTimer;
 function openExternalLink(raw){
  const url=new URL(raw);
  if(url.protocol!=='https:'||url.username||url.password||url.port||
-   !['www.twitch.tv','twitch.tv','dev.twitch.tv'].includes(url.hostname))throw Error('External URL refused');
+   !['www.twitch.tv','twitch.tv','dev.twitch.tv'].includes(url.hostname)&&
+    !(url.hostname==='github.com'&&url.pathname.startsWith('/cactuargg/hots-twitch-companion/releases/')))throw Error('External URL refused');
  if(window.runtime?.BrowserOpenURL)window.runtime.BrowserOpenURL(url.href);
  else window.open(url.href,'_blank','noopener,noreferrer');
 }
