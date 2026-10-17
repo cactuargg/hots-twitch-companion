@@ -2,7 +2,6 @@ package dashboard
 
 import (
  "bytes"
- "net/http"
  "net/http/httptest"
  "strings"
  "testing"
