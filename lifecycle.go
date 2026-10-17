@@ -282,6 +282,17 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 		}
 		return
 	}
+	// Keep the lobby pending while read-only Twitch checks fail. Once the
+	// creation attempt is persisted, a POST failure remains non-retryable.
+	broadcasterID := ""
+	if e.cfg.RealMode {
+		me, err := e.twitch.preflightCreate(ctx)
+		if err != nil {
+			e.setReplayScan("create_error", "", err.Error())
+			return
+		}
+		broadcasterID = me.UserID
+	}
 	next.LastCreatedLobbySHA = event.Snapshot.SHA256
 	if event.Snapshot.SHA256 != "" {
 		next.RecentLobbySHAs = append(append([]string(nil), s.RecentLobbySHAs...), event.Snapshot.SHA256)
@@ -295,7 +306,7 @@ func (e *Engine) scanLifecycle(ctx context.Context, s *State, started, now time.
 		return
 	}
 	*s = next
-	if err := e.doCreate(ctx, s, event.Key); err != nil {
+	if err := e.doCreatePrepared(ctx, s, event.Key, broadcasterID); err != nil {
 		e.setReplayScan("create_error", "", err.Error())
 		e.report("error", "prediction_create", tr(e.cfg.lang(), "lifecycle.create_unconfirmed", err.Error()))
 		return

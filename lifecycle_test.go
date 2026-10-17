@@ -352,6 +352,63 @@ func TestQuickSequentialMatchesKeepNextLobby(t *testing.T) {
 	}
 }
 
+
+func TestPreflightFailureRetriesPendingLobbyWithoutDuplicatePost(t *testing.T) {
+	temp := t.TempDir()
+	t.Setenv("TMP", temp)
+	t.Setenv("TEMP", temp)
+	now := time.Now()
+	e, p := liveLifecycleTest(t)
+	e.cfg.PredictionWin = "Win"
+	e.cfg.PredictionLoss = "Loss"
+	s := e.state
+	s.Active = nil
+	s.LastCreatedLobbySHA = ""
+	s.RecentLobbySHAs = nil
+	if err := e.updateAndSave(s); err != nil { t.Fatal(err) }
+	lobbyFileTest(t, realLobbyTest(t), now.Add(-5*time.Second))
+
+	oldClient := httpClient
+	defer func() { httpClient = oldClient }()
+	validations, posts := 0, 0
+	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
+		switch {
+		case req.URL.Path == "/oauth2/validate":
+			validations++
+			if validations == 1 {
+				response := manualResponse(`{"message":"temporarily unavailable"}`)
+				response.StatusCode = 503
+				return response, nil
+			}
+			return manualResponse(`{"client_id":"client","user_id":"channel","scopes":["channel:manage:predictions"]}`), nil
+		case req.Method == "GET":
+			return manualResponse(`{"data":[]}`), nil
+		case req.Method == "POST":
+			posts++
+			saved, err := loadState(p)
+			if err != nil || saved.PendingLobby != nil || saved.LastCreatedLobbySHA == "" {
+				t.Fatalf("POST without durable consumption: %+v %v", saved, err)
+			}
+			return manualResponse(`{"data":[{"id":"created","status":"ACTIVE","outcomes":[{"id":"w","title":"Win"},{"id":"l","title":"Loss"}]}]}`), nil
+		}
+		t.Fatalf("unexpected request %s %s", req.Method, req.URL)
+		return nil, nil
+	})}
+	lastError := ""
+	lastLog := time.Time{}
+	started := now.Add(-time.Minute)
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.PendingLobby == nil || e.state.LastCreatedLobbySHA != "" || posts != 0 {
+		t.Fatalf("preflight consumed retryable lobby: %+v posts=%d", e.state, posts)
+	}
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if e.state.Active == nil || e.state.Active.ID != "created" || e.state.PendingLobby != nil || posts != 1 {
+		t.Fatalf("preflight retry failed: %+v posts=%d", e.state, posts)
+	}
+	e.scanTick(context.Background(), started, &lastError, &lastLog)
+	if posts != 1 { t.Fatalf("duplicate prediction POST: %d", posts) }
+}
+
 func TestUncertainCreationIsNeverAutomaticallyRepeated(t *testing.T) {
 	temp := t.TempDir()
 	t.Setenv("TMP", temp)
