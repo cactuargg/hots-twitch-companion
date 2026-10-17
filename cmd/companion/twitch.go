@@ -1,13 +1,12 @@
 package main
 
 import (
+ credentials "hots-twitch-companion/internal/storage/credentials"
  "net/url"
  twitchpkg "hots-twitch-companion/internal/twitch"
 	transport "hots-twitch-companion/internal/twitch/transport"
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -46,21 +45,11 @@ type Twitch struct {
 
 func newTwitch(p paths, clientID, lang string) (*Twitch, error) {
 	t := &Twitch{clientID: clientID, lang: normalizeLang(lang), p: p}
-	b, e := os.ReadFile(p.secret)
-	if errors.Is(e, os.ErrNotExist) {
-		return t, nil
+	if err:=credentials.LoadJSON(p.secret,&t.token);err!=nil {
+		if errors.Is(err,os.ErrNotExist){return t,nil}
+		return nil,err
 	}
-	if e != nil {
-		return nil, e
-	}
-	clear, e := unprotect(b)
-	if e != nil {
-		return nil, fmt.Errorf("Windows DPAPI: %w", e)
-	}
-	if e = json.Unmarshal(clear, &t.token); e != nil {
-		return nil, e
-	}
-	return t, nil
+	return t,nil
 }
 // language may change while monitoring is running; clientID and token
 // ownership remain stable until the OAuth application actually changes.
@@ -71,21 +60,8 @@ func (t *Twitch) language() string {
 }
 
 func (t *Twitch) saveToken(token Token) error {
-	b, e := json.Marshal(token)
-	if e != nil {
-		return e
-	}
-	sealed, e := protect(b)
-	if e != nil {
-		return e
-	}
-	if e = os.WriteFile(t.p.secret+".new", sealed, 0600); e != nil {
-		return e
-	}
-	if e = os.Rename(t.p.secret+".new", t.p.secret); e != nil {
-		return e
-	}
-	t.token = token
+	if err:=credentials.SaveJSON(t.p.secret,token);err!=nil{return err}
+	t.token=token
 	return nil
 }
 func (t *Twitch) tokenFor(ctx context.Context) (string, error) {
