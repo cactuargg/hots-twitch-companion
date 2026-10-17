@@ -2,6 +2,7 @@ package main
 
 import (
  appconfig "hots-twitch-companion/internal/config"
+ app "hots-twitch-companion/internal/app"
 	twitch "hots-twitch-companion/internal/twitch"
 	discovery "hots-twitch-companion/internal/hots/discovery"
 	predstate "hots-twitch-companion/internal/prediction"
@@ -157,18 +158,7 @@ func (e *Engine) report(level, code, message string) {
 // language or wizard completion. Such changes stay allowed while monitoring
 // runs so the UI can switch language or finish setup live.
 func (e *Engine) safeLiveChange(cfg Config) bool {
-	if cfg.lang() == e.cfg.lang() && cfg.WizardDone == e.cfg.WizardDone {
-		return false
-	}
-	return cfg.ClientID == e.cfg.ClientID &&
-		cfg.PlayerName == e.cfg.PlayerName &&
-		cfg.PlayerToonHandle == e.cfg.PlayerToonHandle &&
-		cfg.ReplayRoot == e.cfg.ReplayRoot &&
-		cfg.RealMode == e.cfg.RealMode &&
-		cfg.PredictionWindowMin == e.cfg.PredictionWindowMin &&
-		cfg.PredictionTitle == e.cfg.PredictionTitle &&
-		cfg.PredictionWin == e.cfg.PredictionWin &&
-		cfg.PredictionLoss == e.cfg.PredictionLoss
+ return app.LiveConfigChangeAllowed(appconfig.Data(e.cfg), appconfig.Data(cfg))
 }
 func (e *Engine) updateConfig(cfg Config) error {
 	// All scanner/settlement actions read cfg and twitch while holding
