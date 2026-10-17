@@ -1,4 +1,4 @@
-package main
+package credentials
 
 import (
 	"fmt"
@@ -50,5 +50,5 @@ func dpapi(b []byte, encrypt bool) ([]byte, error) {
 	}
 	return out, nil
 }
-func protect(b []byte) ([]byte, error)   { return dpapi(b, true) }
-func unprotect(b []byte) ([]byte, error) { return dpapi(b, false) }
+func Protect(b []byte) ([]byte, error)   { return dpapi(b, true) }
+func Unprotect(b []byte) ([]byte, error) { return dpapi(b, false) }
