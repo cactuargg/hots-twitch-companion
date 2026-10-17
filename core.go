@@ -347,18 +347,16 @@ func (t *Twitch) tokenFor(ctx context.Context) (string, error) {
 	}
 	return token.AccessToken, nil
 }
-func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
-	token, e := t.tokenFor(ctx)
-	if e != nil {
-		return TwitchIdentity{}, e
-	}
+// validateTwitchIdentity verifies candidate credentials without changing
+// the persisted token. A device authorization must not replace the currently
+// connected broadcaster before this check completes.
+func validateTwitchIdentity(ctx context.Context, accessToken, clientID, lang string) (TwitchIdentity, error) {
 	var me TwitchIdentity
-	e = requestJSON(ctx, "GET", authURL+"/validate", nil, nil, token, "", &me)
-	if e != nil {
-		return me, e
+	if err := requestJSON(ctx, "GET", authURL+"/validate", nil, nil, accessToken, "", &me); err != nil {
+		return me, err
 	}
-	if me.ClientID != t.clientID {
-		return me, errors.New(tr(t.lang, "twitch.wrong_client"))
+	if me.ClientID != clientID {
+		return me, errors.New(tr(lang, "twitch.wrong_client"))
 	}
 	valid := false
 	for _, v := range me.Scopes {
@@ -367,14 +365,39 @@ func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
 		}
 	}
 	if !valid {
-		return me, errors.New(tr(t.lang, "twitch.no_scope"))
+		return me, errors.New(tr(lang, "twitch.no_scope"))
+	}
+	if me.UserID == "" {
+		return me, errors.New("Twitch validation returned no broadcaster ID")
+	}
+	return me, nil
+}
+
+func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
+	token, err := t.tokenFor(ctx)
+	if err != nil {
+		return TwitchIdentity{}, err
+	}
+	me, err := validateTwitchIdentity(ctx, token, t.clientID, t.lang)
+	if err != nil {
+		// Failed validation must not leave a stale "connected" identity
+		// visible after revoked credentials or a different OAuth client.
+		t.mu.Lock()
+		if t.token.AccessToken == token {
+			t.login, t.broadcasterID = "", ""
+		}
+		t.mu.Unlock()
+		return me, err
 	}
 	t.mu.Lock()
-	t.broadcasterID = me.UserID
-	t.login = me.Login
+	if t.token.AccessToken == token {
+		t.broadcasterID = me.UserID
+		t.login = me.Login
+	}
 	t.mu.Unlock()
 	return me, nil
 }
+
 func (t *Twitch) req(ctx context.Context, method, route string, body any, dst any) error {
 	token, e := t.tokenFor(ctx)
 	if e != nil {
@@ -623,6 +646,11 @@ func (e *Engine) updateConfig(cfg Config) error {
 	if e.state.Active != nil && e.state.Active.DryRun != !cfg.RealMode {
 		return errors.New(tr(e.cfg.lang(), "config.mode_conflict_active"))
 	}
+	// An unresolved real Prediction belongs to a specific Twitch OAuth app.
+	// Changing it would strand the remote Prediction even after reauth.
+	if e.state.Active != nil && !e.state.Active.DryRun && cfg.twitchClientID() != e.cfg.twitchClientID() {
+		return errors.New("Finish or cancel the active Twitch Prediction before changing the OAuth Client ID")
+	}
 	if er := writeConfig(e.p, cfg); er != nil {
 		return er
 	}
@@ -646,6 +674,42 @@ func (e *Engine) updateConfig(cfg Config) error {
 	e.twitch = t
 	return nil
 }
+// installTwitchToken validates a new device-flow token *before* persisting it.
+// actionMu serializes with manual/replay settlement, so the active Prediction
+// cannot change between checking ownership and replacing the credentials.
+// Reauthorization of the same broadcaster is allowed during a prediction.
+func (e *Engine) installTwitchToken(ctx context.Context, expectedClientID string, token Token) (TwitchIdentity, error) {
+	if token.AccessToken == "" || token.RefreshToken == "" {
+		return TwitchIdentity{}, errors.New("Twitch authorization returned incomplete tokens")
+	}
+	e.mu.Lock()
+	lang := e.cfg.lang()
+	e.mu.Unlock()
+	me, err := validateTwitchIdentity(ctx, token.AccessToken, expectedClientID, lang)
+	if err != nil {
+		return TwitchIdentity{}, err
+	}
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.cfg.twitchClientID() != expectedClientID {
+		return TwitchIdentity{}, errors.New("Twitch OAuth application changed during authorization; please reconnect")
+	}
+	if active := e.state.Active; active != nil && !active.DryRun &&
+		(active.BroadcasterID == "" || active.BroadcasterID != me.UserID) {
+		return TwitchIdentity{}, errors.New("Finish or cancel the active Twitch Prediction before connecting another channel")
+	}
+	t := e.twitch
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if err := t.saveToken(token); err != nil {
+		return TwitchIdentity{}, err
+	}
+	t.broadcasterID, t.login = me.UserID, me.Login
+	return me, nil
+}
+
 func (e *Engine) updateAndSave(s State) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
