@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// Credential fixtures inspect the persisted test store rather than client fields.
 var testTokenPaths sync.Map
 
 func testToken(t *twitchpkg.Client) twitchpkg.Token {
