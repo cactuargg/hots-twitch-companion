@@ -95,3 +95,17 @@ func FindLobby() (string, string, time.Time, error) {
 	return newest, key, st.ModTime(), nil
 }
 
+
+// CountStormReplays counts replay files in a bounded, read-only directory walk.
+func CountStormReplays(root string) int {
+ count := 0
+ visited := 0
+ _ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+  if err != nil { return filepath.SkipDir }
+  visited++
+  if visited > 20000 { return filepath.SkipAll }
+  if !d.IsDir() && strings.HasSuffix(strings.ToLower(d.Name()), ".stormreplay") { count++ }
+  return nil
+ })
+ return count
+}
