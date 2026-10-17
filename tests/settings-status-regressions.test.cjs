@@ -70,3 +70,25 @@ test('slow status request does not queue overlapping polls',async()=>{
  const first=ctx.loadStatus();await ctx.loadStatus();assert.equal(calls,1);
  finish({});await first;assert.equal(ctx.state.statusPending,false);
 });
+
+for(const route of ['status','replays'])for(const fails of [false,true]){
+ test(`shutdown ignores late ${route} ${fails?'errors':'responses'} and stops new polls`,async()=>{
+  let finish,calls=0;
+  const pending=new Promise((resolve,reject)=>{finish=()=>fails?reject(Error('closed')):resolve({replays:[]})});
+  const ctx=vm.createContext({state:{},api:()=>{calls++;return pending},render(){throw Error('rendered closed page')},showReplays(){throw Error('rendered closed replays')},toast(){throw Error('toast on closed page')}});
+  vm.runInContext(region('async function loadStatus(', 'async function save('),ctx);
+  const poll=route==='status'?ctx.loadStatus:ctx.reloadReplays;
+  const active=poll();ctx.state.closing=true;finish();await active;await poll();assert.equal(calls,1);
+ });
+}
+for(const name of ['quit','reset-profile'])for(const fails of [false,true]){
+ test(`${name} stops timers and requests only after successful API response (${fails?'failure':'success'})`,async()=>{
+  const cleared=[];let aborted=0,replaced=0;
+  const body={replaceChildren(){replaced++},set innerHTML(x){replaced++}};
+  const ctx=vm.createContext({state:{statusTimer:11,replaysTimer:22,requestControllers:new Set([{abort(){aborted++}}])},clearInterval:id=>cleared.push(id),api:async()=>{if(fails)throw Error('refused');return {}},confirm:()=>true,t:x=>x,toast(){},setActionBusy(){},localStorage:{clear(){}},document:{body},window:{close(){}},line:()=>({}),safe:x=>x});
+  vm.runInContext(region('function stopPolling(', 'async function save('),ctx);
+  vm.runInContext(region('async function action(name)', 'async function checkReplayRoot('),ctx);
+  await ctx.action(name);
+  assert.deepEqual(cleared,fails?[]:[11,22]);assert.equal(aborted,fails?0:1);assert.equal(replaced,fails?0:1);assert.equal(!!ctx.state.closing,!fails);
+ });
+}

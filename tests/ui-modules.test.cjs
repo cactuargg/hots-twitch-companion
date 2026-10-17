@@ -34,7 +34,7 @@ test('Classic scripts evaluate sequentially in one shared browser scope', () => 
   for (const file of scripts) {
     vm.runInContext(fs.readFileSync(path.join(assets, file), 'utf8'), sandbox, { filename: file });
   }
-  assert.deepEqual(registered.map(e => e.type), ['DOMContentLoaded']);
+  assert.deepEqual(registered.map(e => e.type), ['DOMContentLoaded', 'pagehide']);
   assert.equal(typeof registered[0].fn, 'function');
   assert.equal(vm.runInContext('typeof renderPlayerPickers', sandbox), 'function');
   assert.equal(vm.runInContext('typeof renderHistory', sandbox), 'function');
