@@ -58,6 +58,9 @@ func TestClockKeepsTwitchRateLimitRetryDeadline(t *testing.T) {
 }
 
 func TestClockControlsUncertainCreationTimestamp(t *testing.T) {
+	temp:=t.TempDir()
+	t.Setenv("TMP",temp)
+	t.Setenv("TEMP",temp)
 	e,p:=liveLifecycleTest(t)
 	now:=time.Now().Add(-time.Second)
 	clock:=&manualClock{current:now}
