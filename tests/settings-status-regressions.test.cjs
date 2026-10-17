@@ -12,7 +12,7 @@ test('real Go status feeds the actual JS prediction view with compatible phase k
  const ctx=vm.createContext({t:key=>key});
  vm.runInContext(region('function monitoringView(', 'function renderSettingsDraft('),ctx);
  assert.equal(ctx.monitoringView(status).prediction,'window_estimate');
- assert.equal(ctx.monitoringView(status).detail,'overview.detail.window');
+ assert.equal(ctx.monitoringView(status).detail,'overview.detail.pausedPrediction');
 });
 
 function savingContext(){

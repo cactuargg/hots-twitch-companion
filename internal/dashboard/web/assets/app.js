@@ -3,7 +3,8 @@ function monitoringView(st) {
  const prediction=st.predictionPhase || (st.active?(st.activeDryRun?'simulation':'awaiting_result'):'none');
  const twitch=st.twitchPhase || (st.connected?'connected':'disconnected');
  let detail=t('overview.detail.'+phase);
- if(prediction==='window_estimate'){
+ if(!st.running&&st.active)detail=t('overview.detail.pausedPrediction');
+ else if(prediction==='window_estimate'){
    const minutes=Math.max(1,Math.ceil((st.predictionWindowSecondsLeft||0)/60));
    detail=t('overview.detail.window',{min:minutes});
  }
@@ -69,7 +70,7 @@ function render(s){
   const stale=!!st.running&&!!st.active&&Number(scan.checkedAt)>0&&
     Date.now()-Number(scan.checkedAt)>20000;
   const blocked=String(scan.code||'').startsWith('correlation_')||scan.code==='settle_error'||scan.code==='create_error';
-  const reason=st.creationUnconfirmed?'create_error':blocked?scan.code:st.running?(stale?'stalled':(scan.code||'checking')):'paused';
+  const reason=st.creationUnconfirmed?'creation_unconfirmed':blocked?scan.code:st.running?(stale?'stalled':(scan.code||'checking')):'paused';
   const reasonKey='replay.scan.'+reason;
   const scanText=t(reasonKey);
   const detail=scan.detail?String(scan.detail).slice(0,170):'';
@@ -92,13 +93,14 @@ function render(s){
   const real=true;
   const safety=$('overview-safety');
   safety.classList.toggle('is-real',real);
-  $('automation-mode').textContent='Twitch Predictions';
+  $('automation-mode').textContent=t('prediction.label');
   $('automation-mode-detail').textContent=t('minimal.realDetail');
   const warning=$('overview-alert');
   const authIssue=real&&running&&!connected;
+  const creationBlocked=running&&!st.active&&scan.code==='create_error';
   // Persisted uncertain POSTs take priority over generic live notices.
   const alertText=state.connectionLost?t('connection.lost'):st.creationUnconfirmed?t('minimal.creationUnconfirmed'):
-    authIssue?t('minimal.twitchWarning'):t('minimal.liveWarning');
+    authIssue?t('minimal.twitchWarning'):creationBlocked?[t('replay.scan.create_error'),detail].filter(Boolean).join(' '):t('minimal.liveWarning');
   const shouldWarn=!!st.creationUnconfirmed||real||authIssue;
   if(shouldWarn&&warning.textContent!==alertText)warning.textContent=alertText;
   warning.hidden=!shouldWarn;
