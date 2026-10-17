@@ -1,6 +1,7 @@
 package main
 
 import (
+ appconfig "hots-twitch-companion/internal/config"
 	twitch "hots-twitch-companion/internal/twitch"
 	discovery "hots-twitch-companion/internal/hots/discovery"
 	predstate "hots-twitch-companion/internal/prediction"
@@ -9,9 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -21,61 +20,18 @@ const appVersion = "0.9.6"
 const authURL = "https://id.twitch.tv/oauth2"
 const apiURL = "https://api.twitch.tv/helix"
 
-type Config struct {
-	ClientID            string `json:"clientId"`
-	PlayerName          string `json:"playerName"`
-	PlayerToonHandle    string `json:"playerToonHandle"`
-	ReplayRoot          string `json:"replayRoot"`
-	RealMode            bool   `json:"realMode"`
-	Lang                string `json:"lang"`
-	PredictionWindowMin int    `json:"predictionWindowMin"`
-	WizardDone          bool   `json:"wizardDone"`
-	PredictionTitle     string `json:"predictionTitle"`
-	PredictionWin       string `json:"predictionWin"`
-	PredictionLoss      string `json:"predictionLoss"`
-}
+// Retain the command-level Config as a defined compatible type while moving
+// ownership of its schema and normalization rules to internal/config.
+// Existing caller methods will be removed when Engine moves into internal/app.
+type Config appconfig.Data
 
-// Public OAuth Client ID may be embedded by release builds using -ldflags.
-// Do not embed Client Secret, access tokens, or refresh tokens.
+// The release build may embed a public OAuth Client ID via -ldflags.
 var defaultTwitchClientID string
 
-func (c Config) twitchClientID() string {
- if id := strings.TrimSpace(c.ClientID); id != "" { return id }
- return strings.TrimSpace(defaultTwitchClientID)
-}
-
-const defaultPredictionWindow = 2
-const maxPredictionWindow = 30
-
-func (c Config) lang() string { return normalizeLang(c.Lang) }
-
-// Duration of the betting window in whole minutes, like the Twitch predictions UI.
-func (c Config) predictionWindowMinutes() int {
-	if c.PredictionWindowMin < 1 {
-		return defaultPredictionWindow
-	}
-	if c.PredictionWindowMin > maxPredictionWindow {
-		return maxPredictionWindow
-	}
-	return c.PredictionWindowMin
-}
-
-// Prediction texts with user overrides; empty fields fall back to localized defaults.
-func (c Config) predictionTexts() (title, win, loss string) {
-	title = strings.TrimSpace(c.PredictionTitle)
-	win = strings.TrimSpace(c.PredictionWin)
-	loss = strings.TrimSpace(c.PredictionLoss)
-	if title == "" {
-		title = tr(c.lang(), "prediction.title")
-	}
-	if win == "" {
-		win = tr(c.lang(), "prediction.win")
-	}
-	if loss == "" {
-		loss = tr(c.lang(), "prediction.loss")
-	}
-	return title, win, loss
-}
+func (c Config) twitchClientID() string {return appconfig.Data(c).TwitchClientID(defaultTwitchClientID)}
+func (c Config) lang() string {return appconfig.Data(c).Language()}
+func (c Config) predictionWindowMinutes() int {return appconfig.Data(c).PredictionWindowMinutes()}
+func (c Config) predictionTexts() (string,string,string) {return appconfig.Data(c).PredictionTexts()}
 type Token = twitch.Token
 type Prediction = predstate.Prediction
 // Persisted proof that a real Twitch creation POST may have been sent
@@ -89,28 +45,22 @@ type apiPrediction = twitch.APIPrediction
 type apiResponse = twitch.APIResponse
 type paths struct{ dir, config, secret, state string }
 
-func pathsForUser() (paths, error) {
-	home := os.Getenv("LOCALAPPDATA")
-	if home == "" {
-		var e error
-		home, e = os.UserConfigDir()
-		if e != nil {
-			return paths{}, e
-		}
-	}
-	dir := filepath.Join(home, "HotSTwitchCompanion")
-	return paths{dir, filepath.Join(dir, "config.json"), filepath.Join(dir, "tokens.dpapi"), filepath.Join(dir, "state.json")}, nil
+func (p paths) packagePaths() appconfig.Paths {
+ return appconfig.Paths{Dir:p.dir,Config:p.config,Secret:p.secret,State:p.state}
 }
-func saveJSON(path string, v any) error { return storage.SaveJSON(path, v) }
-func loadJSON(path string, v any) error { return storage.LoadJSON(path, v) }
-func readConfig(p paths) (Config, error) {
-	var c Config
-	err := loadJSON(p.config, &c)
-	// Desktop profiles always use Twitch; dry runs are an internal test facility.
-	c.RealMode = true
-	return c, err
+
+func pathsForUser() (paths,error) {
+ p,err:=appconfig.PathsForUser()
+ if err!=nil {return paths{},err}
+ return paths{dir:p.Dir,config:p.Config,secret:p.Secret,state:p.State},nil
 }
-func writeConfig(p paths, c Config) error { return saveJSON(p.config, c) }
+func saveJSON(path string, v any) error {return storage.SaveJSON(path,v)}
+func loadJSON(path string, v any) error {return storage.LoadJSON(path,v)}
+func readConfig(p paths) (Config,error) {
+ c,err:=appconfig.Read(p.packagePaths())
+ return Config(c),err
+}
+func writeConfig(p paths,c Config) error {return appconfig.Write(p.packagePaths(),appconfig.Data(c))}
 func loadState(p paths) (State, error)    { var s State; e := loadJSON(p.state, &s); return s, e }
 func saveState(p paths, s State) error    { return saveJSON(p.state, s) }
 
