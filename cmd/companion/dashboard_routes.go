@@ -4,7 +4,6 @@ import (
  dashview "hots-twitch-companion/internal/dashboard"
 	"context"
 	"errors"
-	"io/fs"
 	"net/http"
 	"strings"
 	"time"
@@ -22,65 +21,16 @@ func jsonOutput(w http.ResponseWriter, code int, v any) { dashview.JSONOutput(w,
 func requestError(w http.ResponseWriter, err error) { dashview.RequestError(w, err) }
 func randomSegment() (string, error) { return dashview.RandomSegment() }
 func (d *dashboard) routes(addr, secret string) http.Handler {
-	prefix := "/" + secret + "/"
-	web, err := fs.Sub(interfaceFiles, "web")
-	if err != nil {
-		panic(err)
-	}
-	files := http.FileServer(http.FS(web))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// URL capability and strict loopback binding prevent ordinary cross-site requests.
-		if r.Host != addr {
-			http.Error(w, "Unknown Host", http.StatusForbidden)
-			return
-		}
-		if !strings.HasPrefix(r.URL.Path, prefix) {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
-		// Used to exit the helper process after the dashboard window has been closed.
-		if strings.HasPrefix(r.URL.Path, prefix+"api/") {
-			d.mu.Lock()
-			d.lastActivity = time.Now()
-			d.mu.Unlock()
-		}
-		sub := strings.TrimPrefix(r.URL.Path, prefix)
-		if !strings.HasPrefix(sub, "api/") {
-			if sub == "" {
-				page, err := interfaceFiles.ReadFile("web/index.html")
-				if err != nil {
-					http.Error(w, "UI unavailable", 500)
-					return
-				}
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Header().Set("Cache-Control", "no-store")
-				_, _ = w.Write(page)
-				return
-			}
-			r.URL.Path = "/" + sub
-			files.ServeHTTP(w, r)
-			return
-		}
-		if r.Header.Get("X-Companion") != "1" {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		if r.Method == "POST" {
-			origin := r.Header.Get("Origin")
-			if origin != "" && origin != "http://"+addr {
-				http.Error(w, "Origin refused", http.StatusForbidden)
-				return
-			}
-			if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" {
-				http.Error(w, "Cross-site requests denied", http.StatusForbidden)
-				return
-			}
-		}
-		route := strings.TrimPrefix(sub, "api/")
+ return dashview.NewHTTPHandler(addr, secret, func(w http.ResponseWriter, r *http.Request, route string) {
+  d.handleAPIRoute(w, r, route)
+ }, func() {
+  d.mu.Lock()
+  d.lastActivity = time.Now()
+  d.mu.Unlock()
+ })
+}
+
+func (d *dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route string) {
 		if r.Method == "GET" {
 			switch route {
 			case "bootstrap":
@@ -303,5 +253,4 @@ func (d *dashboard) routes(addr, secret string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-	})
 }
