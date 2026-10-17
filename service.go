@@ -284,7 +284,7 @@ func (d *dashboard) checkReplayRoot(custom string) (map[string]any, error) {
 	if isCustom {
 		roots = []string{custom}
 	} else {
-		roots = replayRoots(d.config())
+		roots = defaultReplayRoots()
 	}
 	entries := make([]replayRootEntry, 0, len(roots))
 	for _, root := range roots {
