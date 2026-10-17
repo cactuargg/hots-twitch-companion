@@ -74,11 +74,12 @@ func newDashboard(p paths, c Config) (*dashboard, error) {
 	// Background update check against public GitHub release metadata.
 	go d.watchUpdates()
 	// Verify restored tokens in the background; do not block the dashboard on network.
-	if e.twitch.token.AccessToken != "" {
+	twitch := e.twitch
+	if twitch.token.AccessToken != "" {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
-			if who, err := e.twitch.identity(ctx); err == nil {
+			if who, err := twitch.identity(ctx); err == nil {
 				d.log(tr(c.lang(), "log.twitch_connected", who.Login))
 			} else {
 				d.logEvent("warning", "twitch_auth", tr(c.lang(), "log.token_check", err.Error()))

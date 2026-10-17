@@ -31,6 +31,19 @@ jobs:
             dist/RELEASE_NOTES.md
           if-no-files-found: error
           retention-days: 30
+  race:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Go race detector
+        shell: pwsh
+        run: go test -race ./...
   browser-fallback:
     runs-on: windows-latest
     permissions:
