@@ -1,6 +1,7 @@
 package main
 
 import (
+	predstate "hots-twitch-companion/internal/prediction"
 	"context"
 	"errors"
 	"fmt"
@@ -9,12 +10,7 @@ import (
 	"time"
 )
 
-type SettlementAttempt struct {
-	Outcome  string `json:"outcome"`
-	Source   string `json:"source"`
-	Failures int    `json:"failures,omitempty"`
-	RetryAt  int64  `json:"retryAt,omitempty"`
-}
+type SettlementAttempt = predstate.SettlementAttempt
 
 type twitchHTTPError struct {
 	Status  int
@@ -40,10 +36,7 @@ func responseHTTPError(response *http.Response, message string) error {
 	return failure
 }
 
-type LobbyEvent struct {
-	Key      string         `json:"key"`
-	Snapshot *LobbySnapshot `json:"snapshot"`
-}
+type LobbyEvent = predstate.LobbyEvent
 
 func lobbyWasHandled(s *State, hash string) bool {
 	if hash == "" {
@@ -96,13 +89,7 @@ func enqueueLobby(s *State, event *LobbyEvent) bool {
 	return true
 }
 
-func popPendingLobby(s *State) {
-	s.PendingLobby = nil
-	if len(s.PendingLobbies) > 0 {
-		s.PendingLobby = s.PendingLobbies[0]
-		s.PendingLobbies = append([]*LobbyEvent(nil), s.PendingLobbies[1:]...)
-	}
-}
+func popPendingLobby(s *State) { predstate.PopPendingLobby(s) }
 
 type remoteFinishedError struct{ Prediction apiPrediction }
 
