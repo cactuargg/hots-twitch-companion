@@ -17,7 +17,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Desktop Go tests failed' }
     & go vet -tags 'wails,production,wv2runtime.error' ./...
     if ($LASTEXITCODE -ne 0) { throw 'Desktop Go vet failed' }
-    Get-ChildItem 'cmd/companion/web/assets' -Filter *.js | ForEach-Object {
+    Get-ChildItem 'internal/dashboard/web/assets' -Filter *.js | ForEach-Object {
         & node --check $_.FullName
         if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax check failed: $($_.Name)" }
     }

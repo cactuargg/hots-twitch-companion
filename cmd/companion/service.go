@@ -3,7 +3,6 @@ package main
 import (
 	dashview "hots-twitch-companion/internal/dashboard"
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"net"
@@ -16,8 +15,8 @@ import (
 	"time"
 )
 
-//go:embed web/* web/assets/*
-var interfaceFiles embed.FS
+// Embedded resources now live in the reusable dashboard package.
+var interfaceFiles = dashview.WebFiles
 
 type event struct {
 	Time    string `json:"time"`
