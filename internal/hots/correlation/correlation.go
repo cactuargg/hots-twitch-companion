@@ -110,7 +110,7 @@ func CorrelatedOutcome(recording replay.Replay, lobby *lobby.BattleLobby, toon s
 		counts[p.Team]++
 		return nil
 	}
-	for _, p := range replay.Players {
+	for _, p := range recording.Players {
 		if toons[p.ToonHandle] {
 			if seen[p.ToonHandle] {
 				return replay.Player{}, errors.New("duplicate replay participant")
