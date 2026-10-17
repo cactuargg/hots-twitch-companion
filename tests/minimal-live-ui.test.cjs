@@ -69,7 +69,16 @@ test('uncertain Twitch creation stays visible after restart',()=>{
   twitchPhase:'connected',monitorPhase:'off',creationUnconfirmed:true,logs:[]});
  assert.equal(get('overview-alert').hidden,false);
  assert.equal(get('overview-alert').textContent,'minimal.creationUnconfirmed');
- assert.equal(get('prediction-scan-message').textContent,'replay.scan.create_error');
+ assert.equal(get('prediction-scan-message').textContent,'replay.scan.creation_unconfirmed');
+});
+
+test('failed creation preflight is visible on Home without claiming an uncertain remote creation',()=>{
+ const {context,get}=harness();
+ context.render({running:true,active:false,connected:true,monitorPhase:'watching',
+  replayScan:{code:'create_error',detail:'An unfinished Prediction exists'},logs:[]});
+ assert.equal(get('overview-alert').hidden,false);
+ assert.match(get('overview-alert').textContent,/replay.scan.create_error.*unfinished Prediction/);
+ assert.equal(get('reconcile-creation').hidden,true);
 });
 test('unconfirmed wager requires explicit reconciliation before starting',async()=>{
  const {context,get}=harness();
@@ -87,7 +96,7 @@ test('real viewer-point mode remains visibly warned; missing player opens setup'
    predictionWindowSecondsLeft:45,logs:[]});
  assert.equal(get('overview-alert').hidden,false);
  assert.equal(get('overview-alert').textContent,'minimal.twitchWarning');
- assert.equal(get('automation-mode').textContent,'Twitch Predictions');
+ assert.equal(get('automation-mode').textContent,'prediction.label');
  context.state.config={playerName:'',playerToonHandle:''};
  context.render({running:false,active:false,realMode:false,connected:false,
    twitchPhase:'disconnected',monitorPhase:'off',predictionPhase:'none',logs:[]});

@@ -186,7 +186,7 @@ async function wizardAction(kind){
       const x=await api('replay/check','POST',{});
       if(!x.selected)throw Error(x.playerError||t('replay.no_selected'));
       res.className='wiz-result ok';
-      res.textContent=t('wiz.p.ok',{res:x.selected.name+' → '+x.selected.result,map:x.map});
+      res.textContent=t('wiz.p.ok',{res:x.selected.name+' → '+t('badge.'+x.selected.result),map:x.map});
       await reloadReplays();
     }else if(kind==='console'){
       openExternalLink('https://dev.twitch.tv/console/apps');

@@ -55,7 +55,7 @@ test('stale button cannot request another Prediction and read-only replay previe
  assert.ok(app.includes("case 'replay':{"));
  assert.ok(app.includes("api('replay/check','POST',{})"));
  assert.ok(i18n.includes("replays.check':'View latest replay result'"));
- assert.ok(i18n.includes("replays.check':'Показать результат реплея'"));
+ assert.match(i18n, /'replays\.check':"Посмотреть итог последнего матча"/);
 });
 test('UI renders explicit replay diagnosis and alerts if monitoring stops scanning',()=>{
  assert.match(app,/st\.replayScan\|\|\{\}/);

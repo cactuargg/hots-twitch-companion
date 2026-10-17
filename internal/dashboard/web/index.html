@@ -40,7 +40,7 @@
     </nav>
     <main class="main">
       <section class="view active" id="view-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
-        <div class="view-heading"><h1 data-i18n="minimal.home">Главная</h1><p data-i18n="minimal.home.sub">Автоматические Predictions для Heroes of the Storm</p></div>
+        <div class="view-heading"><h1 data-i18n="minimal.home">Главная</h1><p data-i18n="minimal.home.sub">Автоматические прогнозы Twitch для Heroes of the Storm</p></div>
         <section class="overview-command" aria-labelledby="overview-state-title">
           <div class="overview-command-eyebrow" data-i18n="minimal.automation">Автоматизация</div>
           <div class="overview-heading"><span class="overview-beacon" id="overview-beacon" aria-hidden="true"></span><h2 id="overview-state-title" aria-live="polite">…</h2></div>
@@ -50,17 +50,17 @@
             <span class="mode-indicator" id="overview-safety"><span class="mode-dot" aria-hidden="true"></span><strong id="automation-mode">…</strong><span id="automation-mode-detail">…</span></span>
           </div>
           <p class="overview-alert" id="overview-alert" hidden role="alert"></p>
-          <button type="button" class="btn btn-outline" id="reconcile-creation" data-action="reconcile-creation" data-i18n="minimal.creationReconcile" hidden>Проверил Twitch — возобновить ставки</button>
+          <button type="button" class="btn btn-outline" id="reconcile-creation" data-action="reconcile-creation" data-i18n="minimal.creationReconcile" hidden>Проверить Twitch и снять блокировку</button>
         </section>
         <h2 class="section-heading" data-i18n="minimal.summary">Краткое состояние</h2>
         <div class="overview-summary">
           <div class="summary-row"><span data-i18n="settings.twitch">Twitch</span><div class="summary-value"><span class="dot" id="overview-twitch-dot" aria-hidden="true"></span><strong id="overview-twitch">…</strong></div></div>
-          <div class="summary-row"><span>Prediction</span><strong id="overview-prediction">…</strong></div>
+          <div class="summary-row"><span data-i18n="prediction.label">Прогноз Twitch</span><strong id="overview-prediction">…</strong></div>
           <div class="summary-row"><span data-i18n="minimal.lastmatch">Последний матч</span><div class="summary-value"><strong id="overview-last-map">…</strong><span class="outcome-pill unknown" id="overview-last-outcome">…</span></div></div>
         </div>
         <section class="prediction-manual" id="prediction-manual" hidden aria-labelledby="prediction-manual-title">
           <div class="prediction-manual-head">
-            <h2 id="prediction-manual-title" data-i18n="manual.title">Ручное завершение Prediction</h2>
+            <h2 id="prediction-manual-title" data-i18n="manual.title">Ручное завершение прогноза</h2>
             <p id="prediction-manual-description" data-i18n="manual.description">Если результат не определился автоматически, выбери исход или отмени прогноз.</p>
           </div>
           <div class="prediction-scan-feedback" role="status">
@@ -72,15 +72,15 @@
             <button type="button" class="btn btn-outline" data-action="manual-loss" data-i18n="manual.loss">Поражение</button>
             <button type="button" class="btn btn-outline manual-cancel" data-action="manual-cancel" data-i18n="manual.cancel">Отменить и вернуть баллы</button>
           </div>
-          <button type="button" class="text-action" id="prediction-sync" data-action="manual-sync" data-i18n="manual.sync" hidden>Сверить состояние с Twitch</button>
+          <button type="button" class="text-action" id="prediction-sync" data-action="manual-sync" data-i18n="manual.sync" hidden>Проверить итог в Twitch</button>
         </section>
         <div class="overview-detail"><span id="overview-latest-event">…</span><button type="button" class="text-action" data-goto="replays" data-i18n="minimal.openHistory">История матчей →</button></div>
       </section>
-      <section class="view" id="view-replays" role="tabpanel" aria-labelledby="tab-replays"><div class="view-heading"><div><div class="eyebrow" data-i18n="replays.eyebrow">ИСТОРИЯ МАТЧЕЙ</div><h1 data-i18n="minimal.history">История</h1><p data-i18n="minimal.history.sub">Последние матчи. Нажми на результат, чтобы увидеть игроков.</p></div><div class="head-actions"><button class="btn btn-outline" data-action="refresh-replays"><svg><use href="#i-refresh"/></svg> <span data-i18n="replays.refresh">Обновить</span></button><button class="btn btn-primary short" data-action="replay"><svg><use href="#i-play"/></svg> <span data-i18n="replays.check">Проверить последний реплей</span></button></div></div><div class="content-panel">
+      <section class="view" id="view-replays" role="tabpanel" aria-labelledby="tab-replays"><div class="view-heading"><div><div class="eyebrow" data-i18n="replays.eyebrow">ИСТОРИЯ МАТЧЕЙ</div><h1 data-i18n="minimal.history">История</h1><p data-i18n="minimal.history.sub">Последние матчи. Нажми на результат, чтобы увидеть игроков.</p></div><div class="head-actions"><button class="btn btn-outline" data-action="refresh-replays"><svg><use href="#i-refresh"/></svg> <span data-i18n="replays.refresh">Обновить</span></button><button class="btn btn-primary short" data-action="replay"><svg><use href="#i-play"/></svg> <span data-i18n="replays.check">Посмотреть итог последнего матча</span></button></div></div><div class="content-panel">
           <h2 data-i18n="replays.h2">Сохранённые матчи</h2>
           <div class="diagnostics-toolbar">
-            <input id="history-search" type="search" autocomplete="off" data-i18n-placeholder="history.search" placeholder="Поиск карты или файла" aria-label="Search matches" />
-            <select id="history-filter" aria-label="Filter match results">
+            <input id="history-search" type="search" autocomplete="off" data-i18n-placeholder="history.search" placeholder="Поиск карты или файла" aria-label="Поиск матчей" data-i18n-aria-label="aria.historySearch" />
+            <select id="history-filter" aria-label="Фильтр результатов матчей" data-i18n-aria-label="aria.historyFilter">
               <option value="all" data-i18n="history.all">Все результаты</option>
               <option value="win" data-i18n="badge.win">Победы</option>
               <option value="loss" data-i18n="badge.loss">Поражения</option>
@@ -94,8 +94,8 @@
           <summary data-i18n="minimal.diagnostics">Диагностика и журнал событий</summary>
           <div class="secondary-details-body">
             <div class="diagnostics-toolbar">
-              <input id="log-search" type="search" autocomplete="off" data-i18n-placeholder="logs.search" placeholder="Поиск по событиям" aria-label="Search diagnostic events" />
-              <select id="log-filter" aria-label="Filter diagnostic level">
+              <input id="log-search" type="search" autocomplete="off" data-i18n-placeholder="logs.search" placeholder="Поиск по событиям" aria-label="Поиск событий" data-i18n-aria-label="aria.logSearch" />
+              <select id="log-filter" aria-label="Фильтр уровня событий" data-i18n-aria-label="aria.logFilter">
                 <option value="all" data-i18n="logs.filter.all">Все события</option>
                 <option value="error" data-i18n="logs.filter.error">Ошибки</option>
                 <option value="warning" data-i18n="logs.filter.warning">Предупреждения</option>
@@ -111,7 +111,7 @@
       <section class="view" id="view-settings" role="tabpanel" aria-labelledby="tab-settings">
         <div class="view-heading">
           <h1 data-i18n="settings.title">Настройки</h1>
-          <p data-i18n="minimal.settings.sub">Всё необходимое для автоматизации. Остальное — в расширенных настройках.</p>
+          <p data-i18n="minimal.settings.sub">Подключи Twitch, выбери игрока и время приёма ставок. Сохрани изменения, чтобы применить их.</p>
         </div>
         <div class="settings-language">
           <label for="lang" data-i18n="settings.lang">Язык интерфейса</label>
@@ -123,13 +123,13 @@
               <h2 id="settings-twitch-title">Twitch</h2>
               <span class="settings-status" id="twitch-info" role="status">…</span>
             </div>
-            <p class="settings-card-description" data-i18n="minimal.settings.twitch">Подключи канал, на котором будут создаваться Predictions.</p>
+            <p class="settings-card-description" data-i18n="minimal.settings.twitch">Подключи свой канал один раз — подключение сохранится между запусками приложения.</p>
             <button type="button" class="btn btn-outline" data-action="auth"><span id="settings-connect-label" data-i18n="twitch.connect">Подключить Twitch</span></button>
             <div class="auth-progress" id="auth-progress" hidden>
               <strong><span data-i18n="auth.label">Код для авторизации:</span> <span id="auth-code">—</span></strong>
               <span id="auth-info">…</span>
               <button type="button" class="btn btn-outline" data-action="copy-code" data-i18n="onboarding.copy">Копировать код</button>
-              <button type="button" class="btn btn-outline" data-action="activate"><span data-i18n="auth.activate">Открыть Twitch Activate ↗</span></button>
+              <button type="button" class="btn btn-outline" data-action="activate"><span data-i18n="auth.activate">Открыть Twitch и подтвердить ↗</span></button>
             </div>
           </section>
 
@@ -147,11 +147,12 @@
           </section>
 
           <section class="settings-card" aria-labelledby="settings-pred-title">
-            <h2 id="settings-pred-title">Prediction</h2>
-            <label for="predictionWindow" data-i18n="settings.window">Длительность Prediction</label>
+            <h2 id="settings-pred-title" data-i18n="prediction.label">Прогноз Twitch</h2>
+            <label for="predictionWindow" data-i18n="settings.window">Время приёма ставок</label>
             <select id="predictionWindow"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option></select>
-            <div class="prediction-preview" aria-label="Prediction preview" role="group">
-              <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — ничего не создаётся на Twitch</small></div>
+            <p class="field-hint" data-i18n="settings.window.hint">Сколько времени зрители могут делать ставки, а не длительность матча. Сохранённые изменения применятся к следующему прогнозу.</p>
+            <div class="prediction-preview" aria-label="Предпросмотр прогноза" data-i18n-aria-label="aria.predictionPreview" role="group">
+              <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — прогноз на Twitch не создаётся</small></div>
               <strong id="preview-title">…</strong>
               <div class="prediction-options"><span id="preview-win">…</span><span id="preview-loss">…</span></div>
               <small id="preview-duration">…</small>
@@ -171,9 +172,9 @@
             </section>
             <section class="settings-advanced-group">
               <h3 data-i18n="minimal.settings.playerAdvanced">Распознавание игрока и реплеев</h3>
-              <label for="toonHandle" data-i18n="settings.toon">Toon Handle (необязательно)</label>
+              <label for="toonHandle" data-i18n="settings.toon">ID игрока (Toon Handle)</label>
               <input id="toonHandle" type="text" maxlength="240" data-i18n-placeholder="settings.toon.ph"/>
-              <small class="field-hint" data-i18n="settings.toon.hint">Уникальный ID из реплея, нужен только при неуникальном нике.</small>
+              <small class="field-hint" data-i18n="settings.toon.hint">Выбери себя из реплея — ID заполнится сам. Для автоматического завершения его нужно сохранить до начала матча; одного ника недостаточно.</small>
               <label for="replayRoot" data-i18n="settings.root">Папка с реплеями (можно оставить пустой)</label>
               <input id="replayRoot" type="text" maxlength="1000" data-i18n-placeholder="settings.root.ph"/>
               <small class="field-hint" data-i18n="settings.root.hint">Пусто — автоматический поиск стандартной папки.</small>
@@ -181,22 +182,22 @@
               <div id="root-check-result" class="root-check" hidden></div>
             </section>
             <section class="settings-advanced-group">
-              <h3 data-i18n="minimal.settings.copyAdvanced">Текст Prediction</h3>
-              <label for="predTitle" data-i18n="settings.predTitle">Заголовок Prediction</label>
+              <h3 data-i18n="minimal.settings.copyAdvanced">Текст прогноза</h3>
+              <label for="predTitle" data-i18n="settings.predTitle">Вопрос для зрителей</label>
               <input id="predTitle" type="text" maxlength="45" data-i18n-placeholder="prediction.title"/>
-              <label for="predWin" data-i18n="settings.predWin">Вариант победы</label>
+              <label for="predWin" data-i18n="settings.predWin">Исход «Победа»</label>
               <input id="predWin" type="text" maxlength="25" data-i18n-placeholder="prediction.win"/>
-              <label for="predLoss" data-i18n="settings.predLoss">Вариант поражения</label>
+              <label for="predLoss" data-i18n="settings.predLoss">Исход «Поражение»</label>
               <input id="predLoss" type="text" maxlength="25" data-i18n-placeholder="prediction.loss"/>
               <small class="field-hint" data-i18n="settings.predHint">Пустые поля — варианты по умолчанию для выбранного языка.</small>
             </section>
           </div>
         </details>
         <details class="secondary-details settings-advanced">
-          <summary data-i18n="reset.title">Пользовательские данные</summary>
+          <summary data-i18n="reset.title">Сброс Companion</summary>
           <div class="secondary-details-body">
-            <p class="field-hint" data-i18n="reset.description">Удалить настройки, подключение Twitch, локальное состояние и кэш приложения. Реплеи HotS останутся. Приложение закроется; при следующем запуске откроется мастер настройки.</p>
-            <button type="button" class="btn btn-outline" data-action="reset-profile" data-i18n="reset.button">Очистить пользовательские данные</button>
+            <p class="field-hint" data-i18n="reset.description">При следующем запуске сбросятся настройки и подключение Twitch в Companion, удалятся локальное состояние матчей и кэш. Реплеи HotS останутся. Приложение закроется; открой его снова для настройки.</p>
+            <button type="button" class="btn btn-outline" data-action="reset-profile" data-i18n="reset.button">Сбросить настройки и подключение</button>
           </div>
         </details>
         <div class="settings-savebar">
@@ -219,7 +220,7 @@
           <p class="wizard-progress" id="wiz-progress" role="status">…</p>
         </div>
         <div class="wizard-head-tools">
-          <div class="wizard-locale" role="group" aria-label="Language">
+          <div class="wizard-locale" role="group" aria-label="Язык" data-i18n-aria-label="aria.language">
             <button type="button" data-wiz-lang="en" lang="en">EN</button>
             <button type="button" data-wiz-lang="ru" lang="ru">RU</button>
           </div>
@@ -228,8 +229,8 @@
       </header>
       <div class="wizard-body">
         <section data-step="0">
-          <h3 data-i18n="onboarding.simple.player">Кем ты играешь?</h3>
-          <p class="secondary" data-i18n="onboarding.simple.playerHelp">Выбери себя из последнего матча или введи ник вручную.</p>
+          <h3 data-i18n="onboarding.simple.player">Твой аккаунт HotS</h3>
+          <p class="secondary" data-i18n="onboarding.simple.playerHelp">Выбери себя из недавнего реплея, чтобы приложение распознавало результаты твоих матчей. С одним ником доступно только ручное завершение прогнозов.</p>
           <div class="player-discovery wizard-discovery">
             <div id="wizard-player-picker" class="player-picker" aria-live="polite"></div>
           </div>
@@ -237,14 +238,14 @@
           <input id="wz-player" type="text" maxlength="160" autocomplete="off" data-i18n-placeholder="settings.player.ph" />
           <details class="wizard-disclosure">
             <summary data-i18n="onboarding.simple.playerVerify">Проверить по последнему реплею</summary>
-            <p class="field-hint" data-i18n="onboarding.simple.playerVerifyHint">Это необязательно. Если реплеев пока нет, можно продолжить.</p>
+            <p class="field-hint" data-i18n="onboarding.simple.playerVerifyHint">Если реплеев пока нет, можно продолжить с ником. Для автоматического завершения сыграй матч, затем выбери себя из реплея в настройках до начала следующего матча.</p>
             <button type="button" class="btn btn-outline" data-wiz="test" data-i18n="wiz.p.btn">Проверить последний реплей</button>
             <div class="wiz-result" id="wz-test-result" hidden></div>
           </details>
         </section>
         <section data-step="1">
           <h3 data-i18n="onboarding.simple.twitch">Подключение Twitch</h3>
-          <p class="secondary" data-i18n="onboarding.simple.twitchHelp">Подключи Twitch-канал, на котором будут создаваться Predictions.</p>
+          <p class="secondary" data-i18n="onboarding.simple.twitchHelp">Подключи свой канал Twitch. Получи код, открой страницу Twitch и подтверди доступ. Подключение сохранится между запусками.</p>
           <p id="wz-twitch-status" class="twitch-onboarding-state" role="status">…</p>
           <button type="button" class="btn btn-outline" data-wiz="auth" data-i18n="twitch.connect">Подключить Twitch</button>
           <details class="wizard-disclosure" id="wz-twitch-details">
@@ -259,28 +260,28 @@
             <span id="wz-auth-info" data-i18n="wiz.t.pending">Ожидаем подтверждения Twitch…</span>
             <div class="form-buttons">
               <button type="button" class="btn btn-outline" data-wiz="copy-code" data-i18n="onboarding.copy">Копировать код</button>
-              <button type="button" class="btn btn-outline" data-wiz="activate" data-i18n="auth.activate">Открыть Twitch Activate ↗</button>
+              <button type="button" class="btn btn-outline" data-wiz="activate" data-i18n="auth.activate">Открыть Twitch и подтвердить ↗</button>
             </div>
           </div>
         </section>
         <section data-step="2">
           <h3 data-i18n="onboarding.simple.ready">Готово к запуску</h3>
-          <p class="secondary" data-i18n="onboarding.simple.readyHelp">Запуск включает настоящие Twitch Predictions с баллами зрителей.</p>
+          <p class="secondary" data-i18n="onboarding.simple.readyHelp">Мониторинг создаёт прогнозы для новых матчей HotS и завершает их по проверенным результатам. Если матч не удалось проверить, выбери результат вручную на главной.</p>
           <div class="wizard-ready">
             <div><span data-i18n="wiz.f.player">Игрок</span><strong id="wz-ch-player">…</strong></div>
             <div><span>Twitch</span><strong id="wz-ch-twitch">…</strong></div>
-            <div><span>Twitch Predictions</span><strong id="wz-ch-monitor" data-i18n="minimal.realDetail">Баллы зрителей</strong></div>
+            <div><span data-i18n="prediction.label">Прогноз Twitch</span><strong id="wz-ch-monitor" data-i18n="minimal.realDetail">Баллы зрителей</strong></div>
           </div>
           <details class="wizard-disclosure">
-            <summary data-i18n="onboarding.simple.preview">Посмотреть пример Prediction</summary>
-            <div class="prediction-preview wizard-preview" role="group" aria-label="Prediction preview">
-              <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — ничего не создаётся на Twitch</small></div>
+            <summary data-i18n="onboarding.simple.preview">Посмотреть пример прогноза (необязательно)</summary>
+            <div class="prediction-preview wizard-preview" role="group" aria-label="Предпросмотр прогноза" data-i18n-aria-label="aria.predictionPreview">
+              <div class="prediction-preview-head"><span data-i18n="onboarding.preview.title">Предпросмотр для зрителей</span><small data-i18n="onboarding.preview.sample">Только пример — прогноз на Twitch не создаётся</small></div>
               <strong id="wz-preview-title">…</strong>
               <div class="prediction-options"><span id="wz-preview-win">…</span><span id="wz-preview-loss">…</span></div>
               <small id="wz-preview-duration">…</small>
             </div>
           </details>
-          <p id="wz-safe-note" class="wizard-safe-note" data-i18n="onboarding.simple.safe">Используются настоящие баллы зрителей. Запуск требует твоего подтверждения.</p>
+          <p id="wz-safe-note" class="wizard-safe-note" data-i18n="onboarding.simple.safe">Используются баллы зрителей. Мониторинг начнётся только после подтверждения запуска.</p>
         </section>
       </div>
       <footer class="wizard-foot">
