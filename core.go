@@ -322,6 +322,14 @@ func newTwitch(p paths, clientID, lang string) (*Twitch, error) {
 	}
 	return t, nil
 }
+// language may change while monitoring is running; clientID and token
+// ownership remain stable until the OAuth application actually changes.
+func (t *Twitch) language() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.lang
+}
+
 func (t *Twitch) saveToken(token Token) error {
 	b, e := json.Marshal(token)
 	if e != nil {
@@ -397,7 +405,7 @@ func (t *Twitch) identity(ctx context.Context) (TwitchIdentity, error) {
 	if err != nil {
 		return TwitchIdentity{}, err
 	}
-	me, err := validateTwitchIdentity(ctx, token, t.clientID, t.lang)
+	me, err := validateTwitchIdentity(ctx, token, t.clientID, t.language())
 	if err != nil {
 		// Failed validation must not leave a stale "connected" identity
 		// visible after revoked credentials or a different OAuth client.
@@ -458,7 +466,7 @@ func (t *Twitch) preflightCreate(ctx context.Context) (TwitchIdentity, error) {
 	}
 	for _, v := range previous.Data {
 		if v.Status == "ACTIVE" || v.Status == "LOCKED" {
-			return TwitchIdentity{}, errors.New(tr(t.lang, "twitch.prediction_exists"))
+			return TwitchIdentity{}, errors.New(tr(t.language(), "twitch.prediction_exists"))
 		}
 	}
 	return me, nil
@@ -468,7 +476,7 @@ func (t *Twitch) preflightCreate(ctx context.Context) (TwitchIdentity, error) {
 // attempt. A lost POST response must never trigger a second POST.
 func (t *Twitch) createPrepared(ctx context.Context, broadcasterID string, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
 	if broadcasterID == "" || winTitle == lossTitle {
-		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
+		return nil, errors.New(tr(t.language(), "twitch.outcomes_invalid"))
 	}
 	var d apiResponse
 	err := t.req(ctx, "POST", "/predictions", map[string]any{
@@ -481,7 +489,7 @@ func (t *Twitch) createPrepared(ctx context.Context, broadcasterID string, windo
 		return nil, err
 	}
 	if len(d.Data) != 1 || len(d.Data[0].Outcomes) != 2 || d.Data[0].Status != "ACTIVE" {
-		return nil, errors.New(tr(t.lang, "twitch.create_bad_response"))
+		return nil, errors.New(tr(t.language(), "twitch.create_bad_response"))
 	}
 	p := &Prediction{ID: d.Data[0].ID, BroadcasterID: broadcasterID, StartedAt: time.Now().UnixMilli()}
 	for _, outcome := range d.Data[0].Outcomes {
@@ -493,14 +501,14 @@ func (t *Twitch) createPrepared(ctx context.Context, broadcasterID string, windo
 		}
 	}
 	if p.ID == "" || p.WinID == "" || p.LossID == "" || p.WinID == p.LossID {
-		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
+		return nil, errors.New(tr(t.language(), "twitch.outcomes_invalid"))
 	}
 	return p, nil
 }
 
 func (t *Twitch) create(ctx context.Context, windowMinutes int, title, winTitle, lossTitle string) (*Prediction, error) {
 	if winTitle == lossTitle {
-		return nil, errors.New(tr(t.lang, "twitch.outcomes_invalid"))
+		return nil, errors.New(tr(t.language(), "twitch.outcomes_invalid"))
 	}
 	me, err := t.preflightCreate(ctx)
 	if err != nil {
@@ -677,24 +685,28 @@ func (e *Engine) updateConfig(cfg Config) error {
 	if e.state.Active != nil && !e.state.Active.DryRun && cfg.twitchClientID() != e.cfg.twitchClientID() {
 		return errors.New("Finish or cancel the active Twitch Prediction before changing the OAuth Client ID")
 	}
-	if er := writeConfig(e.p, cfg); er != nil {
-		return er
-	}
-	t, er := newTwitch(e.p, cfg.twitchClientID(), cfg.lang())
-	if er != nil {
-		return er
-	}
-	// newTwitch restores the persisted token but not the verified identity,
-	// which only identity() sets (app start or monitoring start). Saving
-	// settings must not drop the connected login while the OAuth application
-	// stays the same, or the UI bounces the user back to Twitch setup.
+	// Do not rebuild an authorized Twitch client for language or wizard
+	// changes: an in-flight token refresh could otherwise update the old
+	// instance after the replacement loaded outdated credentials from disk.
 	if e.cfg.twitchClientID() == cfg.twitchClientID() {
+		if err := writeConfig(e.p, cfg); err != nil {
+			return err
+		}
 		e.twitch.mu.Lock()
-		login, broadcaster := e.twitch.login, e.twitch.broadcasterID
+		e.twitch.lang = cfg.lang()
 		e.twitch.mu.Unlock()
-		t.mu.Lock()
-		t.login, t.broadcasterID = login, broadcaster
-		t.mu.Unlock()
+		e.cfg = cfg
+		return nil
+	}
+	// Validate new dependencies *before* persisting the new settings.
+	// A corrupt DPAPI file or unreadable token must not leave a config on
+	// disk that the running engine never accepted.
+	t, err := newTwitch(e.p, cfg.twitchClientID(), cfg.lang())
+	if err != nil {
+		return err
+	}
+	if err := writeConfig(e.p, cfg); err != nil {
+		return err
 	}
 	e.cfg = cfg
 	e.twitch = t

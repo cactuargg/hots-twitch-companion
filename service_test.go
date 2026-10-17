@@ -476,6 +476,47 @@ func TestFailedCandidateValidationPreservesCurrentToken(t *testing.T) {
 	if err!=nil || reopened.token.AccessToken!="keep" {t.Fatalf("token overwritten: %+v %v",reopened,err)}
 }
 
+
+func TestConfigLanguageChangeReusesLiveTwitchTokenOwner(t *testing.T) {
+	d := manualDashboard(t, Config{ClientID:"client",RealMode:true,Lang:"ru"})
+	twitch := d.engine.twitch
+	twitch.mu.Lock()
+	if err := twitch.saveToken(Token{AccessToken:"original",RefreshToken:"original-refresh",ExpiresIn:3600,SavedAt:time.Now().Unix()}); err != nil {
+		twitch.mu.Unlock()
+		t.Fatal(err)
+	}
+	twitch.login, twitch.broadcasterID = "streamer", "channel"
+	twitch.mu.Unlock()
+	if err := d.engine.updateConfig(Config{ClientID:"client",RealMode:true,Lang:"en",WizardDone:true}); err != nil {
+		t.Fatal(err)
+	}
+	if d.engine.twitch != twitch {
+		t.Fatal("non-OAuth settings replaced the live Twitch token owner")
+	}
+	twitch.mu.Lock()
+	lang,login,channel,token := twitch.lang,twitch.login,twitch.broadcasterID,twitch.token
+	twitch.mu.Unlock()
+	if lang!="en" || login!="streamer" || channel!="channel" || token.AccessToken!="original" {
+		t.Fatalf("settings lost live Twitch credentials: lang=%s login=%s channel=%s token=%+v",lang,login,channel,token)
+	}
+}
+
+func TestInvalidTwitchCredentialsCannotPartiallySaveNewOAuthClient(t *testing.T) {
+	d := manualDashboard(t, Config{ClientID:"original",RealMode:true,Lang:"en"})
+	original := d.engine.cfg
+	if err:=writeConfig(d.p,original);err!=nil {t.Fatal(err)}
+	// Loading a new Twitch instance fails if a previously saved token file
+	// is corrupt. This must not commit the requested Client ID to config.json.
+	if err:=os.WriteFile(d.p.secret,[]byte("corrupt-token-file"),0600);err!=nil {t.Fatal(err)}
+	if err:=d.engine.updateConfig(Config{ClientID:"replacement",RealMode:true,Lang:"en"});err==nil {
+		t.Fatal("expected token-decryption failure")
+	}
+	after,err:=readConfig(d.p)
+	if err!=nil || after.ClientID!="original" || d.engine.cfg.ClientID!="original" {
+		t.Fatalf("configuration changed despite failed Twitch client load: on disk=%+v runtime=%+v err=%v",after,d.engine.cfg,err)
+	}
+}
+
 func TestUnverifiedTwitchTokenNotShownAsConnected(t *testing.T) {
 	dir := t.TempDir()
 	p := paths{dir: dir, config: filepath.Join(dir, "config.json"), secret: filepath.Join(dir, "tokens.dpapi"), state: filepath.Join(dir, "state.json")}
