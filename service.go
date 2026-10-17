@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -405,6 +406,16 @@ func readJSONRequest(r *http.Request, v any) error {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
+		return err
+	}
+	// A complete HTTP body must contain exactly one JSON value. Without
+	// the second decode, a valid config followed by another object is
+	// silently accepted even though the request is malformed.
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return errors.New("multiple JSON values in request body")
+		}
 		return err
 	}
 	return nil
