@@ -1,6 +1,7 @@
 package main
 
 import (
+ "net/url"
  twitchpkg "hots-twitch-companion/internal/twitch"
 	transport "hots-twitch-companion/internal/twitch/transport"
 	"context"
