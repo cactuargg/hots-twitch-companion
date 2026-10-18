@@ -16,6 +16,8 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+const updateEdition = "desktop"
+
 func main() { runWindowsApplication(runNativeDesktop) }
 
 func runNativeDesktop(d *dashboard.Dashboard) error {

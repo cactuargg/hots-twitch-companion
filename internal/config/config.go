@@ -11,6 +11,7 @@ import (
 )
 
 type Data struct {
+	DisableUpdateChecks bool `json:"disableUpdateChecks"`
 	ClientID            string `json:"clientId"`
 	PlayerName          string `json:"playerName"`
 	PlayerToonHandle    string `json:"playerToonHandle"`

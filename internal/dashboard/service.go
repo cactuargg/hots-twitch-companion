@@ -8,6 +8,7 @@ import (
 	"hots-twitch-companion/internal/hots/discovery"
 	"hots-twitch-companion/internal/hots/replay"
 	"hots-twitch-companion/internal/i18n"
+	"hots-twitch-companion/internal/update"
 	"net"
 	"net/http"
 	"net/url"
@@ -53,16 +54,19 @@ type Dashboard struct {
 	authPending                           bool
 	replays                               []ReplaySummary
 	replaysAt                             time.Time
-	updateVersion, updateURL              string
 	shutdown                              chan struct{}
 	shutdownOnce                          sync.Once
 	lastActivity                          time.Time
 	backgroundOnce                        sync.Once
 	backgroundCancel                      context.CancelFunc
+	updates                               *update.Manager
+	installUpdate                         func(update.Prepared) error
+	uiReady                               func() error
+	uiReadyConfirmed                      bool
 }
 
 func New(engine Application, p config.Paths, version string) *Dashboard {
-	return &Dashboard{engine: engine, p: p, version: version, shutdown: make(chan struct{})}
+	return &Dashboard{engine: engine, p: p, version: version, shutdown: make(chan struct{}), updates: update.NewManager(update.NewClient(), version, "", "", !engine.Config().DisableUpdateChecks)}
 }
 
 // StartBackground is explicit so tests never contact public services.
@@ -155,8 +159,16 @@ func (d *Dashboard) Status() map[string]any {
 	d.mu.Lock()
 	logs := append([]Event{}, d.logs...)
 	authCode, authStatus, authPending := d.authCode, d.authStatus, d.authPending
-	updateVersion, updateURL := d.updateVersion, d.updateURL
+	updateStartupPending := d.uiReady != nil && !d.uiReadyConfirmed
 	d.mu.Unlock()
+	updateState := d.updates.Snapshot()
+	updateVersion, updateURL := "", ""
+	if updateState.Enabled && updateState.Version != "" {
+		updateVersion, updateURL = updateState.Version, updateState.URL
+	}
+	if !updateState.Enabled {
+		updateVersion, updateURL = "", ""
+	}
 	active := s.Active != nil
 	activeDry := false
 	activeID := ""
@@ -182,7 +194,7 @@ func (d *Dashboard) Status() map[string]any {
 		"creationUnconfirmed": s.UnconfirmedCreation != nil && s.Active == nil,
 		"replayScan":          scan, "hasTwitchApp": d.engine.ClientID() != "",
 		"authCode": authCode, "authStatus": authStatus, "authPending": authPending, "logs": logs,
-		"updateVersion": updateVersion, "updateURL": updateURL}
+		"updateVersion": updateVersion, "updateURL": updateURL, "updates": updateState, "updateStartupPending": updateStartupPending}
 }
 func (d *Dashboard) Config() config.Data { return d.engine.Config() }
 func (d *Dashboard) CurrentReplays() []ReplaySummary {

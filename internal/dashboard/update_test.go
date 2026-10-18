@@ -34,7 +34,7 @@ func TestFetchLatestRelease(t *testing.T) {
 			t.Error("missing user agent")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"tag_name":"v0.9.3","html_url":"https://github.com/example/release"}`))
+		_, _ = w.Write([]byte(`{"tag_name":"v0.9.3","html_url":"https://github.com/cactuargg/hots-twitch-companion/releases/tag/v0.9.3"}`))
 	}))
 	defer server.Close()
 	info, err := FetchLatestRelease(context.Background(), server.URL)

@@ -38,6 +38,71 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 	default:
 	}
 	switch route {
+	case "updates/startup-ready":
+		var body struct{}
+		if err := ReadJSONRequest(r, &body, d.Text("http.request_too_large")); err != nil {
+			RequestError(w, err)
+			return
+		}
+		if err := d.NotifyUIReady(); err != nil {
+			RequestError(w, err)
+			return
+		}
+		JSONOutput(w, 200, map[string]bool{"ok": true})
+		return
+	case "updates/preferences":
+		var body struct {
+			Enabled *bool `json:"enabled"`
+		}
+		if err := ReadJSONRequest(r, &body, d.Text("http.request_too_large")); err != nil {
+			RequestError(w, err)
+			return
+		}
+		if body.Enabled == nil {
+			RequestError(w, errors.New(d.Text("update.preference_required")))
+			return
+		}
+		cfg := d.Config()
+		cfg.DisableUpdateChecks = !*body.Enabled
+		if err := d.engine.UpdateConfig(cfg); err != nil {
+			RequestError(w, err)
+			return
+		}
+		d.updates.SetEnabled(*body.Enabled)
+		JSONOutput(w, 200, map[string]any{"config": cfg, "updates": d.updates.Snapshot()})
+		return
+	case "updates/check":
+		if err := d.updates.RequestCheck(); err != nil {
+			RequestError(w, errors.New(d.Text("update.wait")))
+			return
+		}
+		JSONOutput(w, 200, d.updates.Snapshot())
+		return
+	case "updates/download":
+		if err := d.updates.RequestDownload(); err != nil {
+			RequestError(w, errors.New(d.Text("update.wait")))
+			return
+		}
+		JSONOutput(w, 200, d.updates.Snapshot())
+		return
+	case "updates/install":
+		var body struct {
+			Confirmed bool `json:"confirmed"`
+		}
+		if err := ReadJSONRequest(r, &body, d.Text("http.request_too_large")); err != nil {
+			RequestError(w, err)
+			return
+		}
+		if !body.Confirmed {
+			RequestError(w, errors.New(d.Text("update.confirm_required")))
+			return
+		}
+		if err := d.installPreparedUpdate(); err != nil {
+			RequestError(w, err)
+			return
+		}
+		JSONOutput(w, 200, map[string]bool{"ok": true})
+		return
 	case "profile/reset":
 		var body struct {
 			Confirmed bool `json:"confirmed"`
@@ -77,6 +142,7 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 			PredictionTitle     string `json:"predictionTitle"`
 			PredictionWin       string `json:"predictionWin"`
 			PredictionLoss      string `json:"predictionLoss"`
+			DisableUpdateChecks bool   `json:"disableUpdateChecks"`
 		}
 		if err := ReadJSONRequest(r, &body, i18n.Text(i18n.En, "http.request_too_large")); err != nil {
 			RequestError(w, err)
@@ -108,6 +174,9 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 			return
 		}
 		cfg := config.Data{ClientID: strings.TrimSpace(body.ClientID), PlayerName: strings.TrimSpace(body.PlayerName), PlayerToonHandle: strings.TrimSpace(body.PlayerToonHandle), ReplayRoot: strings.TrimSpace(body.ReplayRoot), RealMode: true, Lang: i18n.Normalize(body.Lang), PredictionWindowMin: body.PredictionWindowMin, WizardDone: body.WizardDone, PredictionTitle: strings.TrimSpace(body.PredictionTitle), PredictionWin: strings.TrimSpace(body.PredictionWin), PredictionLoss: strings.TrimSpace(body.PredictionLoss)}
+		// The independent preference endpoint is authoritative. Old tabs and
+		// wizard/language snapshots must not silently re-enable network checks.
+		cfg.DisableUpdateChecks = d.Config().DisableUpdateChecks
 		if err := d.engine.UpdateConfig(cfg); err != nil {
 			RequestError(w, err)
 			return
@@ -205,6 +274,10 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 		JSONOutput(w, 200, map[string]any{"ok": true})
 		return
 	case "automation/start":
+		if d.updateStartupPending() {
+			RequestError(w, errors.New(d.Text("update.startup_wait")))
+			return
+		}
 		var body struct {
 			ConfirmedRealMode bool `json:"confirmedRealMode"`
 		}

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 )
 
+const updateEdition = "browser"
+
 func launchDesktop(url string) error {
 	// Microsoft Edge app mode gives a separate minimal browser window, no CLI or local install.
 	candidates := []string{}

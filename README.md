@@ -1,5 +1,7 @@
 # HotS Twitch Companion v0.9.9
 
+Source builds after v0.9.9 add visible update status, an opt-out and portable installation from Settings. Published v0.9.9 does not include this yet. [Update behavior and recovery](docs/updates.ru.md).
+
 v0.9.9 clarifies setup, betting-window settings, Twitch authorization and prediction controls in Russian and English while preserving existing profiles and saved predictions. Desktop and Browser editions use the same application core; see [architecture](docs/architecture.md) and [build instructions](docs/compact-desktop.ru.md).
 
 The v0.8.0 engine provides durable outcome recovery, exact Twitch status verification and queued
