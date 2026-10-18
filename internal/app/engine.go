@@ -32,6 +32,7 @@ type Engine struct {
 	state           prediction.State
 	scan            correlation.Scan
 	running         bool
+	updating        bool
 	stop            context.CancelFunc
 	log             func(string)
 	logEvent        func(level, code, message string)
@@ -337,6 +338,10 @@ func (e *Engine) ManualOutcome(ctx context.Context, outcome, expectedID string, 
 
 func (e *Engine) Start() error {
 	e.mu.Lock()
+	if e.updating {
+		e.mu.Unlock()
+		return errors.New("Application is restarting for an update")
+	}
 	reason := MonitorStartBlockReason(e.running, e.cfg, e.cfg.TwitchClientID(e.defaultClientID) != "", e.state)
 	if reason != "" {
 		lang := e.cfg.Language()
@@ -351,6 +356,23 @@ func (e *Engine) Start() error {
 	e.stop = cancel
 	e.mu.Unlock()
 	go e.watch(ctx)
+	return nil
+}
+
+// BeginUpdate holds the same action/state locks as prediction writes. A new
+// monitor cannot start between the final idle check and helper hand-off.
+func (e *Engine) BeginUpdate(start func() error) error {
+	e.actionMu.Lock()
+	defer e.actionMu.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.updating || e.running || e.state.Active != nil || e.state.UnconfirmedCreation != nil {
+		return errors.New(i18n.Text(e.cfg.Language(), "update.busy"))
+	}
+	if err := start(); err != nil {
+		return err
+	}
+	e.updating = true
 	return nil
 }
 func (e *Engine) StopWatch() {

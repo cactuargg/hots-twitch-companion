@@ -48,6 +48,9 @@ func (d *Dashboard) Close() {
 	if cancel != nil {
 		cancel()
 	}
+	if d.updates != nil {
+		d.updates.Close()
+	}
 	if d.engine != nil {
 		d.engine.StopWatch()
 	}
@@ -55,6 +58,24 @@ func (d *Dashboard) Close() {
 func (d *Dashboard) Done() <-chan struct{}           { return d.shutdown }
 func (d *Dashboard) ProfileDir() string              { return d.p.Dir }
 func (d *Dashboard) SetHideToTray(hide func() error) { d.hideToTray = hide }
+func (d *Dashboard) SetUIReady(ready func() error)   { d.uiReady = ready }
+func (d *Dashboard) NotifyUIReady() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.uiReady != nil && !d.uiReadyConfirmed {
+		if err := d.uiReady(); err != nil {
+			return err
+		}
+		d.uiReadyConfirmed = true
+	}
+	return nil
+}
+
+func (d *Dashboard) updateStartupPending() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.uiReady != nil && !d.uiReadyConfirmed
+}
 func (d *Dashboard) CloseRequested() bool {
 	select {
 	case <-d.shutdown:

@@ -88,3 +88,11 @@
 @media(max-width:360px){
  .settings-savebar .form-buttons{grid-template-columns:minmax(0,1fr)}
 }
+.update-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.update-notice[hidden]{display:none}
+.update-settings{margin:16px 0}
+.update-settings .form-buttons{flex-wrap:wrap}
+.updates-preference{display:flex;align-items:center;gap:10px;min-height:44px}
+.updates-preference input[type=checkbox]{width:20px;height:20px;flex-shrink:0}
+.update-settings progress{width:100%;margin:8px 0}
+#updates-error{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}

@@ -19,6 +19,7 @@ HotS Twitch Companion is one Windows executable with an embedded HTML/CSS/JavaSc
 | `internal/storage` | Atomic JSON persistence, StateStore, reset and legacy simulation migration |
 | `internal/storage/credentials` | DPAPI protection and encrypted token-file persistence; platform-specific implementations |
 | `internal/clock` | Injected time source |
+| `internal/update` | Release checks and retry scheduling, cancellation, verified same-edition downloads and portable replacement/rollback; no Twitch/profile access |
 | `internal/i18n` | Backend language normalization and message catalog |
 | `internal/dashboard` | Consumer-owned application contract, UI status/replay/log views, guarded HTTP routes, embedded assets and public release checks |
 | `assets` | Shared embedded Windows icon and resource generator |

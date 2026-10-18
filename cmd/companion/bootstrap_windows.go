@@ -10,8 +10,10 @@ import (
 	"hots-twitch-companion/internal/dashboard"
 	"hots-twitch-companion/internal/i18n"
 	"hots-twitch-companion/internal/storage"
+	"hots-twitch-companion/internal/update"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -76,12 +78,31 @@ func loadDesktopDashboard(dataDir string) (*dashboard.Dashboard, func(), error) 
 		release()
 		return nil, nil, errors.New(i18n.Text(cfg.Language(), "error.startup", err.Error()))
 	}
+	executable, err := os.Executable()
+	if err != nil {
+		release()
+		return nil, nil, err
+	}
+	updateRoot := filepath.Dir(executable)
+	// Explorer may extract a ZIP entry into a temporary directory that vanishes
+	// when the original process exits. Never perform a replacement there.
+	if rel, e := filepath.Rel(os.TempDir(), executable); e == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		updateRoot = ""
+	}
+	d.ConfigurePortableUpdates(updateEdition, updateRoot, func(prepared update.Prepared) error { return startPortableUpdate(executable, p.Dir, prepared) })
 	return d, release, nil
 }
 
 func runWindowsApplication(run func(*dashboard.Dashboard) error) {
+	if len(os.Args) == 3 && os.Args[1] == "--apply-update" {
+		if err := applyPortableUpdate(os.Args[2]); err != nil {
+			showError("Update failed. The previous executable or its backup remains available.\n" + err.Error())
+		}
+		return
+	}
 	flags := flag.NewFlagSet("HotS Twitch Companion", flag.ContinueOnError)
 	dataDir := flags.String("data-dir", "", "Use a separate profile directory (for testing)")
+	readyFile := flags.String("update-ready-file", "", "Internal updater startup acknowledgement")
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		showError(err.Error())
 		return
@@ -97,6 +118,14 @@ func runWindowsApplication(run func(*dashboard.Dashboard) error) {
 	}
 	defer release()
 	defer d.Close()
+	if *readyFile != "" {
+		exe, e := os.Executable()
+		if e != nil || !filepath.IsAbs(*readyFile) || filepath.Base(*readyFile) != "started" || !strings.HasPrefix(filepath.Base(filepath.Dir(*readyFile)), ".companion-update-") || filepath.Dir(filepath.Dir(*readyFile)) != filepath.Dir(exe) {
+			showError("Invalid updater acknowledgement path")
+			return
+		}
+		d.SetUIReady(func() error { return os.WriteFile(*readyFile, []byte("started"), 0600) })
+	}
 	d.StartBackground()
 	if err := run(d); err != nil {
 		showError(d.Text("error.open_ui", err.Error()))

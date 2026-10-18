@@ -4,6 +4,7 @@ import (
 	"context"
 	"hots-twitch-companion/internal/app"
 	"hots-twitch-companion/internal/config"
+	"hots-twitch-companion/internal/update"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -37,14 +38,14 @@ func TestFetchLatestReleaseLegacyCoverage(t *testing.T) {
 			t.Error("request must carry a User-Agent header")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"tag_name":"v0.9.3","html_url":"https://example.com/release"}`))
+		w.Write([]byte(`{"tag_name":"v0.9.3","html_url":"https://github.com/cactuargg/hots-twitch-companion/releases/tag/v0.9.3"}`))
 	}))
 	defer ok.Close()
 	info, err := FetchLatestRelease(context.Background(), ok.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Tag != "v0.9.3" || info.HTMLURL != "https://example.com/release" {
+	if info.Tag != "v0.9.3" || info.HTMLURL != "https://github.com/cactuargg/hots-twitch-companion/releases/tag/v0.9.3" {
 		t.Fatalf("unexpected release info: %#v", info)
 	}
 
@@ -80,18 +81,16 @@ func TestStatusReportsAvailableUpdate(t *testing.T) {
 	if st := d.Status(); st["updateVersion"] != "" || st["updateURL"] != "" {
 		t.Fatalf("no update expected by default: %#v", st)
 	}
-	d.mu.Lock()
-	d.updateVersion, d.updateURL = "9.9.9", "https://example.com/new"
-	d.mu.Unlock()
+	testRelease(t, d, "v9.9.9", "https://github.com/cactuargg/hots-twitch-companion/releases/tag/v9.9.9")
 	st := d.Status()
-	if st["updateVersion"] != "9.9.9" || st["updateURL"] != "https://example.com/new" {
+	if st["updateVersion"] != "9.9.9" || st["updateURL"] != "https://github.com/cactuargg/hots-twitch-companion/releases/tag/v9.9.9" {
 		t.Fatalf("available update missing from status: %#v", st)
 	}
 }
 
 func TestCheckUpdateStoresOnlyNewerRelease(t *testing.T) {
 	same := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"tag_name":"v` + "0.9.6" + `","html_url":"https://example.com/same"}`))
+		w.Write([]byte(`{"tag_name":"v` + "0.9.6" + `","html_url":"https://github.com/cactuargg/hots-twitch-companion/releases/tag/v0.9.6"}`))
 	}))
 	defer same.Close()
 	dir := t.TempDir()
@@ -101,7 +100,7 @@ func TestCheckUpdateStoresOnlyNewerRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := d.checkUpdateAt(same.URL); err != nil {
+	if err := checkTestEndpoint(d, same.URL); err != nil {
 		t.Fatal(err)
 	}
 	if st := d.Status(); st["updateVersion"] != "" {
@@ -109,14 +108,14 @@ func TestCheckUpdateStoresOnlyNewerRelease(t *testing.T) {
 	}
 
 	newer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"tag_name":"v99.0.0","html_url":"https://example.com/new"}`))
+		w.Write([]byte(`{"tag_name":"v99.0.0","html_url":"https://github.com/cactuargg/hots-twitch-companion/releases/tag/v99.0.0"}`))
 	}))
 	defer newer.Close()
-	if err := d.checkUpdateAt(newer.URL); err != nil {
+	if err := checkTestEndpoint(d, newer.URL); err != nil {
 		t.Fatal(err)
 	}
 	st := d.Status()
-	if st["updateVersion"] != "99.0.0" || st["updateURL"] != "https://example.com/new" {
+	if st["updateVersion"] != "99.0.0" || st["updateURL"] != "https://github.com/cactuargg/hots-twitch-companion/releases/tag/v99.0.0" {
 		t.Fatalf("newer release must be reported: %#v", st)
 	}
 }
@@ -128,4 +127,22 @@ func noticeDashboard(t *testing.T, p config.Paths) *Dashboard {
 		t.Fatal(err)
 	}
 	return New(e, p, "0.9.6")
+}
+
+func checkTestEndpoint(d *Dashboard, endpoint string) error {
+	d.updates.Close()
+	client := update.NewClient()
+	client.Endpoint = endpoint
+	d.updates = update.NewManager(client, d.version, "", "", true)
+	return d.updates.Check()
+}
+func testRelease(t *testing.T, d *Dashboard, tag, url string) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"tag_name":"` + tag + `","html_url":"` + url + `"}`))
+	}))
+	defer server.Close()
+	if err := checkTestEndpoint(d, server.URL); err != nil {
+		t.Fatal(err)
+	}
 }

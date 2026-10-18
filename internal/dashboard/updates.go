@@ -1,40 +1,41 @@
 package dashboard
 
 import (
-	"context"
-	"strings"
-	"time"
+	"errors"
+	"hots-twitch-companion/internal/update"
 )
 
-const releasesLatestURL = "https://api.github.com/repos/cactuargg/hots-twitch-companion/releases/latest"
+const releasesLatestURL = update.LatestURL
 
-func (d *Dashboard) watchUpdates() {
-	d.checkUpdate()
-	ticker := time.NewTicker(24 * time.Hour)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-d.shutdown:
-			return
-		case <-ticker.C:
-			d.checkUpdate()
-		}
-	}
+// ConfigurePortableUpdates is set by the Windows composition root before any
+// background work starts. Tests can supply a manager/installer without processes.
+func (d *Dashboard) ConfigurePortableUpdates(edition, root string, install func(update.Prepared) error) {
+	d.updates.Close()
+	d.updates = update.NewManager(update.NewClient(), d.version, edition, root, !d.Config().DisableUpdateChecks)
+	d.installUpdate = install
 }
-func (d *Dashboard) checkUpdate() { _ = d.checkUpdateAt(releasesLatestURL) }
-func (d *Dashboard) checkUpdateAt(endpoint string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	info, err := FetchLatestRelease(ctx, endpoint)
-	if err != nil {
-		return err
-	}
-	if !IsNewerRelease(info.Tag, d.version) {
-		return nil
+func (d *Dashboard) watchUpdates() { d.updates.Run() }
+
+func (d *Dashboard) installPreparedUpdate() error {
+	if d.updateStartupPending() {
+		return errors.New(d.Text("update.startup_wait"))
 	}
 	d.mu.Lock()
-	d.updateVersion = strings.TrimPrefix(info.Tag, "v")
-	d.updateURL = info.HTMLURL
+	authPending := d.authPending
 	d.mu.Unlock()
-	return nil
+	if authPending {
+		return errors.New(d.Text("update.auth_busy"))
+	}
+	if d.installUpdate == nil {
+		return errors.New(d.Text("update.unavailable"))
+	}
+	gate, ok := d.engine.(interface{ BeginUpdate(func() error) error })
+	if !ok {
+		return errors.New(d.Text("update.unavailable"))
+	}
+	err := d.updates.Install(func(p update.Prepared) error { return gate.BeginUpdate(func() error { return d.installUpdate(p) }) })
+	if err == nil {
+		d.Close()
+	}
+	return err
 }

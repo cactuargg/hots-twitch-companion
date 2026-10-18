@@ -41,6 +41,10 @@
     <main class="main">
       <section class="view active" id="view-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
         <div class="view-heading"><h1 data-i18n="minimal.home">Главная</h1><p data-i18n="minimal.home.sub">Автоматические прогнозы Twitch для Heroes of the Storm</p></div>
+        <section class="content-panel update-notice" id="update-notice" hidden role="status">
+          <strong id="update-notice-title"></strong>
+          <button type="button" class="btn btn-outline" data-action="update-settings" data-i18n="updates.open">Открыть обновления</button>
+        </section>
         <section class="overview-command" aria-labelledby="overview-state-title">
           <div class="overview-command-eyebrow" data-i18n="minimal.automation">Автоматизация</div>
           <div class="overview-heading"><span class="overview-beacon" id="overview-beacon" aria-hidden="true"></span><h2 id="overview-state-title" aria-live="polite">…</h2></div>
@@ -160,6 +164,23 @@
           </section>
         </div>
 
+        <section class="content-panel update-settings" aria-labelledby="updates-title">
+          <h2 id="updates-title" data-i18n="updates.title">Обновления приложения</h2>
+          <label class="updates-preference"><input type="checkbox" id="updates-enabled" checked/><span data-i18n="updates.enable">Проверять обновления</span></label>
+          <p class="field-hint" data-i18n="updates.preferenceHint">Переключатель сохраняется сразу. Если выключить, запросов о новых версиях не будет.</p>
+          <p id="updates-status" role="status" aria-live="polite"></p>
+          <p class="field-hint" id="updates-checked"></p>
+          <p class="field-hint" id="updates-retry"></p>
+          <progress id="updates-progress" max="100" value="0" hidden data-i18n-aria-label="updates.progress" aria-label="Скачивание обновления"></progress>
+          <div class="form-buttons">
+            <button type="button" class="btn btn-outline" id="updates-check" data-action="updates-check" data-i18n="updates.check">Проверить сейчас</button>
+            <button type="button" class="btn btn-primary" id="updates-download" data-action="updates-download" data-i18n="updates.download" hidden>Скачать обновление</button>
+            <button type="button" class="btn btn-primary" id="updates-install" data-action="updates-install" data-i18n="updates.install" hidden>Обновить и перезапустить</button>
+            <button type="button" class="text-action" id="updates-release" data-action="update" data-i18n="updates.release" hidden>Страница релиза ↗</button>
+          </div>
+          <p class="field-hint" id="updates-idle-hint" data-i18n="updates.idleHint">Для установки останови мониторинг и заверши текущий прогноз. Настройки и подключение Twitch сохранятся.</p>
+          <details id="updates-error-details" hidden><summary data-i18n="updates.errorDetails">Подробности ошибки</summary><pre id="updates-error"></pre></details>
+        </section>
         <details class="secondary-details settings-advanced" id="settings-advanced">
           <summary data-i18n="minimal.settings.advanced">Расширенные настройки</summary>
           <div class="secondary-details-body">

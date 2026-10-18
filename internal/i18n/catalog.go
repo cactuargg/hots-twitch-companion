@@ -18,6 +18,13 @@ func Normalize(s string) string {
 
 var messages = map[string]map[string]string{
 	En: {
+		"update.startup_wait": "Wait for the updated interface to finish starting before monitoring or installing another update.",
+		"update.auth_busy": "Finish connecting Twitch before restarting for an update.",
+		"update.busy": "Stop monitoring and finish or reconcile the current Prediction before installing an update.",
+		"update.wait": "An update operation is already running, checks are disabled, or GitHub requires waiting. See Updates in Settings.",
+		"update.unavailable": "In-app installation is not available in this build. Open the release page instead.",
+		"update.confirm_required": "Confirm the update and restart first.",
+		"update.preference_required": "Choose whether update checks should be enabled.",
 		"automation.need_twitch": "Connect Twitch before starting Predictions.",
 		"reset.busy": "Stop monitoring and finish the active Prediction before resetting data.",
 		"reset.confirm_required": "Confirm the profile reset first.",
@@ -111,6 +118,13 @@ var messages = map[string]map[string]string{
 		"error.open_ui":               "Could not open the interface: %s",
 	},
 	Ru: {
+		"update.startup_wait": "Дождись завершения запуска обновлённого интерфейса перед мониторингом или новой установкой.",
+		"update.auth_busy": "Заверши подключение Twitch перед перезапуском для обновления.",
+		"update.busy": "Для установки останови мониторинг и заверши текущий прогноз или проверь неподтверждённое создание на Twitch.",
+		"update.wait": "Операция уже выполняется, проверка выключена или GitHub требует подождать. Состояние показано в обновлениях в настройках.",
+		"update.unavailable": "В этой сборке установка из приложения недоступна. Открой страницу релиза.",
+		"update.confirm_required": "Сначала подтверди обновление и перезапуск.",
+		"update.preference_required": "Укажи, включать ли проверку обновлений.",
 		"automation.need_twitch": "Подключи Twitch перед запуском мониторинга.",
 		"reset.busy": "Останови мониторинг и заверши активный Prediction перед сбросом данных.",
 		"reset.confirm_required": "Сначала подтверди сброс данных.",

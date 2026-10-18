@@ -10,6 +10,44 @@ function monitoringView(st) {
  }
  return {phase,prediction,twitch,title:t('overview.state.'+phase),detail};
 }
+function renderUpdates(st){
+ const box=$('updates-status');if(!box)return;
+ const u=st?.updates||{enabled:!state.config?.disableUpdateChecks,phase:'idle'};
+ const enabled=!!u.enabled,busy=!!state.busy||!!state.saving;
+ const phase=u.phase||'idle',working=phase==='checking'||phase==='downloading'||phase==='installing';
+ $('updates-enabled').checked=state.updatePreferenceDesired??enabled;$('updates-enabled').disabled=busy||phase==='installing';
+ box.textContent=t('updates.phase.'+phase,{version:u.version||''});
+ if(enabled&&u.version&&!u.downloadable&&phase==='available')box.textContent+=' '+t('updates.externalOnly');
+ const when=n=>new Date(n).toLocaleString(lang==='ru'?'ru-RU':'en-US',{dateStyle:'short',timeStyle:'short'});
+ $('updates-checked').textContent=u.checkedAt?t('updates.checked',{time:when(u.checkedAt)}):t('updates.never');
+ $('updates-retry').textContent=enabled&&phase==='error'&&u.nextCheckAt?t('updates.retry',{time:when(u.nextCheckAt)}):'';
+ $('updates-progress').hidden=phase!=='downloading';$('updates-progress').value=u.total?Math.min(100,Math.round(100*u.received/u.total)):0;
+ $('updates-check').disabled=!enabled||busy||working||phase==='ready'||Number(u.checkAfterAt)>Date.now();
+ $('updates-download').hidden=!enabled||!u.version||!u.downloadable||phase==='ready'||phase==='installing';
+ $('updates-download').disabled=busy||working;
+ $('updates-install').hidden=!enabled||phase!=='ready';
+ $('updates-install').disabled=busy||!!st?.running||!!st?.active||!!st?.creationUnconfirmed||!!st?.authPending||!!st?.updateStartupPending||!!state.hasUnsaved;
+ $('updates-release').hidden=!enabled||!u.url;
+ $('updates-error-details').hidden=!enabled||!u.error;$('updates-error').textContent=u.error||'';
+ $('update-notice').hidden=!enabled||!u.version;
+ $('update-notice-title').textContent=t('update.available',{version:u.version||''});
+}
+async function setUpdateChecks(){
+ const checkbox=$('updates-enabled'),enabled=checkbox.checked;
+ if(state.busy||state.saving||state.languageSaving){checkbox.checked=!state.config?.disableUpdateChecks;toast(t('settings.wait'),true);return}
+ state.saving=true;
+ state.updatePreferenceDesired=enabled;renderUpdates(state.status);
+ try{
+  const x=await api('updates/preferences','POST',{enabled});
+  if(state.closing)return;
+  state.config=x.config;
+  if(state.status)state.status.updates=x.updates;
+  renderUpdates(state.status);toast(t('updates.preferenceSaved'));
+  await loadStatus();
+ }catch(e){if(!state.closing){checkbox.checked=!state.config?.disableUpdateChecks;toast(e.message,true)}}
+ finally{state.saving=false;delete state.updatePreferenceDesired;if(!state.closing)renderUpdates(state.status)}
+}
+
 function renderSettingsDraft(){
   const status=$('settings-save-status');
   if(status){
@@ -28,6 +66,7 @@ function setActionBusy(name, busy){
     else if(button.dataset.action===name&&button.classList?.contains('btn'))
       button.setAttribute('aria-busy','true');
   }
+  if(!busy&&typeof renderUpdates==='function')renderUpdates(state.status);
 }
 
 function render(s){
@@ -35,7 +74,8 @@ function render(s){
  if(s?.version)$('app-version').textContent='v'+s.version;
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
-  // The badge opens the release page in the system browser; no in-app update.
+  if(typeof renderUpdates==='function')renderUpdates(st);
+  // The footer links to release notes; the Updates section manages installation.
   const upd=$('update-badge');
   if(upd){
    const label=st.updateVersion&&st.updateURL?t('update.available',{version:st.updateVersion}):'';
@@ -182,6 +222,14 @@ async function manualPrediction(outcome){
  return true;
 }
 async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('connection.lost'),true);return}if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
+ case 'update-settings':go('settings');$('updates-title').scrollIntoView({block:'start',behavior:'smooth'});break;
+ case 'updates-check':await api('updates/check','POST',{});await loadStatus();break;
+ case 'updates-download':await api('updates/download','POST',{});await loadStatus();break;
+ case 'updates-install':
+   if(state.hasUnsaved){toast(t('updates.saveFirst'),true);break;}
+   if(!confirm(t('updates.confirm')))break;
+   await api('updates/install','POST',{confirmed:true});
+   stopPolling();document.body.replaceChildren(line(t('updates.restarting'),'empty-mini'));break;
  case 'reset-profile':
    if(!confirm(t('reset.confirm')))break;
    await api('profile/reset','POST',{confirmed:true});
@@ -303,6 +351,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     });
   }
  $('lang').addEventListener('change',()=>setLang($('lang').value));
+ $('updates-enabled').addEventListener('change',setUpdateChecks);
  for(const id of ['history-search','history-filter'])$(id).addEventListener(id==='history-search'?'input':'change',renderHistory);
  for(const id of ['log-search','log-filter'])$(id).addEventListener(id==='log-search'?'input':'change',()=>showLogs(state.logs));
   $('wz-player').addEventListener('input',renderPlayerPickers);
@@ -315,6 +364,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
    if(b.config.lang){lang=b.config.lang;try{localStorage.setItem('hots-lang',lang)}catch(e){}applyI18n();}
    render(b.status);showReplays(b.replays||[]);
    if(!b.config.wizardDone)openWizard();
+   if(b.status.updateStartupPending)await api('updates/startup-ready','POST',{});
  }catch(e){toast(t('toast.connect_fail',{err:e.message}),true)}
  if(!state.closing){state.statusTimer=setInterval(loadStatus,2500);state.replaysTimer=setInterval(reloadReplays,30000);}
 });
