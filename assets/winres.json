@@ -2,13 +2,13 @@
   "RT_GROUP_ICON": {"#3": {"0000": "app.ico"}},
   "RT_MANIFEST": {"#1": {"0409": "app.manifest"}},
   "RT_VERSION": {"#1": {"0000": {
-    "fixed": {"file_version": "0.9.9.0", "product_version": "0.9.9.0"},
+    "fixed": {"file_version": "0.9.10.0", "product_version": "0.9.10.0"},
     "info": {"0409": {
       "CompanyName": "cactuargg",
       "FileDescription": "HotS Twitch Companion",
       "ProductName": "HotS Twitch Companion",
-      "ProductVersion": "0.9.9",
-      "FileVersion": "0.9.9",
+      "ProductVersion": "0.9.10",
+      "FileVersion": "0.9.10",
       "LegalCopyright": "MIT License"
     }}
   }}}
