@@ -2,7 +2,16 @@
 
 Portable Windows x64 app for Twitch Predictions based on Heroes of the Storm replays.
 
-## What's new in v0.9.9
+## What's new in v0.9.10
+
+- Prominent update notifications and a Settings panel with the last check, retry time, download progress and readable errors. Temporary network failures retry automatically and GitHub rate limits are respected.
+- Update checks can be disabled in Settings. The preference is saved immediately; disabling cancels pending checks and prevents further update requests until re-enabled.
+- Desktop and Browser portable editions can download and install a verified release from the interface with explicit confirmation. Monitoring must be stopped, with no active or uncertain Prediction or pending Twitch authorization.
+- The updater preserves the executable location, profile and saved Twitch authorization, validates the official release asset and SHA-256, and restores the previous executable if the new version fails its startup acknowledgment.
+- Users of v0.9.9 and earlier must download v0.9.10 manually once to gain in-app installation. Installation is unavailable when launched from a temporary extraction folder; extract the portable app to a permanent folder first.
+- Go tests/vet, 89 UI tests, Windows updater subprocess tests, Desktop, Browser and race CI checks gate publication.
+
+## Interface improvements from v0.9.9
 
 - Clearer Russian and English setup, settings and recovery messages. The interface explains saved Twitch authorization, the player ID required for automatic results and the difference between a betting window and match duration.
 - Manual result confirmations identify the selected HotS player and use readable paragraphs. Replay preview and Twitch-result checks explain what they do without implying they resolve a Prediction.
