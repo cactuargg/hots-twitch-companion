@@ -2,19 +2,15 @@
 
 Portable Windows x64 companion for Heroes of the Storm and Twitch.
 
-## Новое в v0.10.1
+## Новое в v0.10.2
 
-- Исправлен герой в истории и винрейте: используется фактически сыгранный герой из replay.details вместо выбора в лобби, включая ARAM.
-- Старые записи автоматически исправляются при запуске, если исходные реплеи доступны. Ручные результаты, исключения и сессии сохраняются.
-- В составе матча рядом с каждым ником отображается герой; игроки сопоставляются по ToonHandle.
-- Исправлены отступы в сессиях, Twitch и раскрытых настройках OBS. Превью оверлеев выровнены; изображение маски показывается целиком.
+- Время приёма ставок перенесено в «Настройки прогноза», рядом с заголовком и вариантами исхода.
+- Числовое поле заменено выпадающим списком длительности. Выбранное время сохраняется и отображается в превью прогноза.
 
 ## What's new
 
-- Use the actual played hero from replay.details for history and win rates, including ARAM; automatically repair existing entries when replay files remain available.
-- Display each participant's played hero beside their nickname, matched by ToonHandle.
-- Preserve manual results, exclusions and session assignments during repair and reimport.
-- Consistent spacing in session, Twitch and expanded OBS panels; aligned overlay previews and uncropped mask images.
+- Move the Prediction duration beside the title and outcome text in Prediction settings.
+- Replace numeric entry with a duration dropdown; preserve saving and live preview updates.
 
 ## OBS and data notes
 

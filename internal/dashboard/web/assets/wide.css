@@ -80,3 +80,5 @@
 /* Both overlay previews share one frame size and alignment. */
 .wide-ui .wide-settingscol .wide-obs-extra :is(.obs-preview,.obs-preview-mask){height:200px;min-height:200px;max-height:200px;width:100%;box-sizing:border-box;margin-top:auto;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .wide-ui .wide-settingscol .wide-obs-extra .obs-preview{padding:20px}
+
+.wide-ui .wide-prediction-window{max-width:240px;margin-bottom:16px}
