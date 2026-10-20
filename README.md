@@ -1,4 +1,7 @@
-# HotS Twitch Companion v0.9.10
+# HotS Twitch Companion v0.10.0
+
+v0.10.0 adds persistent win/loss sessions, two OBS Browser Sources
+and a wide Overview with pagination, hero/map win rates and grouped settings. [Setup and automation limitations (Russian)](docs/sessions-obs.ru.md).
 
 v0.9.10 adds visible update status, an opt-out and portable installation from Settings. Users of v0.9.9 and earlier need to download this version manually once. [Update behavior and recovery](docs/updates.ru.md).
 

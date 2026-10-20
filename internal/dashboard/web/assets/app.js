@@ -222,7 +222,7 @@ async function manualPrediction(outcome){
  return true;
 }
 async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('connection.lost'),true);return}if(state.busy&&name!=='quit')return;state.busy=true;setActionBusy(name,true);try{switch(name){
- case 'update-settings':go('settings');$('updates-title').scrollIntoView({block:'start',behavior:'smooth'});break;
+ case 'update-settings':go('settings');if(typeof obsSection==='function')obsSection('application');$('updates-title').scrollIntoView({block:'start',behavior:'smooth'});break;
  case 'updates-check':await api('updates/check','POST',{});await loadStatus();break;
  case 'updates-download':await api('updates/download','POST',{});await loadStatus();break;
  case 'updates-install':
@@ -241,6 +241,7 @@ async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('con
  case 'auth':{
    if(!$('clientId').value.trim()&&!state.status?.hasTwitchApp){
      go('settings');
+     if(typeof obsSection==='function')obsSection('basic');
      $('settings-advanced').open=true;
      $('clientId').focus();
      toast(t('minimal.settings.clientRequired'),true);
@@ -251,6 +252,7 @@ async function action(name){if(state.connectionLost&&name!=='quit'){toast(t('con
    const x=await api('auth','POST',{});
    if(x.code){
      go('settings');
+     if(typeof obsSection==='function')obsSection('basic');
      $('auth-progress').hidden=false;
      $('auth-code').textContent=x.code;
      code.authUrl=x.verificationUri||'https://www.twitch.tv/activate';

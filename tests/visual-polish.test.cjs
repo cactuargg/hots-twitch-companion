@@ -78,8 +78,8 @@ test('failed action always restores button state, including loading indicator',a
  assert.equal(ctx.feedback.err,true);
 });
 
-test('compact Windows window replaces the original oversized 1440 by 950 launcher',()=>{
- assert.match(windows,/--window-size=1024,800/);
+test('wide browser window opens at the agreed 1100 by 800 size',()=>{
+ assert.match(windows,/--window-size=1100,800/);
  assert.doesNotMatch(windows,/--window-size=1440,950/);
 });
 

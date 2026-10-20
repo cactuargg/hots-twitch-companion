@@ -83,5 +83,10 @@ func (d *Dashboard) CloseRequested() bool {
 	default:
 	}
 	running, _, state, _ := d.engine.Snapshot()
-	return running || state.Active != nil
+	overlaysActive := false
+	if d.overlays != nil {
+		s, err := d.overlays.store.Snapshot()
+		overlaysActive = err == nil && (s.Preferences.Enabled || s.Preferences.MaskEnabled)
+	}
+	return running || state.Active != nil || overlaysActive
 }
