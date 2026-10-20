@@ -9,6 +9,7 @@ function playerRow(p, selected){
   const row=document.createElement('div');row.className='player-row'+(selected?' you':'');
   const name=document.createElement('span');name.className='player-name';name.textContent=p.name||'—';
   if(selected){const tag=Object.assign(document.createElement('em'),{textContent:t('match.you')});name.append(tag);}
+  const hero=document.createElement('span');hero.className='player-hero';hero.textContent=' — '+(p.hero||t('match.hero.unknown'));name.append(hero);
   const toon=document.createElement('small');toon.textContent=p.toonHandle||'';
   row.append(name,toon,resultBadge(p.result));
   return row;

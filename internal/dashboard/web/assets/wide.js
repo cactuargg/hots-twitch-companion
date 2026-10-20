@@ -66,7 +66,7 @@ function initWide(){
  settings.querySelector('.settings-nav').remove();const pages={};for(const p of settings.querySelectorAll('.settings-page'))pages[p.dataset.section]=p;
  const groups=wideEl('div','wide-settings'),connection=wideGroup('connection','connectionSub'),overlays=wideGroup('overlays','overlaysSub'),system=wideGroup('system','systemSub');
  const cards=[...pages.basic.querySelectorAll('.settings-card')],twitch=cards[0],player=cards[1],prediction=pages.predictions.querySelector('.settings-card');
- player.classList.add('wide-settingscol');prediction.classList.add('wide-settingscol');
+ player.classList.add('wide-settingscol');prediction.classList.add('wide-settingscol');twitch.classList.add('wide-twitch-panel');
  const advanced=$('settings-advanced');advanced.remove();twitch.append(advanced);prediction.append(twitch);
  for(const extra of [...pages.basic.children])if(extra!==player&&extra!==twitch){player.append(extra)}
  const playerInput=$('playerName');playerInput.classList.add('wide-input');const playerLabel=player.querySelector('label[for=playerName]');const playerField=wideEl('div','wide-settingsmain');playerField.append(playerLabel,playerInput);player.querySelector('h2').after(playerField);
@@ -75,7 +75,7 @@ function initWide(){
  for(const [id,key,max]of [['predTitle','title',45],['predWin','win',25],['predLoss','loss',25]]){const field=wideEl('label','wide-field'),text=wideEl('span');wideLabel(text,key);const source=$(id);source.maxLength=max;const counter=wideEl('small','wide-counter');counter.dataset.countFor=id;field.append(text,counter,source);if(id==='predTitle')copyFields.append(field);else outcomes.append(field)}copyFields.append(outcomes);const hint=wideEl('p','field-hint');wideLabel(hint,'predictionHint');copyFields.append(hint);const preview=prediction.querySelector('.prediction-preview');copyLayout.append(copyFields,preview);copy.append(copyLayout);connection.append(player,prediction,copy);
  for(const remaining of [...pages.predictions.children]){if(remaining!==prediction&&remaining.textContent.trim())remaining.remove()}
  const obsCards=[...pages.overlays.querySelectorAll('.obs-card')];for(const card of obsCards){card.classList.add('wide-settingscol');overlays.append(card)}
- const obsError=$('obs-error');overlays.append(obsError);const obsHelp=pages.overlays.querySelector('[data-i18n="obs.obsHelp"]');if(obsHelp){wideLabel(obsHelp,'obsHelp');overlays.append(obsHelp)};
+ const obsError=$('obs-error');overlays.append(obsError);const obsHelp=pages.overlays.querySelector('[data-i18n="obs.obsHelp"]');if(obsHelp){obsHelp.classList.add('wide-obs-help');wideLabel(obsHelp,'obsHelp');overlays.append(obsHelp)};
  const appCol=wideEl('section','wide-settingscol'),dataCol=wideEl('section','wide-settingscol');appCol.append(pages.application.querySelector('.settings-language'),pages.application.querySelector('.update-settings'));const dataImport=wideButton(wt('import'),wideImport);wideLabel(dataImport,'import');dataCol.append(dataImport);const dataHint=wideEl('p','field-hint');wideLabel(dataHint,'importHint');dataCol.append(dataHint,diagnostics);for(const child of [...pages.application.children])dataCol.append(child);system.append(appCol,dataCol);
  groups.append(connection,overlays,system);settings.querySelector('.view-heading').after(groups);settings.querySelector('.settings-savebar').append($('obs-apply'));for(const p of Object.values(pages))p.remove();settings.querySelector('.settings-stack')?.remove();
  wideLabel(settings.querySelector('.view-heading p'),'settingsSub');

@@ -38,6 +38,7 @@ type ReplaySummary struct {
 }
 type PlayerSummary struct {
 	Name       string `json:"name"`
+	Hero       string `json:"hero,omitempty"`
 	ToonHandle string `json:"toonHandle"`
 	Result     string `json:"result"`
 }
@@ -248,7 +249,7 @@ func (d *Dashboard) invalidateReplays() {
 func playersFromReplay(r replay.Replay) []PlayerSummary {
 	out := make([]PlayerSummary, 0, len(r.Players))
 	for _, p := range r.Players {
-		out = append(out, PlayerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Result: p.Result})
+		out = append(out, PlayerSummary{Name: p.Name, ToonHandle: p.ToonHandle, Hero: p.Hero, Result: p.Result})
 	}
 	return out
 }
@@ -375,7 +376,7 @@ func (d *Dashboard) checkReplay() (map[string]any, error) {
 		res["playerError"] = err.Error()
 		d.LogEvent("warning", "player_not_found", d.Text("log.replay_no_player", err.Error()))
 	} else {
-		res["selected"] = PlayerSummary{Name: selected.Name, ToonHandle: selected.ToonHandle, Result: selected.Result}
+		res["selected"] = PlayerSummary{Name: selected.Name, ToonHandle: selected.ToonHandle, Hero: selected.Hero, Result: selected.Result}
 		d.log(d.Text("log.replay_summary", r.Map, selected.Name, selected.Result))
 	}
 	d.invalidateReplays()

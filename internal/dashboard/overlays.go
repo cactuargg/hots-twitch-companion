@@ -77,6 +77,7 @@ func (d *Dashboard) initOverlays() {
 	d.overlays = &overlayRuntime{store: sessions.Open(filepath.Join(d.p.Dir, "sessions.json")), phase: "unknown", seen: map[string]bool{}, retry: map[string]time.Time{}, completed: map[string]bool{}, findLobby: discovery.FindLobby}
 }
 func (d *Dashboard) startOverlays(ctx context.Context) {
+	go d.repairHistoryHeroes(d.Config())
 	o := d.overlays
 	st, err := o.store.Snapshot()
 	if err == nil && st.Token == "" {
@@ -550,16 +551,11 @@ func (d *Dashboard) scanOverlayMatches() {
 			}
 			hash := ""
 			mode := uint32(0)
-			hero := ""
+			hero := p.Hero
 			if b, e := replay.ReadMPQMember(raw, "replay.server.battlelobby"); e == nil {
 				hash = correlation.ContentSHA(b)
 				if l, e := lobby.Parse(b); e == nil {
 					mode = l.AMMID
-					for _, v := range l.Players {
-						if v.ToonHandle == p.ToonHandle {
-							hero = v.Hero
-						}
-					}
 				}
 			}
 			start := int64(0)
@@ -573,9 +569,10 @@ func (d *Dashboard) scanOverlayMatches() {
 				continue
 			}
 			m := sessions.Match{ID: correlation.ContentSHA(raw), Player: player, Map: details.Map, Hero: hero, Mode: mode, Result: p.Result, OriginalResult: p.Result, RecordedAt: details.RecordedAt, StartedAt: start, DiscoveredAt: now.UnixMilli()}
+			m.HeroSource = "replay.details"
 			m.File = filepath.Base(f.Path)
 			for _, v := range details.Players {
-				m.Players = append(m.Players, sessions.Participant{Name: v.Name, ToonHandle: v.ToonHandle, Result: v.Result})
+				m.Players = append(m.Players, sessions.Participant{Name: v.Name, ToonHandle: v.ToonHandle, Hero: v.Hero, Result: v.Result})
 			}
 			matchTime := start
 			if matchTime == 0 {

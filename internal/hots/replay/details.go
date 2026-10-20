@@ -154,6 +154,7 @@ func (r *vReader) read(depth int) (any, error) {
 
 type Player struct {
 	Name       string `json:"name"`
+	Hero       string `json:"hero,omitempty"`
 	ToonHandle string `json:"toonHandle"`
 	Result     string `json:"result"`
 	ResultCode int64  `json:"resultCode"`
@@ -205,11 +206,12 @@ func ParseDetails(raw []byte) (Replay, error) {
 		} else if rc == 2 {
 			out = "loss"
 		}
-		result.Players = append(result.Players, Player{Name: asStr(p[0]), ToonHandle: handle, Result: out, ResultCode: rc, Team: asInt(p[5])})
+		// m_hero in the completed replay describes the hero actually played.
+		// BattleLobby's hero attribute may still contain a pre-ARAM selection.
+		result.Players = append(result.Players, Player{Name: asStr(p[0]), Hero: asStr(p[10]), ToonHandle: handle, Result: out, ResultCode: rc, Team: asInt(p[5])})
 	}
 	if len(result.Players) == 0 {
 		return Replay{}, errors.New("No players in details")
 	}
 	return result, nil
 }
-

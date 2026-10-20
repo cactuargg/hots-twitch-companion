@@ -39,6 +39,7 @@ type Match struct {
 	SessionID       string        `json:"sessionId"`
 	Map             string        `json:"map"`
 	Hero            string        `json:"hero"`
+	HeroSource      string        `json:"heroSource,omitempty"`
 	Mode            uint32        `json:"mode"`
 	Result          string        `json:"result"`
 	OriginalResult  string        `json:"originalResult"`
@@ -54,6 +55,7 @@ type Match struct {
 }
 type Participant struct {
 	Name       string `json:"name"`
+	Hero       string `json:"hero,omitempty"`
 	ToonHandle string `json:"toonHandle"`
 	Result     string `json:"result"`
 }
@@ -192,8 +194,21 @@ func Add(s *State, m Match) bool {
 			}
 			if len(old.Players) == 0 {
 				s.Matches[i].Players = m.Players
+			} else if m.HeroSource == "replay.details" {
+				for j := range s.Matches[i].Players {
+					participant := &s.Matches[i].Players[j]
+					for _, incoming := range m.Players {
+						if participant.ToonHandle != "" && participant.ToonHandle == incoming.ToonHandle {
+							participant.Hero = incoming.Hero
+							break
+						}
+					}
+				}
 			}
-			if old.Hero == "" {
+			if m.HeroSource == "replay.details" {
+				s.Matches[i].Hero = m.Hero
+				s.Matches[i].HeroSource = m.HeroSource
+			} else if old.Hero == "" {
 				s.Matches[i].Hero = m.Hero
 			}
 			if old.Map == "" {

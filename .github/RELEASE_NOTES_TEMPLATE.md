@@ -2,22 +2,19 @@
 
 Portable Windows x64 companion for Heroes of the Storm and Twitch.
 
-## Новое в v0.10.0
+## Новое в v0.10.1
 
-- Постоянные сессии побед/поражений с ручным сбросом, отменой сброса и историей. Перезапуск приложения не обнуляет счёт.
-- Два отдельных источника «Браузер» для OBS: компактный счёт и маска препиков. Ссылки сохраняются между запусками; настройки цвета, размера и изображения доступны в приложении.
-- Увеличенное окно 1100 × 800 со свободным изменением размера. Общий «Обзор» объединяет историю с пагинацией и винрейт по героям/картам справа. Статистика использует всю отфильтрованную выборку, независимо от страницы.
-- Фоновый импорт реплеев пополняет общую статистику без изменения текущего счёта. Копии не считаются дважды; ручные исправления сохраняются.
-- Настройки на одной странице без бокового меню: переключатели, группы кнопок, общая кнопка сохранения и открытые поля заголовка/победы/поражения с предпросмотром.
+- Исправлен герой в истории и винрейте: используется фактически сыгранный герой из replay.details вместо выбора в лобби, включая ARAM.
+- Старые записи автоматически исправляются при запуске, если исходные реплеи доступны. Ручные результаты, исключения и сессии сохраняются.
+- В составе матча рядом с каждым ником отображается герой; игроки сопоставляются по ToonHandle.
+- Исправлены отступы в сессиях, Twitch и раскрытых настройках OBS. Превью оверлеев выровнены; изображение маски показывается целиком.
 
 ## What's new
 
-- Durable win/loss sessions independent of Twitch, with archived sessions, undo, match reassignment and manual corrections.
-- Separate read-only local OBS Browser Sources for score and draft mask, with stable URLs across restarts.
-- Resizable 1100 × 800 Overview combining paginated matches and hero/map win rates. Filters and statistics cover all matching records, not just the visible page.
-- Background replay import with duplicate protection, roster metadata and preservation of current session totals and existing corrections.
-- Grouped settings on one page, switches and segmented controls, shared saving, and editable Prediction title/outcomes with a live preview.
-- Go tests/vet for Desktop and Browser, 94 UI tests, Windows updater subprocess tests and race CI checks gate publication. Existing profiles and saved Twitch authorization remain compatible.
+- Use the actual played hero from replay.details for history and win rates, including ARAM; automatically repair existing entries when replay files remain available.
+- Display each participant's played hero beside their nickname, matched by ToonHandle.
+- Preserve manual results, exclusions and session assignments during repair and reimport.
+- Consistent spacing in session, Twitch and expanded OBS panels; aligned overlay previews and uncropped mask images.
 
 ## OBS and data notes
 

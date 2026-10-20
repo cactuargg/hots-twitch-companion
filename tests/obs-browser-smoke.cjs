@@ -24,5 +24,13 @@ const server=http.createServer(async(req,res)=>{
  assert.equal(await page.locator('#wide-matches .wide-match').count(),2);await page.locator('.wide-match summary').first().click();await page.locator('.wide-match[open] .wide-matchbody .session-match select').first().selectOption('s1');await page.waitForFunction(()=>document.querySelectorAll('#wide-matches .wide-match').length===2);assert.equal(journal.matches[1].needsAssignment,false);
  await page.screenshot({path:'.research/obs-history.png',fullPage:true});
  for(const width of [1100,736,480]){await page.setViewportSize({width,height:800});await page.locator('[data-view=settings]').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'settings overflow '+width);await page.locator('[data-view=dashboard]').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'overview overflow '+width)}await page.screenshot({path:'.research/obs-mobile.png',fullPage:true});
+ await page.setViewportSize({width:1100,height:900});
+ await page.locator('[data-view=dashboard]').click();await page.locator('.wide-archive>summary').click();await page.locator('.wide-archive').screenshot({path:'.research/panels-sessions.png'});
+ await page.locator('[data-view=settings]').click();await page.evaluate(()=>document.querySelectorAll('#view-settings details').forEach(d=>d.open=true));await page.screenshot({path:'.research/panels-expanded.png',fullPage:true});
+ await page.evaluate(()=>document.querySelectorAll('.toast').forEach(el=>el.hidden=true));
+ const segmentHeights=await page.locator('[data-proxy=obs-ranked] label').evaluateAll(labels=>labels.map(el=>el.getBoundingClientRect().height));assert.ok(segmentHeights.every(h=>h<=44),'expanded mode segments must remain compact');
+ await page.locator('.wide-settinggroup').filter({has:page.locator('#obs-enabled')}).screenshot({path:'.research/obs-expanded-detail.png'});
+ for(const width of [736,480]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'expanded settings overflow '+width)}
+ await page.screenshot({path:'.research/panels-expanded-mobile.png',fullPage:true});
  assert.deepEqual(errors,[]);console.log('PASS: UI settings, persistence requests, manual mask, session assignment, 480px layout; screenshots in .research')
 }finally{await browser.close();server.close()}})().catch(e=>{console.error(e);server.close();process.exitCode=1});
