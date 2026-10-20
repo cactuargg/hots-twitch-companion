@@ -12,6 +12,10 @@ import (
 )
 
 func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route string) {
+	if route == "sessions" && r.Method == "GET" {
+		d.overlayAPI(w, r, route)
+		return
+	}
 	if r.Method == "GET" {
 		switch route {
 		case "bootstrap":
@@ -36,6 +40,10 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 		JSONOutput(w, 503, map[string]string{"error": "Application is closing"})
 		return
 	default:
+	}
+	if strings.HasPrefix(route, "sessions/") {
+		d.overlayAPI(w, r, route)
+		return
 	}
 	switch route {
 	case "updates/startup-ready":

@@ -43,6 +43,7 @@ type PlayerSummary struct {
 }
 
 type Dashboard struct {
+	overlays                              *overlayRuntime
 	version                               string
 	postMu                                sync.Mutex
 	hideToTray                            func() error
@@ -66,7 +67,9 @@ type Dashboard struct {
 }
 
 func New(engine Application, p config.Paths, version string) *Dashboard {
-	return &Dashboard{engine: engine, p: p, version: version, shutdown: make(chan struct{}), updates: update.NewManager(update.NewClient(), version, "", "", !engine.Config().DisableUpdateChecks)}
+	d := &Dashboard{engine: engine, p: p, version: version, shutdown: make(chan struct{}), updates: update.NewManager(update.NewClient(), version, "", "", !engine.Config().DisableUpdateChecks)}
+	d.initOverlays()
+	return d
 }
 
 // StartBackground is explicit so tests never contact public services.
@@ -84,6 +87,7 @@ func (d *Dashboard) StartBackground() {
 		d.backgroundCancel = cancel
 		d.mu.Unlock()
 		go d.watchUpdates()
+		d.startOverlays(ctx)
 		go d.watchConnection(ctx, time.Minute)
 		c := d.engine.Config()
 		d.log(i18n.Text(c.Language(), "log.app_started"))

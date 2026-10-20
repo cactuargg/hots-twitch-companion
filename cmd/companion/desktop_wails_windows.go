@@ -40,7 +40,7 @@ func runNativeDesktop(d *dashboard.Dashboard) error {
 	// No Go methods are bound to JavaScript. Existing HTTP-shaped API guards,
 	// JSON requests and payout confirmations are shared with the browser build.
 	return wails.Run(&options.App{
-		Title: "HotS Twitch Companion", Width: 520, Height: 740, MinWidth: 480, MaxWidth: 560, MinHeight: 540,
+		Title: "HotS Twitch Companion", Width: 1100, Height: 800, MinWidth: 480, MinHeight: 540,
 		Frameless:        true,
 		BackgroundColour: options.NewRGB(12, 16, 29),
 		AssetServer:      &assetserver.Options{Handler: handler},

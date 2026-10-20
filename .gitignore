@@ -10,6 +10,8 @@
 # Local application data and sensitive Twitch tokens
 config.json
 state.json
+sessions.json
+sessions.json.new
 tokens.dpapi
 .twitch-tokens.json
 .env
