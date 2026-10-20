@@ -57,8 +57,34 @@ func TestHistoryImportDeduplicatesAndPreservesSessionScore(t *testing.T) {
 	if !m.Historical || m.NeedsAssignment || m.SessionID != "" || m.Hero == "" || m.Map == "" || len(m.Players) != 10 {
 		t.Fatalf("bad imported match: %+v", m)
 	}
+	for i, participant := range m.Players {
+		if participant.Hero == "" || participant.Hero != details.Players[i].Hero || participant.ToonHandle != details.Players[i].ToonHandle {
+			t.Fatalf("incorrect participant hero: %+v", participant)
+		}
+	}
 	if wins, losses := sessions.Score(s, sessions.Current(&s, player).ID); wins != 1 || losses != 0 {
 		t.Fatalf("import changed score: %d-%d", wins, losses)
+	}
+
+	if err := d.overlays.store.Update(func(s *sessions.State) error {
+		s.Matches[1].Hero = "Nova"
+		s.Matches[1].HeroSource = ""
+		for i := range s.Matches[1].Players {
+			s.Matches[1].Players[i].Hero = ""
+		}
+		s.Matches[1].Manual = true
+		s.Matches[1].Excluded = true
+		s.Matches[1].Result = "loss"
+		s.Matches[1].SessionID = "chosen"
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	d.repairHistoryHeroes(a.c)
+	s, _ = d.overlays.store.Snapshot()
+	repaired := s.Matches[1]
+	if len(s.Matches) != 2 || repaired.Hero != details.Players[0].Hero || repaired.Players[0].Hero != details.Players[0].Hero || !repaired.Manual || !repaired.Excluded || repaired.Result != "loss" || repaired.SessionID != "chosen" {
+		t.Fatalf("automatic repair failed or changed user decisions: %+v", repaired)
 	}
 	d.importHistory(a.c)
 	s, _ = d.overlays.store.Snapshot()

@@ -14,3 +14,69 @@
 .wide-ui .wide-more>.wide-proxy{margin:16px 0}
 .wide-ui .settings-savebar{position:static}
 @media(max-width:720px){.wide-ui .wide-settinggroup>.obs-card{display:flex;grid-row:auto}.wide-ui .wide-obs-main,.wide-ui .wide-obs-extra,.wide-ui .wide-obs-actions{padding-bottom:0}}
+
+/* Shared form rhythm for every settings panel. */
+.wide-ui .wide-settings{--form-gap:16px;--control-height:42px;--panel-padding:20px}
+.wide-ui .wide-settingscol{gap:var(--form-gap)}
+.wide-ui .wide-settings :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,.btn){min-height:var(--control-height);border-radius:7px;font-size:13px}
+.wide-ui .wide-settings :is(input[type=text],input[type=number],input[type=url],select){padding:10px 12px}
+.wide-ui .wide-settings .btn{padding:10px 14px;line-height:20px;white-space:normal}
+.wide-ui .wide-settings :is(.wide-field,.wide-settingsmain){gap:8px}
+.wide-ui .wide-settings :is(.wide-switch,.obs-switch.wide-switch){display:flex;align-items:center;justify-content:space-between; margin:0;min-height:var(--control-height);gap:12px;line-height:1.5}
+.wide-ui .wide-settings .wide-switch>span{min-width:0}
+.wide-ui .wide-settings .field-hint{margin:0;line-height:1.6}
+.wide-ui .wide-settings .wide-choice{margin:0}
+.wide-ui .wide-settings .wide-choices span{min-height:34px;line-height:20px}
+.wide-ui .wide-settings .wide-settingsmain{min-height:0}
+.wide-ui .wide-settings .wide-obs-main,.wide-ui .wide-settings .wide-obs-extra,.wide-ui .wide-settings .wide-obs-actions{display:flex;flex-direction:column;gap:var(--form-gap);padding-bottom:var(--form-gap)}
+.wide-ui .wide-settings .wide-obs-main .wide-choice{margin:0}
+.wide-ui .wide-settings .wide-obs-actions input{width:100%;min-width:0}
+.wide-ui .wide-settings .wide-more{padding-top:var(--form-gap)}
+.wide-ui .wide-settings .wide-more[open]>summary{margin-bottom:var(--form-gap)}
+.wide-ui .wide-settings .wide-more>label,.wide-ui .wide-settings .wide-more>.wide-proxy{margin:0 0 var(--form-gap)}
+.wide-ui .wide-settings .wide-more>label:last-child{margin-bottom:0}
+.wide-ui .wide-settings .wide-predictioncopy .field-hint{margin-top:var(--form-gap)}
+.wide-ui .wide-settings .settings-card-heading{margin-top:0}
+@media(max-width:720px){.wide-ui .wide-settings{--panel-padding:18px}.wide-ui .wide-settings .wide-obs-main,.wide-ui .wide-settings .wide-obs-extra,.wide-ui .wide-settings .wide-obs-actions{padding-bottom:0}}
+
+.wide-ui .wide-settinggroup>.wide-obs-help{grid-column:1/-1;margin:0;padding:0 var(--panel-padding) var(--form-gap)}
+
+/* Disclosure bodies retain the same inset as their headings. */
+.wide-ui .wide-archive #session-journal{padding:20px;margin:0;display:flex;flex-direction:column;gap:16px}
+.wide-ui #session-journal>.obs-toolbar{justify-content:space-between;gap:12px}
+.wide-ui #session-journal h2,.wide-ui #session-journal>p{margin:0}
+.wide-ui #session-archive{display:flex;flex-wrap:wrap;gap:12px}
+.wide-ui #session-archive>.btn{min-height:42px;padding:10px 14px}
+.wide-ui .wide-settingscol>.wide-twitch-panel{margin:0;padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:stretch;gap:16px}
+.wide-ui .wide-twitch-panel .settings-card-heading{margin:0;gap:12px;align-items:center}
+.wide-ui .wide-twitch-panel .settings-card-heading h2{margin:0}
+.wide-ui .wide-twitch-panel>.btn{align-self:flex-start}
+.wide-ui .wide-twitch-panel>.settings-advanced{margin:0;width:100%}
+.wide-ui .wide-settingscol .settings-advanced>.secondary-details-body{padding:16px 0 0;display:flex;flex-direction:column;gap:16px}
+.wide-ui .wide-settings .settings-advanced>summary{padding:12px 0}
+.wide-ui .wide-settings .settings-advanced-group{padding:0;min-width:0}
+.wide-ui .wide-settings .settings-advanced-group+.settings-advanced-group{padding-top:16px}
+.wide-ui .wide-settings .settings-advanced-group h3{margin:0 0 12px}
+.wide-ui .wide-settings .secondary-details-body>.btn{align-self:flex-start}
+.wide-ui .wide-settings .wide-more>p{margin:12px 0;line-height:1.6}
+.wide-ui .wide-settings .auth-progress{margin:0;padding:16px;gap:12px}
+.wide-ui .wide-matchbody .session-match{display:flex;flex-direction:column;gap:12px;padding:16px 0}
+.wide-ui .wide-matchbody .session-match p{margin:0}
+.wide-ui .wide-matchbody .obs-toolbar{gap:12px}
+.wide-ui .wide-matchbody .obs-toolbar :is(select,.text-action){min-height:40px;padding:8px 12px}
+@media(max-width:720px){.wide-ui .wide-archive #session-journal{padding:18px}.wide-ui .wide-settingscol>.wide-twitch-panel{padding:14px}}
+
+.wide-ui .wide-settingscol .settings-advanced{background:transparent}
+
+/* Segmented controls keep their compact geometry inside disclosures, too. */
+.wide-ui .wide-settings .wide-more .wide-choices label{display:block;margin:0;gap:0}
+.wide-ui .wide-settings .wide-more .wide-choices span{min-height:34px}
+.wide-ui .wide-settings .wide-obs-extra .obs-preview,.wide-ui .wide-settings .wide-obs-extra .obs-preview-mask{margin-top:auto}
+.wide-ui .wide-settings #obs-scale{padding:0;border:0;background:transparent;min-height:24px;width:100%}
+
+/* Fit the entire uploaded mask into the preview, preserving its aspect ratio. */
+.wide-ui .wide-settingscol .obs-preview-mask{height:200px;max-height:220px;min-height:0;background-size:contain;background-position:center;background-repeat:no-repeat;background-color:var(--bg);flex-shrink:0}
+
+/* Both overlay previews share one frame size and alignment. */
+.wide-ui .wide-settingscol .wide-obs-extra :is(.obs-preview,.obs-preview-mask){height:200px;min-height:200px;max-height:200px;width:100%;box-sizing:border-box;margin-top:auto;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wide-ui .wide-settingscol .wide-obs-extra .obs-preview{padding:20px}

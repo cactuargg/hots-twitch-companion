@@ -131,19 +131,60 @@ func readHistoryMatch(f discovery.ReplayFile, c config.Data, now time.Time) (*se
 		return nil, errors.New("replay has no valid game timestamp")
 	}
 	p := selected[0]
-	m := &sessions.Match{ID: correlation.ContentSHA(raw), Player: playerKey(c), Map: details.Map, Result: p.Result, OriginalResult: p.Result, RecordedAt: details.RecordedAt, DiscoveredAt: now.UnixMilli(), Historical: true, File: filepath.Base(f.Path)}
+	m := &sessions.Match{ID: correlation.ContentSHA(raw), Player: playerKey(c), Map: details.Map, Hero: p.Hero, HeroSource: "replay.details", Result: p.Result, OriginalResult: p.Result, RecordedAt: details.RecordedAt, DiscoveredAt: now.UnixMilli(), Historical: true, File: filepath.Base(f.Path)}
 	for _, v := range details.Players {
-		m.Players = append(m.Players, sessions.Participant{Name: v.Name, ToonHandle: v.ToonHandle, Result: v.Result})
+		m.Players = append(m.Players, sessions.Participant{Name: v.Name, ToonHandle: v.ToonHandle, Hero: v.Hero, Result: v.Result})
 	}
 	if b, e := replay.ReadMPQMember(raw, "replay.server.battlelobby"); e == nil {
 		if l, e := lobby.Parse(b); e == nil {
 			m.Mode = l.AMMID
-			for _, v := range l.Players {
-				if strings.EqualFold(v.ToonHandle, p.ToonHandle) {
-					m.Hero = v.Hero
-				}
-			}
 		}
 	}
 	return m, nil
+}
+
+// Repair only existing entries; upgrading must never import unrelated matches.
+func (d *Dashboard) repairHistoryHeroes(c config.Data) {
+	state, err := d.overlays.store.Snapshot()
+	if err != nil {
+		return
+	}
+	pending := map[string]bool{}
+	for _, m := range state.Matches {
+		if m.Player != playerKey(c) {
+			continue
+		}
+		needsRepair := m.HeroSource != "replay.details"
+		for _, p := range m.Players {
+			needsRepair = needsRepair || p.Hero == ""
+		}
+		if needsRepair {
+			pending[m.ID] = true
+		}
+	}
+	if len(pending) == 0 {
+		return
+	}
+	files, err := overlayReplayFiles(c.ReplayRoot, time.Time{})
+	if err != nil {
+		return
+	}
+	for _, f := range files {
+		select {
+		case <-d.Done():
+			return
+		default:
+		}
+		m, err := readHistoryMatch(f, c, time.Now())
+		if err != nil || m == nil || !pending[m.ID] {
+			continue
+		}
+		if err := d.overlays.store.Update(func(s *sessions.State) error { sessions.Add(s, *m); return nil }); err != nil {
+			return
+		}
+		delete(pending, m.ID)
+		if len(pending) == 0 {
+			return
+		}
+	}
 }
