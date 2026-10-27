@@ -14,6 +14,7 @@ import (
 )
 
 type Preferences struct {
+	CustomCSS      string `json:"customCSS,omitempty"`
 	Enabled        bool   `json:"enabled"`
 	RankedOnly     bool   `json:"rankedOnly"`
 	Style          string `json:"style"`

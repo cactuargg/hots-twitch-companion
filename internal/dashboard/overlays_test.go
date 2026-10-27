@@ -225,3 +225,30 @@ func TestFreshLobbyLoadsMaskAndReplayRestoresIt(t *testing.T) {
 		t.Fatal("replay did not restore mask")
 	}
 }
+
+func TestCustomScoreCSSPersistenceAndEndpoint(t *testing.T) {
+	d := overlayDashboard(t)
+	state, _ := d.overlays.store.Snapshot()
+	p := state.Preferences
+	p.CustomCSS = "#wins { color: gold !important; }"
+	if err := validPreferences(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.overlays.store.Update(func(s *sessions.State) error { s.Preferences = p; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := sessions.Open(filepath.Join(d.p.Dir, "sessions.json")).Snapshot()
+	if err != nil || saved.Preferences.CustomCSS != p.CustomCSS {
+		t.Fatalf("CSS not persisted: %v", err)
+	}
+	r := httptest.NewRequest("GET", "http://"+overlayAddress+"/test-token/custom.css", nil)
+	w := httptest.NewRecorder()
+	d.overlayHandler().ServeHTTP(w, r)
+	if w.Code != 200 || w.Body.String() != p.CustomCSS || !strings.HasPrefix(w.Header().Get("Content-Type"), "text/css") {
+		t.Fatalf("unexpected CSS response: %d %s", w.Code, w.Body.String())
+	}
+	p.CustomCSS = strings.Repeat("a", (64<<10)+1)
+	if validPreferences(p) == nil {
+		t.Fatal("oversized CSS accepted")
+	}
+}
