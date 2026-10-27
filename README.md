@@ -1,4 +1,6 @@
-# HotS Twitch Companion v0.10.0
+# HotS Twitch Companion v0.10.3
+
+v0.10.3 adds custom CSS for the OBS score counter, with an isolated live preview and automatic application. [Setup](docs/sessions-obs.ru.md).
 
 v0.10.0 adds persistent win/loss sessions, two OBS Browser Sources
 and a wide Overview with pagination, hero/map win rates and grouped settings. [Setup and automation limitations (Russian)](docs/sessions-obs.ru.md).

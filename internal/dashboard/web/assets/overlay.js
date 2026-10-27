@@ -1,7 +1,9 @@
 'use strict';
 const maskSource=location.pathname.endsWith('/mask');
-let inFlight=false,lastImage='';
+let inFlight=false,lastImage='',lastCSS=null;
 function draw(s){
+ const css=s.preferences.customCSS||'';
+ if(!maskSource&&css!==lastCSS){lastCSS=css;document.getElementById('custom-css').href='custom.css?rev='+Date.now()}
  const p=s.preferences,score=document.getElementById('score'),mask=document.getElementById('mask');
  score.hidden=maskSource||!p.enabled;mask.hidden=!maskSource||!s.maskVisible;
  score.className=p.style+(p.backdrop?' backdrop':'');score.style.transform=`scale(${p.scale/100})`;

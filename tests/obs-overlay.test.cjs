@@ -19,3 +19,13 @@ test('OBS score survives disconnect, applies appearance and disables independent
  await vm.runInContext('poll()',context);assert.equal(node('wins').textContent,8);
  context.value.preferences.enabled=false;vm.runInContext('draw(value)',context);assert.equal(node('score').hidden,true);
 });
+
+test('custom CSS refreshes only the score stylesheet and clears without a page reload',()=>{
+ const {context,node}=environment('score');
+ context.value={preferences:{enabled:true,style:'nexus',scale:100,labels:true,customCSS:'#wins{color:gold!important}'},wins:7,losses:3};
+ vm.runInContext('draw(value)',context);
+ assert.match(node('custom-css').href,/^custom\.css\?rev=/);
+ node('custom-css').href='unchanged';vm.runInContext('draw(value)',context);assert.equal(node('custom-css').href,'unchanged');
+ context.value.preferences.customCSS='';vm.runInContext('draw(value)',context);assert.match(node('custom-css').href,/^custom\.css\?rev=/);
+ const mask=environment('mask');mask.context.value=context.value;vm.runInContext('draw(value)',mask.context);assert.equal(mask.node('custom-css').href,undefined);
+});

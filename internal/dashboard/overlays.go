@@ -222,6 +222,10 @@ func (d *Dashboard) overlayHandler() http.Handler {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			b, _ := webFiles.ReadFile("web/overlay.html")
 			_, _ = w.Write(b)
+		case "custom.css":
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-store")
+			_, _ = w.Write([]byte(s.Preferences.CustomCSS))
 		case "overlay.js", "overlay.css":
 			mime := "text/javascript"
 			if strings.HasSuffix(route, "css") {
@@ -239,6 +243,9 @@ func (d *Dashboard) overlayHandler() http.Handler {
 var overlayColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 func validPreferences(p sessions.Preferences) error {
+	if len(p.CustomCSS) > 64<<10 {
+		return errors.New("custom CSS must be under 64 KiB")
+	}
 	if p.Style != "nexus" && p.Style != "minimal" || p.Scale < 50 || p.Scale > 200 || !overlayColor.MatchString(p.WinColor) || !overlayColor.MatchString(p.LossColor) {
 		return errors.New("invalid score appearance")
 	}

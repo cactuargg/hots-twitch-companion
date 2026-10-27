@@ -9,6 +9,7 @@ journal.matches=[{id:'a',player:'p',sessionId:'s1',map:'Hanamura',hero:'Jaina',m
 const status={running:false,connected:false,active:false,logs:[],updates:{enabled:false,phase:'idle'}};
 const config={playerName:'Streamer',playerToonHandle:'p',wizardDone:true,lang:'ru',disableUpdateChecks:true,predictionWindowMin:2};
 const server=http.createServer(async(req,res)=>{
+ res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
  const name=new URL(req.url,'http://local').pathname.replace(/^\/demo\//,'');
  if(name.startsWith('api/')){let body='';for await(const b of req)body+=b;let data=body?JSON.parse(body):{};let result={};switch(name){case 'api/bootstrap':result={status,config,replays:[]};break;case 'api/config':Object.assign(config,data);result={config};break;case 'api/status':result=status;break;case 'api/replays':result={replays:[]};break;case 'api/sessions':result=journal;break;case 'api/sessions/preferences':journal.preferences=data.preferences;result=journal;break;case 'api/sessions/new':journal.current={id:'s2',player:'p',startedAt:Date.now()};journal.sessions.push(journal.current);journal.wins=0;journal.losses=0;result=journal;break;case 'api/sessions/match':{const m=journal.matches.find(m=>m.id===data.matchId);Object.assign(m,data);if(data.sessionId)m.needsAssignment=false;result=journal;break}}
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result));return}
@@ -20,6 +21,19 @@ const server=http.createServer(async(req,res)=>{
  await page.locator('.wide-predictioncopy #predictionWindow').selectOption('5');
  await page.locator('[data-proxy=obs-style] input[value=minimal]').check();await page.locator('#predTitle').fill('Победим?');await page.locator('#predWin').fill('Да');await page.locator('#predLoss').fill('Нет');await page.locator('[data-wide-save]').click();
  await page.waitForFunction(()=>!document.querySelector('[data-wide-save]').disabled&&document.querySelector('#settings-save-status').textContent==='Все изменения сохранены');assert.equal(journal.preferences.style,'minimal');assert.equal(config.predictionTitle,'Победим?');assert.equal(config.predictionWindowMin,5);assert.equal(config.predictionWin,'Да');assert.equal(config.predictionLoss,'Нет');
+ await page.locator('#obs-custom-css').evaluate(el=>el.closest('details').open=true);
+ await page.locator('#obs-custom-css').fill('body { background: rgb(12, 13, 14); } #wins { color: rgb(221, 170, 255) !important; }');
+ await page.waitForFunction(()=>{const d=document.querySelector('#obs-css-preview').contentDocument;return d?.getElementById('wins')&&getComputedStyle(d.getElementById('wins')).color==='rgb(221, 170, 255)'});
+ assert.notEqual(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(12, 13, 14)','custom body CSS must remain isolated');
+ await page.locator('[data-wide-save]').click();
+ await page.waitForFunction(()=>!document.querySelector('[data-wide-save]').disabled&&document.querySelector('#settings-save-status').textContent==='Все изменения сохранены');
+ assert.ok(journal.preferences.customCSS.includes('#wins'));
+ await page.reload();await page.waitForSelector('#session-score');await page.locator('[data-view=settings]').click();
+ await page.waitForFunction(()=>document.querySelector('#obs-custom-css').value.includes('#wins'));
+ await page.locator('#obs-custom-css').evaluate(el=>el.closest('details').open=true);
+ await page.locator('#obs-custom-css').fill('');await page.locator('[data-wide-save]').click();
+ await page.waitForFunction(()=>!document.querySelector('[data-wide-save]').disabled&&document.querySelector('#obs-css-preview').hidden);
+ assert.equal(journal.preferences.customCSS,'');
  await page.screenshot({path:'.research/obs-settings.png',fullPage:true});
  await page.locator('[data-view=dashboard]').click();await page.locator('[data-proxy=session-mask-mode] input[value=hide]').check();await page.waitForFunction(()=>document.querySelector('#session-mask-mode').value==='hide');assert.equal(journal.preferences.maskMode,'hide');
  assert.equal(await page.locator('#wide-matches .wide-match').count(),2);await page.locator('.wide-match summary').first().click();await page.locator('.wide-match[open] .wide-matchbody .session-match select').first().selectOption('s1');await page.waitForFunction(()=>document.querySelectorAll('#wide-matches .wide-match').length===2);assert.equal(journal.matches[1].needsAssignment,false);
