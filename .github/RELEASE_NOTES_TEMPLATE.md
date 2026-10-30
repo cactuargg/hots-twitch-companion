@@ -4,11 +4,15 @@ Portable Windows x64 companion for Heroes of the Storm and Twitch.
 
 ## Новое в __TAG__
 
+- Пять готовых CSS-тем счётчика OBS и библиотека своих тем: сохранение под именем, обновление и удаление, с предпросмотром.
+
 - При автоматическом расчёте после матча или ручном выборе Win/Loss прогноз отменяется с возвратом баллов всем участникам, если на любом исходе 0 баллов.
 - Если оба исхода имеют ставки, выполняется обычный расчёт. Проверка происходит при расчёте, а не при закрытии приёма ставок.
 - Решение об отмене сохраняется до запроса в Twitch и переживает сетевые ошибки и перезапуск. При отсутствии достоверных сумм расчёт откладывается.
 
 ## What's new
+
+- Five built-in OBS score themes and a persistent custom CSS theme library with preview, named saves, updates and deletion.
 
 - Refund all participants instead of resolving when either outcome has zero Channel Points at settlement, for automatic and manual Win/Loss.
 - Funded outcomes settle normally. Points are checked at settlement, not when betting closes.

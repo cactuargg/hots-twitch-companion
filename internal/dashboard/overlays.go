@@ -204,6 +204,7 @@ func (d *Dashboard) overlayHandler() http.Handler {
 				imageURL = "image?rev=" + correlation.ContentSHA([]byte(p.MaskImage))
 			}
 			p.MaskImage = ""
+			p.ScoreThemes = nil
 			JSONOutput(w, 200, map[string]any{"preferences": p, "maskImageURL": imageURL, "wins": v["wins"], "losses": v["losses"], "maskVisible": v["maskVisible"]})
 		case "image":
 			parts := strings.SplitN(s.Preferences.MaskImage, ",", 2)
@@ -243,6 +244,23 @@ func (d *Dashboard) overlayHandler() http.Handler {
 var overlayColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 func validPreferences(p sessions.Preferences) error {
+	if len(p.ScoreThemes) > 20 {
+		return errors.New("at most 20 saved score themes are allowed")
+	}
+	names := map[string]bool{}
+	total := 0
+	for _, theme := range p.ScoreThemes {
+		name := strings.TrimSpace(theme.Name)
+		key := strings.ToLower(name)
+		if name == "" || name != theme.Name || len(name) > 120 || strings.ContainsAny(name, "\r\n\t") || names[key] {
+			return errors.New("theme names must be unique and between 1 and 120 bytes")
+		}
+		names[key] = true
+		total += len(theme.CSS)
+		if len(theme.CSS) > 64<<10 || total > 192<<10 {
+			return errors.New("theme CSS exceeds the saved themes limit")
+		}
+	}
 	if len(p.CustomCSS) > 64<<10 {
 		return errors.New("custom CSS must be under 64 KiB")
 	}

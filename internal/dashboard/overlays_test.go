@@ -252,3 +252,37 @@ func TestCustomScoreCSSPersistenceAndEndpoint(t *testing.T) {
 		t.Fatal("oversized CSS accepted")
 	}
 }
+
+func TestSavedScoreThemesPersistenceValidationAndDisplayBoundary(t *testing.T) {
+	d := overlayDashboard(t)
+	state, _ := d.overlays.store.Snapshot()
+	p := state.Preferences
+	p.ScoreThemes = []sessions.ScoreTheme{{Name: "Мой неон", CSS: "#wins { color: lime !important; }"}}
+	p.CustomCSS = p.ScoreThemes[0].CSS
+	raw, _ := json.Marshal(map[string]any{"preferences": p})
+	w := httptest.NewRecorder()
+	d.overlayAPI(w, httptest.NewRequest("POST", "/sessions/preferences", bytes.NewReader(raw)), "sessions/preferences")
+	if w.Code != 200 {
+		t.Fatalf("save: %d %s", w.Code, w.Body.String())
+	}
+	saved, err := sessions.Open(filepath.Join(d.p.Dir, "sessions.json")).Snapshot()
+	if err != nil || len(saved.Preferences.ScoreThemes) != 1 || saved.Preferences.ScoreThemes[0] != p.ScoreThemes[0] {
+		t.Fatalf("library lost: %+v %v", saved.Preferences, err)
+	}
+	w = httptest.NewRecorder()
+	d.overlayHandler().ServeHTTP(w, httptest.NewRequest("GET", "http://"+overlayAddress+"/test-token/state", nil))
+	if w.Code != 200 || strings.Contains(w.Body.String(), "scoreThemes") || strings.Contains(w.Body.String(), "Мой неон") {
+		t.Fatalf("library exposed in OBS state: %s", w.Body.String())
+	}
+	for _, themes := range [][]sessions.ScoreTheme{
+		{{Name: "", CSS: "a"}}, {{Name: " Theme ", CSS: "a"}}, {{Name: "Theme", CSS: "a"}, {Name: "theme", CSS: "b"}},
+		{{Name: "Theme", CSS: strings.Repeat("a", 65537)}},
+		make([]sessions.ScoreTheme, 21),
+		{{Name: "a", CSS: strings.Repeat("a", 65536)}, {Name: "b", CSS: strings.Repeat("b", 65536)}, {Name: "c", CSS: strings.Repeat("c", 65536)}, {Name: "d", CSS: "d"}},
+	} {
+		p.ScoreThemes = themes
+		if validPreferences(p) == nil {
+			t.Fatalf("invalid library accepted: %d entries", len(themes))
+		}
+	}
+}
