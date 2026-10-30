@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const assets = path.join(root, 'internal', 'dashboard', 'web', 'assets');
 const html = fs.readFileSync(path.join(root, 'internal', 'dashboard', 'web', 'index.html'), 'utf8');
-const scripts = ['core.js', 'i18n.js', 'replays.js', 'diagnostics.js', 'onboarding.js', 'desktop.js', 'obs-settings.js', 'wide.js', 'game-profiles.js', 'app.js'];
+const scripts = ['core.js', 'i18n.js', 'replays.js', 'diagnostics.js', 'onboarding.js', 'desktop.js', 'obs-settings.js', 'wide.js', 'game-profiles.js', 'local-statistics.js', 'app.js'];
 const styles = ['style.css', 'wizard.css', 'overview.css', 'onboarding.css', 'diagnostics.css', 'settings.css', 'compact.css', 'obs-settings.css', 'wide.css'];
 
 test('HTML loads every local module in dependency order', () => {
@@ -34,7 +34,7 @@ test('Classic scripts evaluate sequentially in one shared browser scope', () => 
   for (const file of scripts) {
     vm.runInContext(fs.readFileSync(path.join(assets, file), 'utf8'), sandbox, { filename: file });
   }
-  assert.deepEqual(registered.map(e => e.type), ['DOMContentLoaded', 'pagehide', 'DOMContentLoaded', 'DOMContentLoaded', 'DOMContentLoaded', 'pagehide']);
+  assert.deepEqual(registered.map(e => e.type), ['DOMContentLoaded', 'pagehide', 'DOMContentLoaded', 'DOMContentLoaded', 'DOMContentLoaded', 'pagehide', 'DOMContentLoaded', 'pagehide']);
   assert.equal(typeof registered[0].fn, 'function');
   assert.equal(vm.runInContext('typeof renderPlayerPickers', sandbox), 'function');
   assert.equal(vm.runInContext('typeof renderHistory', sandbox), 'function');

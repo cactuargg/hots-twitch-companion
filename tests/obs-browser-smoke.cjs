@@ -9,10 +9,17 @@ journal.matches=[{id:'a',player:'p',sessionId:'s1',map:'Hanamura',hero:'Jaina',m
 let gameReplays=[];
 const status={running:false,connected:false,active:false,logs:[],updates:{enabled:false,phase:'idle'}};
 const config={playerName:'Streamer',playerToonHandle:'p',wizardDone:true,lang:'ru',disableUpdateChecks:true,predictionWindowMin:2};
+function localStatisticsFixture(query){
+ const mode=query.get('mode')||'all',kind=query.get('kind')||'heroes',player=query.get('player')||'',search=(query.get('search')||'').toLowerCase();
+ let rows=kind==='players'?[{key:'2-hero-1-1',name:'Local Player',games:2,wins:1,losses:1,winRate:50}]:[{key:'jaina',name:'Jaina',games:10,wins:6,losses:4,winRate:60},{key:'valla',name:'Valla',games:8,wins:3,losses:5,winRate:37.5}];
+ if(player)rows=[{key:'jaina',name:'Jaina',games:2,wins:1,losses:1,winRate:50}];
+ if(mode==='50101')rows=[];rows=rows.filter(r=>r.name.toLowerCase().includes(search)||r.key.includes(search));
+ return {mode,kind,player,matches:mode==='50101'?0:2,observations:20,skipped:0,page:1,pages:1,total:rows.length,rows};
+}
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
  const name=new URL(req.url,'http://local').pathname.replace(/^\/demo\//,'');
- if(name.startsWith('api/')){let body='';for await(const b of req)body+=b;let data=body?JSON.parse(body):{};let result={};switch(name){case 'api/bootstrap':result={status,config,replays:gameReplays};break;case 'api/config':Object.assign(config,data);result={config};break;case 'api/status':result=status;break;case 'api/replays':result={replays:gameReplays};break;case 'api/sessions':result=journal;break;case 'api/sessions/preferences':journal.preferences=data.preferences;result=journal;break;case 'api/sessions/new':journal.current={id:'s2',player:'p',startedAt:Date.now()};journal.sessions.push(journal.current);journal.wins=0;journal.losses=0;result=journal;break;case 'api/sessions/match':{const m=journal.matches.find(m=>m.id===data.matchId);Object.assign(m,data);if(data.sessionId)m.needsAssignment=false;result=journal;break}}
+ if(name.startsWith('api/')){let body='';for await(const b of req)body+=b;let data=body?JSON.parse(body):{};let result={};switch(name){case 'api/statistics':result=localStatisticsFixture(new URL(req.url,'http://local').searchParams);break;case 'api/bootstrap':result={status,config,replays:gameReplays};break;case 'api/config':Object.assign(config,data);result={config};break;case 'api/status':result=status;break;case 'api/replays':result={replays:gameReplays};break;case 'api/sessions':result=journal;break;case 'api/sessions/preferences':journal.preferences=data.preferences;result=journal;break;case 'api/sessions/new':journal.current={id:'s2',player:'p',startedAt:Date.now()};journal.sessions.push(journal.current);journal.wins=0;journal.losses=0;result=journal;break;case 'api/sessions/match':{const m=journal.matches.find(m=>m.id===data.matchId);Object.assign(m,data);if(data.sessionId)m.needsAssignment=false;result=journal;break}}
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result));return}
  const file=path.join(root,name||'index.html');if(!file.startsWith(root)||!fs.existsSync(file)){res.statusCode=404;res.end();return}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html');res.end(fs.readFileSync(file))
 });
@@ -112,5 +119,21 @@ const server=http.createServer(async(req,res)=>{
  assert.equal(config.gameProfiles.length,1);assert.equal(config.playerToonHandle,'p');assert.equal(JSON.stringify(journal.matches),oldHistory);
  await page.locator('.game-profiles').filter({has:page.locator('#game-profile-select')}).screenshot({path:'.research/game-profiles-settings.png'});
  for(const width of [1100,736,480]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'profiles overflow '+width)}
+
+ await page.locator('[data-view=dashboard]').click();await page.locator('#local-statistics>summary').click();
+ await page.waitForSelector('#local-stats-table tbody tr');
+ assert.equal(await page.locator('#local-stats-table tbody tr').count(),2);
+ assert.ok((await page.locator('#local-stats-table').textContent()).includes('60.0%'));
+ await page.locator('#local-stats-kind').selectOption('players');await page.waitForSelector('#local-stats-table button');
+ await page.locator('#local-stats-table button').click();await page.waitForFunction(()=>document.querySelector('#local-stats-scope').textContent.includes('Local Player'));
+ assert.ok((await page.locator('#local-stats-table').textContent()).includes('50.0%'));
+ await page.locator('#local-stats-back').click();await page.waitForFunction(()=>document.querySelector('#local-stats-back').hidden);
+ await page.locator('#local-stats-mode').selectOption('50101');await page.waitForFunction(()=>!document.querySelector('#local-stats-table table'));
+ await page.locator('#local-stats-mode').selectOption('50091');await page.waitForSelector('#local-stats-table tbody tr');
+ await page.locator('#local-stats-search').fill('valla');await page.waitForFunction(()=>document.querySelectorAll('#local-stats-table tbody tr').length===1);
+ assert.ok((await page.locator('#local-stats-table').textContent()).includes('37.5%'));
+ await page.locator('#local-stats-search').fill('');await page.waitForFunction(()=>document.querySelectorAll('#local-stats-table tbody tr').length===2);
+ for(const width of [1100,736,480]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'local statistics overflow '+width)}
+ await page.setViewportSize({width:1100,height:900});await page.locator('#local-statistics').screenshot({path:'.research/local-replay-statistics.png'});
  assert.deepEqual(errors,[]);console.log('PASS: UI settings, persistence requests, manual mask, session assignment, 480px layout; screenshots in .research')
 }finally{await browser.close();server.close()}})().catch(e=>{console.error(e);server.close();process.exitCode=1});

@@ -5,8 +5,8 @@ import (
 	"hots-twitch-companion/internal/config"
 	"hots-twitch-companion/internal/hots/correlation"
 	"hots-twitch-companion/internal/hots/discovery"
-	"hots-twitch-companion/internal/hots/lobby"
 	"hots-twitch-companion/internal/hots/replay"
+	"hots-twitch-companion/internal/replaystats"
 	"hots-twitch-companion/internal/sessions"
 	"path/filepath"
 	"strings"
@@ -33,6 +33,7 @@ func (d *Dashboard) startHistoryImport() error {
 	o.importProcessed = 0
 	o.importTotal = 0
 	o.importAdded = 0
+	o.importIndexed = 0
 	o.importErrors = 0
 	o.importError = ""
 	o.mu.Unlock()
@@ -52,12 +53,23 @@ func (d *Dashboard) importHistory(c config.Data) {
 	o.importTotal = len(files)
 	o.mu.Unlock()
 	var pending []sessions.Match
+	var pendingRecords []replaystats.Record
+	parsed := map[string]replaystats.Record{}
 	flush := func() error {
-		if len(pending) == 0 {
+		if len(pendingRecords) == 0 {
 			return nil
 		}
+		indexed, err := d.statistics.Add(pendingRecords)
+		if err != nil {
+			return err
+		}
+		o.mu.Lock()
+		o.importIndexed += indexed
+		o.mu.Unlock()
+		pendingRecords = nil
+		clear(parsed)
 		added := 0
-		err := o.store.Update(func(s *sessions.State) error {
+		err = o.store.Update(func(s *sessions.State) error {
 			for _, m := range pending {
 				if sessions.Add(s, m) {
 					added++
@@ -80,9 +92,13 @@ func (d *Dashboard) importHistory(c config.Data) {
 			return
 		default:
 		}
-		m, err := readHistoryMatch(f, c, time.Now())
-		if err == nil && m != nil {
-			pending = append(pending, *m)
+		record, err := d.readStatisticsRecord(f, time.Now(), parsed)
+		if err == nil {
+			parsed[record.ID] = record
+			pendingRecords = append(pendingRecords, record)
+			if m := historyMatchFromRecord(record, c, filepath.Base(f.Path)); m != nil {
+				pending = append(pending, *m)
+			}
 		}
 		o.mu.Lock()
 		o.importProcessed++
@@ -91,7 +107,7 @@ func (d *Dashboard) importHistory(c config.Data) {
 			o.importError = err.Error()
 		}
 		o.mu.Unlock()
-		if len(pending) >= 32 {
+		if len(pendingRecords) >= 32 {
 			if err := flush(); err != nil {
 				fail(err)
 				return
@@ -110,14 +126,14 @@ func readHistoryMatch(f discovery.ReplayFile, c config.Data, now time.Time) (*se
 	if err != nil {
 		return nil, err
 	}
-	member, err := replay.ReadMPQMember(raw, "replay.details")
+	record, err := parseStatisticsRecord(raw, now)
 	if err != nil {
 		return nil, err
 	}
-	details, err := replay.ParseDetails(member)
-	if err != nil {
-		return nil, err
-	}
+	return historyMatchFromRecord(record, c, filepath.Base(f.Path)), nil
+}
+func historyMatchFromRecord(record replaystats.Record, c config.Data, file string) *sessions.Match {
+	details := record.Replay
 	var selected []replay.Player
 	for _, p := range details.Players {
 		if c.PlayerToonHandle != "" && strings.EqualFold(p.ToonHandle, c.PlayerToonHandle) || c.PlayerToonHandle == "" && strings.EqualFold(p.Name, c.PlayerName) {
@@ -125,22 +141,14 @@ func readHistoryMatch(f discovery.ReplayFile, c config.Data, now time.Time) (*se
 		}
 	}
 	if len(selected) != 1 {
-		return nil, nil
-	}
-	if details.RecordedAt <= 0 || details.RecordedAt > now.Add(2*time.Minute).UnixMilli() {
-		return nil, errors.New("replay has no valid game timestamp")
+		return nil
 	}
 	p := selected[0]
-	m := &sessions.Match{ID: correlation.ContentSHA(raw), Player: playerKey(c), Map: details.Map, Hero: p.Hero, HeroSource: "replay.details", Result: p.Result, OriginalResult: p.Result, RecordedAt: details.RecordedAt, DiscoveredAt: now.UnixMilli(), Historical: true, File: filepath.Base(f.Path)}
+	m := &sessions.Match{ID: record.ID, Player: playerKey(c), Map: details.Map, Hero: p.Hero, HeroSource: "replay.details", Result: p.Result, OriginalResult: p.Result, RecordedAt: details.RecordedAt, DiscoveredAt: time.Now().UnixMilli(), Historical: true, File: file, Mode: record.Mode}
 	for _, v := range details.Players {
 		m.Players = append(m.Players, sessions.Participant{Name: v.Name, ToonHandle: v.ToonHandle, Hero: v.Hero, Result: v.Result})
 	}
-	if b, e := replay.ReadMPQMember(raw, "replay.server.battlelobby"); e == nil {
-		if l, e := lobby.Parse(b); e == nil {
-			m.Mode = l.AMMID
-		}
-	}
-	return m, nil
+	return m
 }
 
 // Repair only existing entries; upgrading must never import unrelated matches.

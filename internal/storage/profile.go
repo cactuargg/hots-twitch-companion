@@ -16,7 +16,7 @@ const ResetMarker = ".reset-profile"
 func ApplyProfileReset(dir, configFile, stateFile, tokenFile string) error {
  marker:=filepath.Join(dir,ResetMarker)
  if _,err:=os.Stat(marker);errors.Is(err,os.ErrNotExist){return nil}else if err!=nil{return err}
- for _,name:=range []string{configFile,stateFile,tokenFile,filepath.Join(dir,"sessions.json"),filepath.Join(dir,"sessions.json.new"),configFile+".new",stateFile+".new",tokenFile+".new",marker+".new"}{
+ for _,name:=range []string{configFile,stateFile,tokenFile,filepath.Join(dir,"sessions.json"),filepath.Join(dir,"sessions.json.new"),filepath.Join(dir,"replay-statistics.json"),filepath.Join(dir,"replay-statistics.json.new"),configFile+".new",stateFile+".new",tokenFile+".new",marker+".new"}{
   if err:=os.Remove(name);err!=nil && !errors.Is(err,os.ErrNotExist){return err}
  }
  if err:=os.RemoveAll(filepath.Join(dir,"webview2"));err!=nil{return err}

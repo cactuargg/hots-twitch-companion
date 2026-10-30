@@ -14,7 +14,7 @@ func TestResetRemovesOnlyCompanionData(t *testing.T) {
  state:=filepath.Join(dir,"state.json")
  token:=filepath.Join(dir,"tokens.dpapi")
  marker:=filepath.Join(dir,ResetMarker)
- for _,name:=range []string{config,state,token,marker,config+".new",state+".new",token+".new"}{
+ for _,name:=range []string{config,state,token,marker,filepath.Join(dir,"replay-statistics.json"),filepath.Join(dir,"replay-statistics.json.new"),config+".new",state+".new",token+".new"}{
   if err:=os.WriteFile(name,[]byte("secret"),0600);err!=nil{t.Fatal(err)}
  }
  keep:=filepath.Join(dir,"unrelated.txt")
@@ -22,7 +22,7 @@ func TestResetRemovesOnlyCompanionData(t *testing.T) {
  webview:=filepath.Join(dir,"webview2")
  if err:=os.MkdirAll(webview,0700);err!=nil{t.Fatal(err)}
  if err:=ApplyProfileReset(dir,config,state,token);err!=nil{t.Fatal(err)}
- for _,file:=range []string{config,state,token,marker,config+".new",state+".new",token+".new"}{
+ for _,file:=range []string{config,state,token,marker,filepath.Join(dir,"replay-statistics.json"),filepath.Join(dir,"replay-statistics.json.new"),config+".new",state+".new",token+".new"}{
   if _,err:=os.Stat(file);!errors.Is(err,os.ErrNotExist){t.Fatalf("profile data survived: %s %v",file,err)}
  }
  if _,err:=os.Stat(webview);!errors.Is(err,os.ErrNotExist){t.Fatal("WebView data survived reset")}

@@ -22,6 +22,7 @@ import (
 	"hots-twitch-companion/internal/hots/discovery"
 	"hots-twitch-companion/internal/hots/lobby"
 	"hots-twitch-companion/internal/hots/replay"
+	"hots-twitch-companion/internal/replaystats"
 	"hots-twitch-companion/internal/sessions"
 )
 
@@ -43,6 +44,7 @@ type overlayRuntime struct {
 	importing       bool
 	importProcessed int
 	importTotal     int
+	importIndexed   int
 	importAdded     int
 	importErrors    int
 	importError     string
@@ -156,7 +158,7 @@ func (d *Dashboard) overlaySnapshot(journal bool) map[string]any {
 	}
 	res := map[string]any{"preferences": s.Preferences, "current": cur, "wins": wins, "losses": losses, "maskVisible": visible, "phase": o.phase, "error": problem, "scanError": o.scanError, "player": player, "checkedAt": o.checkedAt}
 	if journal {
-		res["import"] = map[string]any{"running": o.importing, "processed": o.importProcessed, "total": o.importTotal, "added": o.importAdded, "errors": o.importErrors, "error": o.importError}
+		res["import"] = map[string]any{"running": o.importing, "processed": o.importProcessed, "total": o.importTotal, "added": o.importAdded, "indexed": o.importIndexed, "errors": o.importErrors, "error": o.importError}
 		res["sessions"] = s.Sessions
 		res["matches"] = s.Matches
 		if s.Token != "" && problem == "" {
@@ -416,9 +418,7 @@ func (d *Dashboard) scanOverlayMatches() {
 	if err != nil {
 		return
 	}
-	if !s.Preferences.Enabled && !s.Preferences.MaskEnabled {
-		return
-	}
+
 	if player == "" {
 		o.mu.Lock()
 		o.scanError = "Select a player in settings"
@@ -534,12 +534,14 @@ func (d *Dashboard) scanOverlayMatches() {
 	} else {
 		sort.Slice(files, func(i, j int) bool { return files[i].Modified.Before(files[j].Modified) })
 		processed := 0
+		var statisticsPending []replaystats.Record
+		var statisticsKeys []string
 		for _, f := range files {
 			key := fmt.Sprintf("%s|%d|%d|%s", f.Path, f.Modified.UnixNano(), f.Size, player)
 			if o.seen[key] || now.Before(o.retry[key]) || now.Sub(f.Modified) < 8*time.Second {
 				continue
 			}
-			if processed >= 16 {
+			if processed >= 4 {
 				break
 			}
 			processed++
@@ -549,16 +551,19 @@ func (d *Dashboard) scanOverlayMatches() {
 				scanErr = e
 				continue
 			}
-			member, e := replay.ReadMPQMember(raw, "replay.details")
-			if e != nil {
-				scanErr = fmt.Errorf("%s: %w", filepath.Base(f.Path), e)
-				continue
+			record, known := d.statistics.Get(correlation.ContentSHA(raw))
+			if !known {
+				record, e = parseStatisticsRecord(raw, now)
+				if e != nil {
+					scanErr = fmt.Errorf("%s: %w", filepath.Base(f.Path), e)
+					continue
+				}
 			}
-			details, e := replay.ParseDetails(member)
-			if e != nil {
-				scanErr = e
-				continue
+			if !known {
+				statisticsPending = append(statisticsPending, record)
+				statisticsKeys = append(statisticsKeys, key)
 			}
+			details := record.Replay
 			p, e := replay.FindOutcome(details, c.PlayerName, c.PlayerToonHandle, c.Language())
 			// Keep unknown outcomes in the journal when the identity itself is unique.
 			if e != nil {
@@ -574,15 +579,9 @@ func (d *Dashboard) scanOverlayMatches() {
 				}
 				p = candidates[0]
 			}
-			hash := ""
-			mode := uint32(0)
+			hash := record.LobbyHash
+			mode := record.Mode
 			hero := p.Hero
-			if b, e := replay.ReadMPQMember(raw, "replay.server.battlelobby"); e == nil {
-				hash = correlation.ContentSHA(b)
-				if l, e := lobby.Parse(b); e == nil {
-					mode = l.AMMID
-				}
-			}
 			start := int64(0)
 			for _, v := range s.Observations {
 				if v.Hash == hash && v.Player == player && !v.Ambiguous {
@@ -624,6 +623,12 @@ func (d *Dashboard) scanOverlayMatches() {
 					o.phase = "between_games"
 				}
 				o.mu.Unlock()
+			}
+		}
+		if _, err := d.statistics.Add(statisticsPending); err != nil {
+			scanErr = err
+			for _, key := range statisticsKeys {
+				delete(o.seen, key)
 			}
 		}
 	}

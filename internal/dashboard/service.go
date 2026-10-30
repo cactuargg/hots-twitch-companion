@@ -8,6 +8,7 @@ import (
 	"hots-twitch-companion/internal/hots/discovery"
 	"hots-twitch-companion/internal/hots/replay"
 	"hots-twitch-companion/internal/i18n"
+	"hots-twitch-companion/internal/replaystats"
 	"hots-twitch-companion/internal/update"
 	"net"
 	"net/http"
@@ -44,6 +45,7 @@ type PlayerSummary struct {
 }
 
 type Dashboard struct {
+	statistics                            *replaystats.Store
 	overlays                              *overlayRuntime
 	version                               string
 	postMu                                sync.Mutex
@@ -69,6 +71,7 @@ type Dashboard struct {
 
 func New(engine Application, p config.Paths, version string) *Dashboard {
 	d := &Dashboard{engine: engine, p: p, version: version, shutdown: make(chan struct{}), updates: update.NewManager(update.NewClient(), version, "", "", !engine.Config().DisableUpdateChecks)}
+	d.statistics = replaystats.Open(filepath.Join(p.Dir, "replay-statistics.json"))
 	d.initOverlays()
 	return d
 }
