@@ -51,7 +51,7 @@ func (DiskSource) Correlate(root string, p *prediction.Prediction, now time.Time
 func (e *Engine) newTwitch(cfg config.Data) (*twitchpkg.Client, error) {
 	return twitchpkg.New(cfg.TwitchClientID(e.defaultClientID), cfg.Language(), twitchpkg.FileTokens{Path: e.p.Secret}, e.request)
 }
-func (e *Engine) Config() config.Data { e.mu.Lock(); defer e.mu.Unlock(); return e.cfg }
+func (e *Engine) Config() config.Data { e.mu.Lock(); defer e.mu.Unlock(); return e.cfg.Clone() }
 func (e *Engine) ClientID() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -74,7 +74,7 @@ func (e *Engine) PollDevice(ctx context.Context, d twitchpkg.DeviceResponse, log
 func (e *Engine) Snapshot() (bool, config.Data, prediction.State, correlation.Scan) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return e.running, e.cfg, prediction.CloneState(e.state), e.scan
+	return e.running, e.cfg.Clone(), prediction.CloneState(e.state), e.scan
 }
 
 // RequestProfileReset writes the marker under the same action lock as all

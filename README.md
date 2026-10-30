@@ -1,4 +1,6 @@
-# HotS Twitch Companion v0.10.4
+# HotS Twitch Companion v0.11.0
+
+v0.11.0 adds game profiles for switching between HotS accounts without resetting Twitch, OBS or theme settings. Your current player becomes the first profile automatically; history stays linked to each player. [Game profiles](docs/game-profiles.ru.md).
 
 v0.10.4 cancels the Prediction and refunds all points if either outcome has 0 points at settlement. The refund decision survives network errors and restarts. [Details](docs/live-predictions.ru.md).
 

@@ -39,6 +39,11 @@ type Engine struct {
 }
 
 func New(p config.Paths, cfg config.Data, options Options) (*Engine, error) {
+	var profileErr error
+	cfg, profileErr = config.NormalizeProfiles(cfg)
+	if profileErr != nil {
+		return nil, profileErr
+	}
 	e := &Engine{p: p, cfg: cfg, log: options.Log, logEvent: options.LogEvent, clock: options.Clock, defaultClientID: options.DefaultClientID, request: options.Request, source: options.Source}
 	if e.log == nil {
 		e.log = func(string) {}
@@ -104,6 +109,19 @@ func (e *Engine) UpdateConfig(cfg config.Data) error {
 	defer e.actionMu.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if cfg.GameProfiles == nil {
+		cfg.GameProfiles = append([]config.GameProfile(nil), e.cfg.GameProfiles...)
+		cfg.ActiveGameProfile = e.cfg.ActiveGameProfile
+	}
+	var err error
+	cfg, err = config.NormalizeProfiles(cfg)
+	if err != nil {
+		return err
+	}
+	playerChanged := config.PlayerSelectionChanged(e.cfg, cfg)
+	if playerChanged && (e.state.Active != nil || e.state.UnconfirmedCreation != nil) {
+		return errors.New(i18n.Text(e.cfg.Language(), "config.finish_prediction_profile"))
+	}
 	if e.running && !e.safeLiveChange(cfg) {
 		return errors.New(i18n.Text(e.cfg.Language(), "config.stop_watch_first"))
 	}
@@ -114,6 +132,15 @@ func (e *Engine) UpdateConfig(cfg config.Data) error {
 	// Changing it would strand the remote Prediction even after reauth.
 	if (e.state.Active != nil && !e.state.Active.DryRun || e.state.UnconfirmedCreation != nil) && cfg.TwitchClientID(e.defaultClientID) != e.cfg.TwitchClientID(e.defaultClientID) {
 		return errors.New("Finish or cancel the active Twitch Prediction before changing the OAuth Client ID")
+	}
+	if playerChanged && (e.state.PendingLobby != nil || len(e.state.PendingLobbies) > 0) {
+		next := e.state
+		next.PendingLobby = nil
+		next.PendingLobbies = nil
+		if err := e.store.Save(next); err != nil {
+			return err
+		}
+		e.state = next
 	}
 	// Preserve the best known duration of a legacy active prediction before
 	// replacing its fallback config. A failed state write must block the change.
