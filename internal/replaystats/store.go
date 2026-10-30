@@ -25,16 +25,17 @@ type database struct {
 	Matches []Record `json:"matches"`
 }
 type Store struct {
-	mu     sync.Mutex
-	path   string
-	data   database
-	byID   map[string]int
-	cached map[string]Summary
-	err    error
+	mu      sync.Mutex
+	path    string
+	data    database
+	byID    map[string]int
+	byLobby map[string]bool
+	cached  map[string]Summary
+	err     error
 }
 
 func Open(path string) *Store {
-	s := &Store{path: path, data: database{Version: 1}, byID: map[string]int{}}
+	s := &Store{path: path, data: database{Version: 1}, byID: map[string]int{}, byLobby: map[string]bool{}}
 	s.err = storage.LoadJSON(path, &s.data)
 	if s.err == nil && s.data.Version != 1 {
 		s.err = errors.New("unsupported replay statistics version")
@@ -47,6 +48,9 @@ func Open(path string) *Store {
 			s.err = errors.New("duplicate replay in statistics database")
 		}
 		s.byID[m.ID] = i
+		if m.LobbyHash != "" {
+			s.byLobby[m.LobbyHash] = true
+		}
 	}
 	return s
 }
@@ -94,6 +98,9 @@ func (s *Store) Add(records []Record) (int, error) {
 	s.data = next
 	for i, m := range next.Matches {
 		s.byID[m.ID] = i
+		if m.LobbyHash != "" {
+			s.byLobby[m.LobbyHash] = true
+		}
 	}
 	s.cached = nil
 	return added, nil
@@ -231,3 +238,68 @@ func (s *Store) Summary(mode string, player string) (Summary, error) {
 }
 
 func modeKey(mode uint32) string { return strconv.FormatUint(uint64(mode), 10) }
+
+// LobbyCompleted prevents a leftover lobby file from being shown as a live game.
+func (s *Store) LobbyCompleted(hash string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.byLobby[hash]
+}
+func (s *Store) Revision() int { s.mu.Lock(); defer s.mu.Unlock(); return len(s.data.Matches) }
+
+type Person struct {
+	Overall  Row
+	Heroes   []Row
+	Meetings int
+}
+
+// People reuses the per-mode aggregates and counts joint observed matches. It
+// never infers current teams from roster order or a person's past results.
+func (s *Store) People(mode, streamer string, ids []string) (map[string]Person, error) {
+	for {
+		if _, err := s.Summary(mode, ""); err != nil {
+			return nil, err
+		}
+		s.mu.Lock()
+		cached, ok := s.cached[mode]
+		if !ok {
+			s.mu.Unlock()
+			continue
+		}
+		people := map[string]Person{}
+		wanted := map[string]bool{}
+		for _, id := range ids {
+			wanted[strings.ToLower(id)] = true
+		}
+		for _, p := range cached.Players {
+			if wanted[p.Key] {
+				people[p.Key] = Person{Overall: p, Heroes: append([]Row(nil), cached.PlayerHeroes[p.Key]...)}
+			}
+		}
+		for _, m := range s.data.Matches {
+			if mode != modeKey(m.Mode) {
+				continue
+			}
+			present := map[string]int{}
+			for _, p := range m.Replay.Players {
+				if validResult(p.Result) {
+					present[strings.ToLower(p.ToonHandle)]++
+				}
+			}
+			if present[strings.ToLower(streamer)] != 1 {
+				continue
+			}
+			for id, n := range present {
+				if n == 1 && wanted[id] && id != strings.ToLower(streamer) {
+					p, ok := people[id]
+					if ok {
+						p.Meetings++
+						people[id] = p
+					}
+				}
+			}
+		}
+		s.mu.Unlock()
+		return people, nil
+	}
+}

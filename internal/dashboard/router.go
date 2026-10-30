@@ -34,6 +34,11 @@ func NewHTTPHandler(addr, secret string, api func(http.ResponseWriter, *http.Req
 			}
 		}
 		sub := strings.TrimPrefix(r.URL.Path, prefix)
+		// Only the trusted widget preview document can be framed by this UI origin.
+		if sub == "assets/lobby-widget.html" {
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+			w.Header().Set("Content-Security-Policy", strings.Replace(w.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'", "frame-ancestors 'self'", 1))
+		}
 		if !strings.HasPrefix(sub, "api/") {
 			if sub == "" {
 				page, err := webFiles.ReadFile("web/index.html")

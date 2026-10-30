@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),
 const root=path.resolve('internal/dashboard/web');
 fs.mkdirSync('.research',{recursive:true});
 const prefs={enabled:true,rankedOnly:false,style:'nexus',scale:100,backdrop:true,winColor:'#72dcff',lossColor:'#ff91b2',labels:true,maskEnabled:true,maskMode:'auto',maskRankedOnly:true};
-let journal={preferences:prefs,current:{id:'s1',player:'p',startedAt:Date.now()-3600000},sessions:[],matches:[],player:'p',wins:7,losses:3,phase:'unknown',scoreURL:'http://127.0.0.1:18765/demo/score',maskURL:'http://127.0.0.1:18765/demo/mask'};
+let journal={preferences:prefs,current:{id:'s1',player:'p',startedAt:Date.now()-3600000},sessions:[],matches:[],player:'p',wins:7,losses:3,phase:'unknown',lobbyURL:'http://127.0.0.1:18765/demo/lobby',scoreURL:'http://127.0.0.1:18765/demo/score',maskURL:'http://127.0.0.1:18765/demo/mask'};
 journal.sessions=[journal.current];
 journal.matches=[{id:'a',player:'p',sessionId:'s1',map:'Hanamura',hero:'Jaina',mode:50091,result:'win',startedAt:Date.now()-1800000},{id:'b',player:'p',map:'Towers of Doom',hero:'Valla',mode:50091,result:'loss',needsAssignment:true,recordedAt:Date.now()-100000}];
 let gameReplays=[];
@@ -16,12 +16,17 @@ function localStatisticsFixture(query){
  if(mode==='50101')rows=[];rows=rows.filter(r=>r.name.toLowerCase().includes(search)||r.key.includes(search));
  return {mode,kind,player,matches:mode==='50101'?0:2,observations:20,skipped:0,page:1,pages:1,total:rows.length,rows};
 }
+let lobbyWidgetPhase='live',lobbyWidgetOffline=false;
+function lobbyWidgetFixture(){return {enabled:!!journal.preferences.lobbyWidgetEnabled,phase:lobbyWidgetPhase,language:config.lang||'ru',mode:50091,heroPending:false,streamer:{name:config.playerName,hero:'Джайна',overall:{games:70,wins:39,losses:31,winRate:55.7},onHero:{games:40,wins:24,losses:16,winRate:60}},familiar:[{name:'Known <img src=x onerror=alert(1)>',hero:'Валла',meetings:7,overall:{games:20,wins:11,losses:9,winRate:55},onHero:{games:8,wins:5,losses:3,winRate:62.5}}]}}
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
  const name=new URL(req.url,'http://local').pathname.replace(/^\/demo\//,'');
- if(name.startsWith('api/')){let body='';for await(const b of req)body+=b;let data=body?JSON.parse(body):{};let result={};switch(name){case 'api/statistics':result=localStatisticsFixture(new URL(req.url,'http://local').searchParams);break;case 'api/bootstrap':result={status,config,replays:gameReplays};break;case 'api/config':Object.assign(config,data);result={config};break;case 'api/status':result=status;break;case 'api/replays':result={replays:gameReplays};break;case 'api/sessions':result=journal;break;case 'api/sessions/preferences':journal.preferences=data.preferences;result=journal;break;case 'api/sessions/new':journal.current={id:'s2',player:'p',startedAt:Date.now()};journal.sessions.push(journal.current);journal.wins=0;journal.losses=0;result=journal;break;case 'api/sessions/match':{const m=journal.matches.find(m=>m.id===data.matchId);Object.assign(m,data);if(data.sessionId)m.needsAssignment=false;result=journal;break}}
+ if(name.startsWith('api/')){let body='';for await(const b of req)body+=b;let data=body?JSON.parse(body):{};let result={};switch(name){case 'api/lobby-widget':result=lobbyWidgetFixture();break;case 'api/statistics':result=localStatisticsFixture(new URL(req.url,'http://local').searchParams);break;case 'api/bootstrap':result={status,config,replays:gameReplays};break;case 'api/config':Object.assign(config,data);result={config};break;case 'api/status':result=status;break;case 'api/replays':result={replays:gameReplays};break;case 'api/sessions':result=journal;break;case 'api/sessions/preferences':journal.preferences=data.preferences;result=journal;break;case 'api/sessions/new':journal.current={id:'s2',player:'p',startedAt:Date.now()};journal.sessions.push(journal.current);journal.wins=0;journal.losses=0;result=journal;break;case 'api/sessions/match':{const m=journal.matches.find(m=>m.id===data.matchId);Object.assign(m,data);if(data.sessionId)m.needsAssignment=false;result=journal;break}}
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(result));return}
- const file=path.join(root,name||'index.html');if(!file.startsWith(root)||!fs.existsSync(file)){res.statusCode=404;res.end();return}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html');res.end(fs.readFileSync(file))
+ if(name==='assets/lobby-widget.html')res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'self'");
+ if(name==='lobby-state'){res.statusCode=lobbyWidgetOffline?503:200;res.setHeader('Content-Type','application/json');res.end(JSON.stringify(lobbyWidgetFixture()));return}
+ const widgetAsset=name==='lobby'?'assets/lobby-widget.html':['lobby-widget.js','lobby-widget.css'].includes(name)?'assets/'+name:name;
+ const file=path.join(root,widgetAsset||'index.html');if(!file.startsWith(root)||!fs.existsSync(file)){res.statusCode=404;res.end();return}res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html');res.end(fs.readFileSync(file))
 });
 (async()=>{await new Promise(r=>server.listen(18766,'127.0.0.1',r));const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1000,height:850}});const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.stack)});await page.goto('http://127.0.0.1:18766/demo/');await page.waitForSelector('#session-score');await page.waitForFunction(()=>document.querySelector('#session-score').textContent==='7–3');
@@ -135,5 +140,32 @@ const server=http.createServer(async(req,res)=>{
  await page.locator('#local-stats-search').fill('');await page.waitForFunction(()=>document.querySelectorAll('#local-stats-table tbody tr').length===2);
  for(const width of [1100,736,480]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'local statistics overflow '+width)}
  await page.setViewportSize({width:1100,height:900});await page.locator('#local-statistics').screenshot({path:'.research/local-replay-statistics.png'});
+
+ await page.locator('[data-view=settings]').click();
+ await page.locator('#obs-lobby-enabled').check();await page.locator('[data-wide-save]').click();await page.waitForFunction(()=>!document.querySelector('[data-wide-save]').disabled);
+ assert.equal(journal.preferences.lobbyWidgetEnabled,true);
+ assert.ok((await page.locator('#obs-lobby-url').textContent()).endsWith('/lobby'));
+ assert.equal(await page.locator('#obs-copy-lobby').isDisabled(),false);
+ await page.locator('#obs-lobby-preview>summary').click();
+ const preview=page.frameLocator('#obs-lobby-frame');await preview.locator('#widget-hero').waitFor();
+ await page.waitForFunction(()=>document.querySelector('#obs-lobby-frame').contentDocument?.querySelector('#widget-rate')?.textContent==='60.0%');
+ assert.equal(await preview.locator('#widget-hero').textContent(),'Джайна');
+ await page.locator('#obs-lobby-preview>summary').click();await page.waitForFunction(()=>!document.querySelector('#obs-lobby-frame').hasAttribute('src'));
+ const widget=await browser.newPage({viewport:{width:560,height:820}});widget.on('pageerror',e=>errors.push(e.message));
+ await widget.goto('http://127.0.0.1:18766/demo/lobby');await widget.waitForFunction(()=>document.querySelector('#widget-rate').textContent==='60.0%');
+ assert.equal(await widget.locator('#widget-familiar img').count(),0,'untrusted names must be text');
+ assert.ok((await widget.locator('#widget-familiar').textContent()).includes('62.5%'));
+ assert.ok((await widget.locator('#widget-familiar').textContent()).includes('7'));
+ await widget.screenshot({path:'.research/lobby-widget-live.png'});
+ const nine=lobbyWidgetFixture();nine.familiar=Array.from({length:9},(_,i)=>({...nine.familiar[0],name:'Known player '+(i+1)}));
+ await widget.evaluate(data=>drawLobby(data),nine);assert.ok(await widget.locator('.lobby-card').evaluate(el=>el.getBoundingClientRect().height<=820),'nine known players must fit recommended OBS height');
+
+ lobbyWidgetPhase='waiting';await widget.waitForFunction(()=>document.querySelector('#widget-live').hidden);
+ assert.equal(await widget.locator('#widget-hero').textContent(),'');assert.equal(await widget.locator('#widget-familiar').textContent(),'');
+ lobbyWidgetPhase='live';await widget.waitForFunction(()=>!document.querySelector('#widget-live').hidden);
+ lobbyWidgetOffline=true;await widget.waitForFunction(()=>document.querySelector('#widget-status').textContent.includes('Нет связи'));
+ assert.equal(await widget.locator('#widget-rate').textContent(),'');assert.equal(await widget.locator('#widget-familiar').textContent(),'');
+ lobbyWidgetOffline=false;journal.preferences.lobbyWidgetEnabled=false;await widget.waitForFunction(()=>document.querySelector('#lobby-widget').hidden);
+ await widget.close();
  assert.deepEqual(errors,[]);console.log('PASS: UI settings, persistence requests, manual mask, session assignment, 480px layout; screenshots in .research')
 }finally{await browser.close();server.close()}})().catch(e=>{console.error(e);server.close();process.exitCode=1});

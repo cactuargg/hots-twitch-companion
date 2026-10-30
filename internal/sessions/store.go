@@ -14,20 +14,21 @@ import (
 )
 
 type Preferences struct {
-	ScoreThemes    []ScoreTheme `json:"scoreThemes,omitempty"`
-	CustomCSS      string       `json:"customCSS,omitempty"`
-	Enabled        bool         `json:"enabled"`
-	RankedOnly     bool         `json:"rankedOnly"`
-	Style          string       `json:"style"`
-	Scale          int          `json:"scale"`
-	Backdrop       bool         `json:"backdrop"`
-	WinColor       string       `json:"winColor"`
-	LossColor      string       `json:"lossColor"`
-	Labels         bool         `json:"labels"`
-	MaskEnabled    bool         `json:"maskEnabled"`
-	MaskMode       string       `json:"maskMode"`
-	MaskRankedOnly bool         `json:"maskRankedOnly"`
-	MaskImage      string       `json:"maskImage,omitempty"`
+	LobbyWidgetEnabled bool         `json:"lobbyWidgetEnabled"`
+	ScoreThemes        []ScoreTheme `json:"scoreThemes,omitempty"`
+	CustomCSS          string       `json:"customCSS,omitempty"`
+	Enabled            bool         `json:"enabled"`
+	RankedOnly         bool         `json:"rankedOnly"`
+	Style              string       `json:"style"`
+	Scale              int          `json:"scale"`
+	Backdrop           bool         `json:"backdrop"`
+	WinColor           string       `json:"winColor"`
+	LossColor          string       `json:"lossColor"`
+	Labels             bool         `json:"labels"`
+	MaskEnabled        bool         `json:"maskEnabled"`
+	MaskMode           string       `json:"maskMode"`
+	MaskRankedOnly     bool         `json:"maskRankedOnly"`
+	MaskImage          string       `json:"maskImage,omitempty"`
 }
 
 type ScoreTheme struct {
@@ -306,3 +307,12 @@ func Boundary(s *State, player, matchID string) error {
 	return nil
 }
 func Now() int64 { return time.Now().UnixMilli() }
+
+// DisplaySettings avoids copying the entire match journal for OBS polling.
+func (s *Store) DisplaySettings() (string, Preferences, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.state.Preferences
+	p.ScoreThemes = append([]ScoreTheme(nil), p.ScoreThemes...)
+	return s.state.Token, p, s.err
+}

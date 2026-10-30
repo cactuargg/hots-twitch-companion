@@ -41,6 +41,10 @@ func readOverlayJSON(r *http.Request, v any) error {
 }
 
 type overlayRuntime struct {
+	widgetLobby     *lobby.Snapshot
+	widgetPath      string
+	widgetCacheKey  string
+	widgetCache     lobbyWidgetState
 	importing       bool
 	importProcessed int
 	importTotal     int
@@ -163,6 +167,7 @@ func (d *Dashboard) overlaySnapshot(journal bool) map[string]any {
 		res["matches"] = s.Matches
 		if s.Token != "" && problem == "" {
 			res["scoreURL"] = "http://" + overlayAddress + "/" + s.Token + "/score"
+			res["lobbyURL"] = "http://" + overlayAddress + "/" + s.Token + "/lobby"
 			res["maskURL"] = "http://" + overlayAddress + "/" + s.Token + "/mask"
 		}
 	}
@@ -178,12 +183,12 @@ func (d *Dashboard) overlayHandler() http.Handler {
 			http.Error(w, "Read only", 405)
 			return
 		}
-		s, err := d.overlays.store.Snapshot()
-		if err != nil || s.Token == "" {
+		token, prefs, err := d.overlays.store.DisplaySettings()
+		if err != nil || token == "" {
 			http.Error(w, "Unavailable", 503)
 			return
 		}
-		prefix := "/" + s.Token + "/"
+		prefix := "/" + token + "/"
 		if !strings.HasPrefix(r.URL.Path, prefix) {
 			http.NotFound(w, r)
 			return
@@ -194,6 +199,16 @@ func (d *Dashboard) overlayHandler() http.Handler {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
 		route := strings.TrimPrefix(r.URL.Path, prefix)
 		switch route {
+		case "lobby-state":
+			d.mu.Lock()
+			d.lastActivity = time.Now()
+			d.mu.Unlock()
+			JSONOutput(w, 200, d.lobbyWidget())
+			return
+		case "lobby":
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			b, _ := webFiles.ReadFile("web/assets/lobby-widget.html")
+			_, _ = w.Write(b)
 		case "state":
 			d.mu.Lock()
 			d.lastActivity = time.Now()
@@ -209,7 +224,7 @@ func (d *Dashboard) overlayHandler() http.Handler {
 			p.ScoreThemes = nil
 			JSONOutput(w, 200, map[string]any{"preferences": p, "maskImageURL": imageURL, "wins": v["wins"], "losses": v["losses"], "maskVisible": v["maskVisible"]})
 		case "image":
-			parts := strings.SplitN(s.Preferences.MaskImage, ",", 2)
+			parts := strings.SplitN(prefs.MaskImage, ",", 2)
 			if len(parts) != 2 {
 				http.NotFound(w, r)
 				return
@@ -228,8 +243,8 @@ func (d *Dashboard) overlayHandler() http.Handler {
 		case "custom.css":
 			w.Header().Set("Content-Type", "text/css; charset=utf-8")
 			w.Header().Set("Cache-Control", "no-store")
-			_, _ = w.Write([]byte(s.Preferences.CustomCSS))
-		case "overlay.js", "overlay.css":
+			_, _ = w.Write([]byte(prefs.CustomCSS))
+		case "overlay.js", "overlay.css", "lobby-widget.js", "lobby-widget.css":
 			mime := "text/javascript"
 			if strings.HasSuffix(route, "css") {
 				mime = "text/css"
@@ -494,6 +509,8 @@ func (d *Dashboard) scanOverlayMatches() {
 						}
 					}
 					o.mu.Lock()
+					o.widgetLobby = snap
+					o.widgetPath = path
 					o.activeHash = snap.SHA256
 					o.activeMode = snap.Data.AMMID
 					o.observedAt = modified.UnixMilli()
