@@ -23,3 +23,6 @@ tokens.dpapi
 .idea/
 .DS_Store
 Thumbs.db
+
+replay-statistics.json
+replay-statistics.json.new

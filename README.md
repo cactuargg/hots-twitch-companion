@@ -1,4 +1,6 @@
-# HotS Twitch Companion v0.11.0
+# HotS Twitch Companion v0.12.0
+
+v0.12.0 adds local hero/player win rates from replay observations, with a shared local database, mode filters and per-player hero breakdowns. New observations are saved to disk during replay processing; closing the app is not required. [Details](docs/local-statistics.ru.md).
 
 v0.11.0 adds game profiles for switching between HotS accounts without resetting Twitch, OBS or theme settings. Your current player becomes the first profile automatically; history stays linked to each player. [Game profiles](docs/game-profiles.ru.md).
 
