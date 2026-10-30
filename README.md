@@ -1,4 +1,8 @@
-# HotS Twitch Companion v0.10.3
+# HotS Twitch Companion v0.10.4
+
+v0.10.4 cancels the Prediction and refunds all points if either outcome has 0 points at settlement. The refund decision survives network errors and restarts. [Details](docs/live-predictions.ru.md).
+
+v0.10.4 also adds five built-in OBS score CSS themes and a saved custom theme library with preview, updates and deletion. [Theme setup](docs/sessions-obs.ru.md).
 
 v0.10.3 adds custom CSS for the OBS score counter, with an isolated live preview and automatic application. [Setup](docs/sessions-obs.ru.md).
 

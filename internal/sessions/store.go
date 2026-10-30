@@ -14,19 +14,25 @@ import (
 )
 
 type Preferences struct {
-	CustomCSS      string `json:"customCSS,omitempty"`
-	Enabled        bool   `json:"enabled"`
-	RankedOnly     bool   `json:"rankedOnly"`
-	Style          string `json:"style"`
-	Scale          int    `json:"scale"`
-	Backdrop       bool   `json:"backdrop"`
-	WinColor       string `json:"winColor"`
-	LossColor      string `json:"lossColor"`
-	Labels         bool   `json:"labels"`
-	MaskEnabled    bool   `json:"maskEnabled"`
-	MaskMode       string `json:"maskMode"`
-	MaskRankedOnly bool   `json:"maskRankedOnly"`
-	MaskImage      string `json:"maskImage,omitempty"`
+	ScoreThemes    []ScoreTheme `json:"scoreThemes,omitempty"`
+	CustomCSS      string       `json:"customCSS,omitempty"`
+	Enabled        bool         `json:"enabled"`
+	RankedOnly     bool         `json:"rankedOnly"`
+	Style          string       `json:"style"`
+	Scale          int          `json:"scale"`
+	Backdrop       bool         `json:"backdrop"`
+	WinColor       string       `json:"winColor"`
+	LossColor      string       `json:"lossColor"`
+	Labels         bool         `json:"labels"`
+	MaskEnabled    bool         `json:"maskEnabled"`
+	MaskMode       string       `json:"maskMode"`
+	MaskRankedOnly bool         `json:"maskRankedOnly"`
+	MaskImage      string       `json:"maskImage,omitempty"`
+}
+
+type ScoreTheme struct {
+	Name string `json:"name"`
+	CSS  string `json:"css"`
 }
 type Session struct {
 	ID        string `json:"id"`

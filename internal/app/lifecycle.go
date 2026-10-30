@@ -55,6 +55,22 @@ func (e *Engine) settlePrediction(ctx context.Context, s *prediction.State, outc
 		return errors.New(i18n.Text(e.cfg.Language(), "settle.retry_wait"))
 	}
 	err := e.predictions.End(ctx, s.Active, intent.Outcome)
+	if errors.Is(err, twitchpkg.ErrZeroPoints) {
+		// End has verified that no resolution PATCH was sent. Latch the refund
+		// before trying it, so a network failure cannot revert to paying out.
+		next := *s
+		active := *s.Active
+		refund := *intent
+		refund.Outcome = "cancel"
+		active.Settlement = &refund
+		next.Active = &active
+		if saveErr := e.updateAndSave(next); saveErr != nil {
+			return saveErr
+		}
+		*s = next
+		intent = s.Active.Settlement
+		err = e.predictions.End(ctx, s.Active, intent.Outcome)
+	}
 	var finished *twitchpkg.RemoteFinishedError
 	if errors.As(err, &finished) {
 		return e.commitSettlement(s, twitchpkg.RemoteOutcome(finished.Prediction, s.Active), "Twitch")

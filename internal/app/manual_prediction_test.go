@@ -110,7 +110,7 @@ func TestManualRealOutcomesAndRemoteSync(t *testing.T) {
 					return manualResponse(`{"data":[{"id":"prediction-1","status":"` + tc.status + `","winning_outcome_id":"` + tc.winner + `"}]}`), nil
 				}
 				if req.Method == "GET" {
-					return manualResponse(`{"data":[{"id":"prediction-1","status":"ACTIVE"}]}`), nil
+					return manualResponse(`{"data":[{"id":"prediction-1","status":"ACTIVE","outcomes":[{"id":"winning","channel_points":100},{"id":"losing","channel_points":200}]}]}`), nil
 				}
 				if req.Method != "PATCH" || req.URL.Path != "/helix/predictions" {
 					t.Errorf("manual settle must PATCH Twitch: %s %s", req.Method, req.URL.Path)

@@ -3,6 +3,16 @@ const obsText={
  en:{customCSS:'Custom CSS',customCSSHelp:'Selectors: #score, #wins, #losses, .divider. Use !important for number colours. Clear to restore the default. Save with Save changes.',basic:'General',predictions:'Predictions',overlays:'OBS overlays',application:'Application',score:'Session score',enabled:'Count matches',ranked:'Count only Storm League',style:'Appearance',nexus:'Nexus',minimal:'Minimal',scale:'Scale (%)',backdrop:'Background',labels:'W / L labels',winColor:'Win colour',lossColor:'Loss colour',mask:'Hide draft picks',maskEnabled:'Enable mask',maskRanked:'Only Storm League',auto:'Automatic (BattleLobby)',show:'Show mask',hide:'Hide mask',maskHelp:'Auto hides the mask when a fresh BattleLobby appears (loading / match), then shows it after the matching replay is written. It does not detect the draft screen directly. Until the mode is known, the mask remains visible. Use manual control for cancelled drafts or a delayed replay.',image:'PNG / JPEG, up to 2 MiB',clearImage:'Use default panel',apply:'Apply overlays',saved:'Overlay settings saved',copy:'Copy OBS URL',copied:'Copied',obsHelp:'OBS → Browser source → URL. Score: 560 × 140; mask: size of the area you cover. Keep Companion running. Overlay settings are applied separately.',session:'Current session',newSession:'New session',undo:'Undo last reset',since:'Since {time}',off:'Counter is off',history:'Sessions and matches',empty:'No sessions yet',noMatches:'No matches in this session',pending:'Needs a session',unassigned:'Matches without a confirmed start are not counted. Select a session below.',manual:'Edited manually',excluded:'Excluded',include:'Include',exclude:'Exclude',boundary:'Start session here',assignment:'Move to session…',win:'Win',loss:'Loss',unknown:'Unknown',warning:'A new session keeps the current match in the previous session. Previous results remain in History.',phase_unknown:'Game state unknown',phase_loading_or_game:'Loading / match',phase_between_games:'Between matches',phase_excluded_mode:'Excluded mode',immediate:'Quick controls apply immediately. Appearance changes use “Apply overlays”.',settingsHint:'Choose a section. Main settings use Save; overlays have their own Apply button.',imageError:'Choose a PNG or JPEG under 2 MiB',resetConfirm:'Reset also deletes session history and OBS links.',noURL:'OBS server unavailable',preview:'Preview',all:'All supported modes',filter:'Match filter',newPlayer:'Choose and save your HotS player first',source:'Mode {mode} · {hero}',notRunning:'Waiting for the local OBS server'},
  ru:{customCSS:'Свой CSS',customCSSHelp:'Селекторы: #score, #wins, #losses, .divider. Для цвета цифр используй !important. Очисти поле для стандартного стиля. Сохраняется кнопкой «Сохранить изменения».',basic:'Основные',predictions:'Прогнозы',overlays:'Оверлеи OBS',application:'Приложение',score:'Счёт сессии',enabled:'Считать матчи',ranked:'Считать только Storm League',style:'Оформление',nexus:'Нексус',minimal:'Минимальное',scale:'Масштаб (%)',backdrop:'Подложка',labels:'Подписи W / L',winColor:'Цвет побед',lossColor:'Цвет поражений',mask:'Скрытие препиков',maskEnabled:'Включить маску',maskRanked:'Только Storm League',auto:'Автоматически (BattleLobby)',show:'Показывать маску',hide:'Скрыть маску',maskHelp:'Автоматика скрывает маску при появлении свежего BattleLobby (загрузка / матч), возвращает после записи соответствующего реплея. Сам экран драфта не распознаётся. Пока режим неизвестен, маска видна. При отмене драфта или задержке реплея используй ручное управление.',image:'PNG / JPEG, до 2 МиБ',clearImage:'Стандартная панель',apply:'Применить оверлеи',saved:'Настройки оверлеев сохранены',copy:'Копировать URL для OBS',copied:'Скопировано',obsHelp:'OBS → Источник «Браузер» → URL. Счёт: 560 × 140; маска: размер закрываемой области. Companion должен работать. Настройки оверлеев применяются отдельно.',session:'Текущая сессия',newSession:'Новая сессия',undo:'Отменить последний сброс',since:'С {time}',off:'Счётчик выключен',history:'Сессии и матчи',empty:'Сессий пока нет',noMatches:'В этой сессии пока нет матчей',pending:'Нужно выбрать сессию',unassigned:'Матчи без подтверждённого начала не входят в счёт. Выбери для них сессию ниже.',manual:'Исправлено вручную',excluded:'Исключён',include:'Учитывать',exclude:'Исключить',boundary:'Начать сессию отсюда',assignment:'Перенести в сессию…',win:'Победа',loss:'Поражение',unknown:'Не определён',warning:'Текущий матч останется в предыдущей сессии. Её результаты сохранятся в истории.',phase_unknown:'Состояние игры неизвестно',phase_loading_or_game:'Загрузка / матч',phase_between_games:'Между матчами',phase_excluded_mode:'Исключённый режим',immediate:'Быстрые переключатели применяются сразу. Оформление — кнопкой «Применить оверлеи».',settingsHint:'Выбери раздел. Основные настройки сохраняются общей кнопкой, оверлеи — своей.',imageError:'Выбери PNG или JPEG до 2 МиБ',resetConfirm:'Сброс также удалит историю сессий и ссылки OBS.',noURL:'Сервер OBS недоступен',preview:'Предпросмотр',all:'Все поддержанные режимы',filter:'Учитываемые матчи',newPlayer:'Сначала выбери и сохрани игрока HotS',source:'Режим {mode} · {hero}',notRunning:'Ожидание локального сервера OBS'}
 };
+Object.assign(obsText.en,{theme:'Score theme',themeDefault:'Default',themeNeon:'Neon',themeIce:'Ice',themeBroadcast:'Scoreboard',themeRetro:'Retro',themeCustom:'Unsaved CSS',themeBuiltins:'Built-in themes',themeSaved:'My themes',themeName:'Theme name',themeSave:'Save as new theme',themeUpdate:'Update selected',themeDelete:'Delete selected',themeHelp:'Choose a theme or edit CSS below. Save changes to keep your library and apply the appearance in OBS.',themeNameError:'Enter a unique name (up to 120 bytes).',themeLimit:'Up to 20 themes; 64 KiB per theme and 192 KiB total.',themeDraft:'Theme library updated. Save changes to keep it.'});
+Object.assign(obsText.ru,{theme:'Тема счётчика',themeDefault:'Стандартная',themeNeon:'Неон',themeIce:'Лёд',themeBroadcast:'Табло',themeRetro:'Ретро',themeCustom:'Несохранённый CSS',themeBuiltins:'Готовые темы',themeSaved:'Мои темы',themeName:'Название темы',themeSave:'Сохранить как новую',themeUpdate:'Обновить выбранную',themeDelete:'Удалить выбранную',themeHelp:'Выбери тему или измени CSS ниже. Сохрани изменения, чтобы записать библиотеку и применить оформление в OBS.',themeNameError:'Введи уникальное название (до 120 байт).',themeLimit:'До 20 тем; 64 КиБ на тему и 192 КиБ суммарно.',themeDraft:'Библиотека тем изменена. Сохрани изменения, чтобы записать её.'});
+const obsBuiltInThemes=[
+ {id:'default',label:'themeDefault',css:''},
+ {id:'neon',label:'themeNeon',css:'#score { gap: 14px; padding: 12px 20px; border-radius: 12px; }\n#score:is(.nexus, .minimal).backdrop { background: #100d24ed; border: 1px solid #bb65ff; box-shadow: inset 0 0 18px #9b40ff33; }\n#score b { font-size: 32px; }\n#wins { color: #58ffdc !important; text-shadow: 0 0 12px #58ffdc99; }\n#losses { color: #ff72d2 !important; text-shadow: 0 0 12px #ff72d299; }'},
+ {id:'ice',label:'themeIce',css:'#score { gap: 14px; padding: 12px 20px; border-radius: 3px; letter-spacing: 2px; }\n#score:is(.nexus, .minimal).backdrop { background: linear-gradient(120deg, #071d32f5, #133f56ed); border: 1px solid #8de4ff; border-left: 4px solid #b9f5ff; box-shadow: none; }\n#wins { color: #b9f5ff !important; }\n#losses { color: #c4cfff !important; }'},
+ {id:'broadcast',label:'themeBroadcast',css:'#score { gap: 0; padding: 0; border-radius: 4px; overflow: hidden; letter-spacing: 1px; }\n#score:is(.nexus, .minimal).backdrop { background: #111827ed; border: 1px solid #ffffff44; box-shadow: none; }\n#score b { padding: 10px 18px; font-size: 32px; }\n#wins { color: #ffffff !important; background: #126047; }\n#losses { color: #ffffff !important; background: #903444; }\n#win-label, #loss-label, .divider { padding: 0 12px; }'},
+ {id:'retro',label:'themeRetro',css:'#score { font-family: Consolas, monospace; gap: 14px; padding: 10px 18px; border-radius: 0; text-shadow: none; }\n#score:is(.nexus, .minimal).backdrop { background: #17190ff5; border: 2px solid #d7d58b; box-shadow: inset 0 0 0 2px #17190f; }\n#score b { font-size: 30px; }\n#wins { color: #c5ef78 !important; }\n#losses { color: #ffb36b !important; }\n.divider { color: #d7d58b; opacity: 1; }'}
+];
+let obsThemesDraft=[],obsSelectedTheme='';
 for(const language of ['en','ru'])for(const [key,value]of Object.entries(obsText[language]))I18N[language]['obs.'+key]=value;
 let obsState=null,obsDirty=false,obsBusy=false,obsPending=false,obsImage='',obsHistoryKey='',obsTimer;
 const ot=(key,vars)=>t('obs.'+key,vars);
@@ -31,6 +41,7 @@ function buildObsUI(){
  <label>${obsLabel('style')}<select id="obs-style"><option value="nexus" data-i18n="obs.nexus">${ot('nexus')}</option><option value="minimal" data-i18n="obs.minimal">${ot('minimal')}</option></select></label>
  <label>${obsLabel('scale')}<input id="obs-scale" type="number" min="50" max="200" value="100"></label><label>${obsLabel('winColor')}<input type="color" id="obs-win-color" value="#72dcff"></label><label>${obsLabel('lossColor')}<input type="color" id="obs-loss-color" value="#ff91b2"></label></div>
  <label class="obs-switch"><input type="checkbox" id="obs-backdrop" checked>${obsLabel('backdrop')}</label><label class="obs-switch"><input type="checkbox" id="obs-labels" checked>${obsLabel('labels')}</label>
+ <div id="obs-theme-controls"><label for="obs-theme">${obsLabel('theme')}</label><select id="obs-theme" aria-describedby="obs-theme-help"></select><p id="obs-theme-help" data-i18n="obs.themeHelp">${ot('themeHelp')}</p><label for="obs-theme-name">${obsLabel('themeName')}</label><input id="obs-theme-name" type="text" maxlength="120" autocomplete="off"><div class="obs-toolbar">${obsButton('obs-theme-save','themeSave')}${obsButton('obs-theme-update','themeUpdate')}${obsButton('obs-theme-delete','themeDelete')}</div><p id="obs-theme-status" class="field-hint" role="status"></p></div>
  <label class="obs-css-label" for="obs-custom-css">${obsLabel('customCSS')}</label><textarea id="obs-custom-css" rows="8" spellcheck="false" aria-describedby="obs-custom-css-help"></textarea><p id="obs-custom-css-help" data-i18n="obs.customCSSHelp">${ot('customCSSHelp')}</p>
  <iframe id="obs-css-preview" class="obs-css-preview" sandbox="allow-same-origin" title="${ot('preview')}" hidden></iframe>
  <div class="obs-preview" aria-label="${ot('preview')}"><div id="obs-score-preview" class="obs-score nexus backdrop"><span id="obs-preview-w">W</span><b id="obs-preview-wins">7</b><span>/</span><b id="obs-preview-losses">3</b><span id="obs-preview-l">L</span></div></div>
@@ -44,6 +55,7 @@ function buildObsUI(){
  nav.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>obsSection(b.dataset.settingsSection)));$('settings-section-select').addEventListener('change',e=>obsSection(e.target.value));
  $('session-history-link').addEventListener('click',()=>{go('replays');journal.scrollIntoView({block:'start',behavior:'smooth'})});
  for(const id of ['obs-custom-css','obs-ranked','obs-style','obs-scale','obs-win-color','obs-loss-color','obs-backdrop','obs-labels','obs-mask-ranked'])$(id).addEventListener('input',()=>{obsDirty=true;obsPreview()});
+ obsThemeEvents();
  $('obs-mask-file').addEventListener('change',async e=>{try{const file=e.target.files[0];if(!file)return;if(!['image/png','image/jpeg'].includes(file.type)||file.size>2*1024*1024)throw Error(ot('imageError'));obsImage=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});obsDirty=true;obsPreview()}catch(e){toast(e.message,true)}});
  $('obs-clear-image').addEventListener('click',()=>{obsImage='';$('obs-mask-file').value='';obsDirty=true;obsPreview()});
  $('obs-apply').addEventListener('click',()=>obsRun(async()=>{obsState=await api('sessions/preferences','POST',{preferences:obsInputs()});obsDirty=false;renderObs();toast(ot('saved'))}));
@@ -53,7 +65,7 @@ function buildObsUI(){
  for(const kind of ['score','mask'])$('obs-copy-'+kind).addEventListener('click',()=>obsRun(async()=>{const value=obsState?.[kind+'URL'];if(!value)throw Error(ot('noURL'));await navigator.clipboard.writeText(value);toast(ot('copied'))}));
  obsSection('basic');obsPreview();loadObs();obsTimer=setInterval(loadObs,3000);
 }
-function obsInputs(){return {...obsState.preferences,customCSS:$('obs-custom-css').value,rankedOnly:$('obs-ranked').value==='true',style:$('obs-style').value,scale:Number($('obs-scale').value),winColor:$('obs-win-color').value,lossColor:$('obs-loss-color').value,backdrop:$('obs-backdrop').checked,labels:$('obs-labels').checked,maskRankedOnly:$('obs-mask-ranked').checked,maskImage:obsImage}}
+function obsInputs(){return {...obsState.preferences,scoreThemes:obsThemesDraft.map(v=>({...v})),customCSS:$('obs-custom-css').value,rankedOnly:$('obs-ranked').value==='true',style:$('obs-style').value,scale:Number($('obs-scale').value),winColor:$('obs-win-color').value,lossColor:$('obs-loss-color').value,backdrop:$('obs-backdrop').checked,labels:$('obs-labels').checked,maskRankedOnly:$('obs-mask-ranked').checked,maskImage:obsImage}}
 function obsPreview(){
  const apply=$('obs-apply');if(apply)apply.classList.toggle('has-draft',obsDirty);
  const el=$('obs-score-preview');if(!el)return;el.className='obs-score '+$('obs-style').value+($('obs-backdrop').checked?' backdrop':'');el.style.transform=`scale(${Number($('obs-scale').value)/100})`;
@@ -71,7 +83,7 @@ function renderObs(){
  $('session-new').disabled=!p.enabled||!s.player;$('session-mask-mode').value=p.maskMode;$('session-mask-mode').disabled=!p.maskEnabled;$('session-mask-enabled').checked=p.maskEnabled;
  $('session-phase').textContent=ot('phase_'+s.phase);$('session-feedback').textContent=s.error||s.scanError||'';$('obs-error').textContent=s.error||s.scanError||'';
  $('obs-enabled').checked=p.enabled;$('obs-mask-enabled').checked=p.maskEnabled;
- if(!obsDirty){$('obs-custom-css').value=p.customCSS||'';$('obs-ranked').value=String(p.rankedOnly);$('obs-style').value=p.style;$('obs-scale').value=p.scale;$('obs-win-color').value=p.winColor;$('obs-loss-color').value=p.lossColor;$('obs-backdrop').checked=p.backdrop;$('obs-labels').checked=p.labels;$('obs-mask-ranked').checked=p.maskRankedOnly;obsImage=p.maskImage||'';obsPreview()}
+ if(!obsDirty){$('obs-theme-status').textContent='';obsThemesDraft=(p.scoreThemes||[]).map(v=>({...v}));$('obs-custom-css').value=p.customCSS||'';$('obs-ranked').value=String(p.rankedOnly);$('obs-style').value=p.style;$('obs-scale').value=p.scale;$('obs-win-color').value=p.winColor;$('obs-loss-color').value=p.lossColor;$('obs-backdrop').checked=p.backdrop;$('obs-labels').checked=p.labels;$('obs-mask-ranked').checked=p.maskRankedOnly;obsImage=p.maskImage||'';obsThemeOptions();obsPreview()}
  for(const kind of ['score','mask']){$('obs-'+kind+'-url').textContent=s[kind+'URL']||ot('noURL');$('obs-copy-'+kind).disabled=!s[kind+'URL']}
  const key=JSON.stringify([s.sessions,s.matches,s.player,p.rankedOnly,lang]);if(key!==obsHistoryKey){obsHistoryKey=key;renderSessions()}
 }
@@ -113,4 +125,52 @@ function obsCSSPreview(){
  doc.getElementById('wins').style.color=$('obs-win-color').value;doc.getElementById('losses').style.color=$('obs-loss-color').value;
  for(const id of ['win-label','loss-label'])doc.getElementById(id).hidden=!$('obs-labels').checked;
  const sheet=new frame.contentWindow.CSSStyleSheet();sheet.replaceSync(css);doc.adoptedStyleSheets=[sheet];
+}
+
+function obsThemeOptions(){
+ const select=$('obs-theme'),css=$('obs-custom-css').value;
+ const old=obsSelectedTheme;
+ select.replaceChildren();
+ const group=(label,rows)=>{const g=document.createElement('optgroup');g.label=ot(label);for(const [name,value]of rows)g.append(new Option(name,value));select.append(g)};
+ group('themeBuiltins',obsBuiltInThemes.map(v=>[ot(v.label),'builtin:'+v.id]));
+ if(obsThemesDraft.length)group('themeSaved',obsThemesDraft.map((v,i)=>[v.name,'saved:'+i]));
+ const choices=[...obsBuiltInThemes.map(v=>({value:'builtin:'+v.id,css:v.css})),...obsThemesDraft.map((v,i)=>({value:'saved:'+i,css:v.css}))];
+ obsSelectedTheme=choices.find(v=>v.value===old&&v.css===css)?.value||choices.find(v=>v.value.startsWith('saved:')&&v.css===css)?.value||choices.find(v=>v.css===css)?.value||'';
+ if(!obsSelectedTheme)select.append(new Option(ot('themeCustom'),''));
+ select.value=obsSelectedTheme;
+ const selected=obsSelectedTheme.startsWith('saved:');
+ if(selected&&!$('obs-theme-name').value)$('obs-theme-name').value=obsThemesDraft[Number(obsSelectedTheme.slice(6))].name;
+ $('obs-theme-update').disabled=!selected;$('obs-theme-delete').disabled=!selected;
+}
+function obsThemeChanged(){obsDirty=true;obsPreview();if(typeof wideUpdateDraft==='function')wideUpdateDraft()}
+function obsThemeEvents(){
+ $('obs-theme').addEventListener('change',()=>{
+  obsSelectedTheme=$('obs-theme').value;
+  const saved=obsSelectedTheme.startsWith('saved:');
+  const theme=saved?obsThemesDraft[Number(obsSelectedTheme.slice(6))]:obsBuiltInThemes.find(v=>'builtin:'+v.id===obsSelectedTheme);
+  if(!theme)return;
+  $('obs-custom-css').value=theme.css;$('obs-theme-name').value=saved?theme.name:'';
+  obsThemeOptions();obsThemeChanged();
+ });
+ $('obs-custom-css').addEventListener('input',()=>{
+  // Keep a saved selection while editing it so Update remains available.
+  if(!obsSelectedTheme.startsWith('saved:'))obsThemeOptions();
+ });
+ const edit=(action)=>{
+  const index=obsSelectedTheme.startsWith('saved:')?Number(obsSelectedTheme.slice(6)):-1;
+  if(action!=='save'&&index<0)return;
+  if(action==='delete'){
+   obsThemesDraft.splice(index,1);obsSelectedTheme='';
+   $('obs-theme-name').value='';
+  }else{
+   const name=$('obs-theme-name').value.trim(),css=$('obs-custom-css').value,bytes=v=>new TextEncoder().encode(v).length;
+   if(!name||bytes(name)>120||/[\r\n\t]/.test(name)||obsThemesDraft.some((v,i)=>v.name.toLowerCase()===name.toLowerCase()&&(action==='save'||i!==index))){toast(ot('themeNameError'),true);return}
+   const themes=obsThemesDraft.map(v=>({...v}));
+   if(action==='save')themes.push({name,css});else themes[index]={name,css};
+   if(themes.length>20||themes.some(v=>bytes(v.css)>65536)||themes.reduce((n,v)=>n+bytes(v.css),0)>196608){toast(ot('themeLimit'),true);return}
+   obsThemesDraft=themes;obsSelectedTheme='saved:'+(action==='save'?themes.length-1:index);
+  }
+  obsThemeOptions();obsThemeChanged();$('obs-theme-status').textContent=ot('themeDraft');
+ };
+ for(const action of ['save','update','delete'])$('obs-theme-'+action).addEventListener('click',()=>edit(action));
 }

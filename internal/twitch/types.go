@@ -29,8 +29,9 @@ type APIPrediction struct {
 	Title            string `json:"title"`
 	WinningOutcomeID string `json:"winning_outcome_id"`
 	Outcomes         []struct {
-		ID    string `json:"id"`
-		Title string `json:"title"`
+		ID            string `json:"id"`
+		Title         string `json:"title"`
+		ChannelPoints *int64 `json:"channel_points"`
 	} `json:"outcomes"`
 }
 

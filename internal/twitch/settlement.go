@@ -1,13 +1,17 @@
 package twitch
 
 import (
- "context"
- "errors"
- "fmt"
- "hots-twitch-companion/internal/prediction"
+	"context"
+	"errors"
+	"fmt"
+	"hots-twitch-companion/internal/prediction"
 )
 
 type RemoteFinishedError struct{ Prediction APIPrediction }
+
+// ErrZeroPoints is returned before PATCH so the caller can persist a refund
+// decision before sending it to Twitch, including across retries and restarts.
+var ErrZeroPoints = errors.New("Prediction has an outcome with zero Channel Points")
 
 func (e *RemoteFinishedError) Error() string { return "Prediction was already finalized on Twitch" }
 
@@ -33,8 +37,8 @@ func TerminalPrediction(actual APIPrediction, status, winner string) error {
 // FinishPrediction reads back Twitch status before and after PATCH to prevent
 // duplicate or contradictory point settlements following network failures.
 func FinishPrediction(ctx context.Context, p *prediction.Prediction, outcome string,
- read func(context.Context,string,string)(*APIResponse,error),
- patch func(context.Context,map[string]any)(*APIResponse,error)) error {
+	read func(context.Context, string, string) (*APIResponse, error),
+	patch func(context.Context, map[string]any) (*APIResponse, error)) error {
 	if p == nil || p.ID == "" || p.BroadcasterID == "" || (outcome != "win" && outcome != "loss" && outcome != "cancel") {
 		return errors.New("invalid Prediction or outcome")
 	}
@@ -63,12 +67,35 @@ func FinishPrediction(ctx context.Context, p *prediction.Prediction, outcome str
 	if actual.Status != "ACTIVE" && actual.Status != "LOCKED" {
 		return errors.New("unsupported Twitch Prediction status")
 	}
+	if status == "RESOLVED" {
+		if len(actual.Outcomes) != 2 {
+			return errors.New("missing Twitch Prediction outcomes")
+		}
+		seen := map[string]bool{}
+		zero := false
+		for _, o := range actual.Outcomes {
+			if (o.ID != p.WinID && o.ID != p.LossID) || seen[o.ID] || o.ChannelPoints == nil || *o.ChannelPoints < 0 {
+				return errors.New("invalid Twitch Prediction outcome points")
+			}
+			seen[o.ID] = true
+			zero = zero || *o.ChannelPoints == 0
+		}
+		if zero {
+			return ErrZeroPoints
+		}
+	}
 	body := map[string]any{"broadcaster_id": p.BroadcasterID, "id": p.ID, "status": status}
 	if winner != "" {
 		body["winning_outcome_id"] = winner
 	}
 	var result APIResponse
-	requestErr := func()error {r,err:=patch(ctx,body);if r!=nil {result=*r};return err}()
+	requestErr := func() error {
+		r, err := patch(ctx, body)
+		if r != nil {
+			result = *r
+		}
+		return err
+	}()
 	if requestErr == nil {
 		confirmed, err := ExactPrediction(&result, p.ID)
 		if err == nil {
@@ -104,4 +131,3 @@ func RemoteOutcome(actual APIPrediction, p *prediction.Prediction) string {
 	}
 	return "external"
 }
-

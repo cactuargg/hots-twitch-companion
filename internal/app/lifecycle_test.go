@@ -19,7 +19,7 @@ import (
 )
 
 func remoteResponseTest(id, status, winner string) *http.Response {
-	raw, _ := json.Marshal(map[string]any{"data": []map[string]string{{"id": id, "status": status, "winning_outcome_id": winner}}})
+	raw, _ := json.Marshal(map[string]any{"data": []map[string]any{{"id": id, "status": status, "winning_outcome_id": winner, "outcomes": []map[string]any{{"id": "win-id", "channel_points": 100}, {"id": "loss-id", "channel_points": 200}}}}})
 	return manualResponse(string(raw))
 }
 
@@ -726,5 +726,58 @@ func TestStaleQueuedLobbyAndTimeoutCannotChangePendingOutcome(t *testing.T) {
 	saved, err := loadState(p)
 	if err != nil || saved.Active != nil || saved.PendingLobby != nil || !strings.HasPrefix(saved.LastResult, "win (") || calls != 1 {
 		t.Fatalf("bad timeout/queue recovery: %+v %v calls=%d", saved, err, calls)
+	}
+}
+
+func TestZeroPointsRefundPersistsAcrossFailedRequest(t *testing.T) {
+	old := httpClient
+	defer func() { httpClient = old }()
+	for _, outcome := range []string{"win", "loss"} {
+		t.Run(outcome, func(t *testing.T) {
+			e, p := liveLifecycleTest(t)
+			patches := 0
+			fail := true
+			httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
+				if req.Method == "GET" {
+					return manualResponse(`{"data":[{"id":"tracked","status":"LOCKED","outcomes":[{"id":"win-id","channel_points":100},{"id":"loss-id","channel_points":0}]}]}`), nil
+				}
+				patches++
+				persisted, err := loadState(p)
+				if err != nil || persisted.Active.Settlement.Outcome != "cancel" {
+					t.Fatalf("refund not persisted before request: %+v %v", persisted, err)
+				}
+				var body map[string]any
+				if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+					t.Fatal(err)
+				}
+				if body["status"] != "CANCELED" || body["winning_outcome_id"] != nil {
+					t.Fatalf("unexpected payout: %+v", body)
+				}
+				if fail {
+					return nil, errors.New("network failure")
+				}
+				return remoteResponseTest("tracked", "CANCELED", ""), nil
+			})}
+			s := e.state
+			if err := e.doSettle(context.Background(), &s, outcome, "match.StormReplay"); err == nil {
+				t.Fatal("expected network failure")
+			}
+			restored, err := loadState(p)
+			if err != nil || restored.Active == nil || restored.Active.Settlement.Outcome != "cancel" {
+				t.Fatalf("lost refund decision: %+v %v", restored, err)
+			}
+			fail = false
+			restored.Active.Settlement.RetryAt = 0
+			if err := e.updateAndSave(restored); err != nil {
+				t.Fatal(err)
+			}
+			if err := e.doSettle(context.Background(), &restored, "cancel", restored.Active.Settlement.Source); err != nil {
+				t.Fatal(err)
+			}
+			done, err := loadState(p)
+			if err != nil || done.Active != nil || !strings.HasPrefix(done.LastResult, "cancel (") || patches != 2 {
+				t.Fatalf("bad refund: %+v %v patches=%d", done, err, patches)
+			}
+		})
 	}
 }

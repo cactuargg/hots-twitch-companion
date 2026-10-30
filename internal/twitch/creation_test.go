@@ -23,7 +23,7 @@ func TestCreateResponseRequiresDistinctVerifiedOutcomes(t *testing.T){
  if _,err:=CreationRequest("",2,"Match","Win","Lose");!errors.Is(err,ErrInvalidOutcomes){t.Fatal(err)}
  if _,err:=CreationRequest("channel",2,"Match","Same","Same");!errors.Is(err,ErrInvalidOutcomes){t.Fatal(err)}
  response:=&APIResponse{Data:[]APIPrediction{{ID:"prediction-id",Status:"ACTIVE"}}}
- response.Data[0].Outcomes=make([]struct{ID string `json:"id"`;Title string `json:"title"`},2)
+ response.Data[0].Outcomes=make([]struct{ID string `json:"id"`;Title string `json:"title"`;ChannelPoints *int64 `json:"channel_points"`},2)
  response.Data[0].Outcomes[0].ID="win-id";response.Data[0].Outcomes[0].Title="Win"
  response.Data[0].Outcomes[1].ID="loss-id";response.Data[0].Outcomes[1].Title="Lose"
  got,err:=ParseCreatedPrediction(response,"channel","Win","Lose",12345)
