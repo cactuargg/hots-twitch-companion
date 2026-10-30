@@ -4,19 +4,19 @@ Portable Windows x64 companion for Heroes of the Storm and Twitch.
 
 ## Новое в __TAG__
 
-- Локальная статистика винрейта героев и игроков: число игр, победы, поражения, фильтр по режиму, поиск и разбор каждого игрока по героям.
-- Общая база реплеев для всех игровых профилей. Импорт старых файлов учитывает всех участников, даже если выбранного игрока в матче нет.
-- Новые стабильные реплеи обрабатываются автоматически, пока Companion работает. Счётчик сессии и мониторинг Twitch могут быть выключены.
-- Данные записываются на диск при обработке реплеев, а не при выходе. Идентичные копии учитываются один раз; повторный импорт использует разобранные данные.
-- Фоновая обработка ограничена четырьмя файлами за проход, записи группируются, таблицы кэшируются. Для старого архива есть кнопка импорта.
+- Отдельный OBS-виджет статистики текущего лобби: герой стримера, его локальный винрейт на герое и число игр.
+- Знакомые участники: общий винрейт в этом режиме, статистика на герое и число встреч со стримером.
+- Настройки → Оверлеи OBS → Виджет статистики лобби: включение, отдельный URL и живой предпросмотр. Рекомендуемый размер источника «Браузер»: 560 × 820.
+- Автоматическое обновление и очистка данных при смене профиля, завершении/исчезновении лобби или отключении Companion. История не копируется целиком при опросе OBS.
+- Для ARAM препик не выдаётся за фактического героя: до подтверждения показывается общий винрейт игрока в этом режиме. Статистика локальная, вероятность победы не рассчитывается.
 
 ## What's new
 
-- Local hero/player win rates with game counts, wins/losses, mode filters, search, pagination and per-player hero breakdowns.
-- A shared replay database across game profiles. Historical import indexes all participants, including matches without the selected streamer.
-- New stable replays are collected while Companion is running, even with the session counter and Twitch monitoring off.
-- Results are saved to disk during replay processing, not at shutdown. Identical copies count once; parsed records are reused on reimport.
-- Background work is limited to four files per pass, with batched writes and cached aggregates. Import older archives explicitly.
+- Dedicated OBS lobby statistics widget with the streamer’s current hero, observed hero win rate and sample count.
+- Known lobby participants with mode-specific overall/hero results and counts of matches observed alongside the streamer.
+- Enable it under OBS overlays, copy its separate Browser Source URL (560 × 820), and use the live preview.
+- Cached, lightweight polling clears old data on profile/lobby changes, completed matches and disconnects. No full history copies for widget polling.
+- ARAM preselection is not treated as a confirmed hero; overall mode results are shown instead. No current-team inference or win-probability claim.
 
 ## Statistics notes
 

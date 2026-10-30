@@ -1,4 +1,6 @@
-# HotS Twitch Companion v0.12.0
+# HotS Twitch Companion v0.13.0
+
+v0.13.0 adds an OBS lobby statistics widget: the streamer’s current hero, local hero win rate and game count, plus known lobby participants. Enable it in OBS settings and copy its separate Browser Source URL (560 × 820). [Setup and ARAM limitations](docs/lobby-widget.ru.md).
 
 v0.12.0 adds local hero/player win rates from replay observations, with a shared local database, mode filters and per-player hero breakdowns. New observations are saved to disk during replay processing; closing the app is not required. [Details](docs/local-statistics.ru.md).
 
