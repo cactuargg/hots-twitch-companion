@@ -306,7 +306,7 @@ func TestVerifiedLiveMatchCallsOnlyBoundPredictionOnce(t *testing.T) {
 	httpClient = &http.Client{Transport: manualTransport(func(req *http.Request) (*http.Response, error) {
 		requests++
 		if req.Method == "GET" {
-			return manualResponse(`{"data":[{"id":"bound-prediction","status":"ACTIVE"}]}`), nil
+			return manualResponse(`{"data":[{"id":"bound-prediction","status":"ACTIVE","outcomes":[{"id":"winning","channel_points":100},{"id":"losing","channel_points":200}]}]}`), nil
 		}
 		var payload map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
