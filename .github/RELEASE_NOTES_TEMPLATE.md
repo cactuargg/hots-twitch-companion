@@ -4,19 +4,17 @@ Portable Windows x64 companion for Heroes of the Storm and Twitch.
 
 ## Новое в __TAG__
 
-- Пять готовых CSS-тем счётчика OBS и библиотека своих тем: сохранение под именем, обновление и удаление, с предпросмотром.
-
-- При автоматическом расчёте после матча или ручном выборе Win/Loss прогноз отменяется с возвратом баллов всем участникам, если на любом исходе 0 баллов.
-- Если оба исхода имеют ставки, выполняется обычный расчёт. Проверка происходит при расчёте, а не при закрытии приёма ставок.
-- Решение об отмене сохраняется до запроса в Twitch и переживает сетевые ошибки и перезапуск. При отсутствии достоверных сумм расчёт откладывается.
+- Игровые профили HotS: добавление аккаунтов, название, ник/Toon Handle и папка реплеев для каждого.
+- Текущий игрок автоматически переносится в первый профиль, без сброса Twitch, OBS, тем и истории.
+- Быстрое переключение аккаунта на главном экране. В настройках доступны редактирование и удаление профилей.
+- Смена аккаунта заблокирована при мониторинге, незавершённом прогнозе или неподтверждённом создании. История и счёт привязаны к каждому игроку.
 
 ## What's new
 
-- Five built-in OBS score themes and a persistent custom CSS theme library with preview, named saves, updates and deletion.
-
-- Refund all participants instead of resolving when either outcome has zero Channel Points at settlement, for automatic and manual Win/Loss.
-- Funded outcomes settle normally. Points are checked at settlement, not when betting closes.
-- Refund decisions persist before the Twitch request and survive network failures and restarts. Missing or invalid totals defer settlement.
+- Named HotS game profiles with per-account player identity and replay folder, plus quick switching from Overview.
+- Automatic migration of the current player into the first profile. Twitch authorization, prediction settings, OBS URLs, themes and history stay shared or preserved.
+- Profile editing and deletion; history and score remain tied to each player identity.
+- Switching is blocked during monitoring, active Predictions or unconfirmed creation. Unsaved drafts must be saved before quick switching.
 
 ## OBS and data notes
 

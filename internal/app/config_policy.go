@@ -11,7 +11,7 @@ import (
 // Presentation and future prediction settings may change during monitoring.
 // Identity, replay source, OAuth application and mode remain fixed.
 func LiveConfigChangeAllowed(current, next config.Data) bool {
-	return current.ClientID == next.ClientID &&
+	return current.ActiveGameProfile == next.ActiveGameProfile && current.ClientID == next.ClientID &&
 		current.PlayerName == next.PlayerName &&
 		current.PlayerToonHandle == next.PlayerToonHandle &&
 		current.ReplayRoot == next.ReplayRoot &&

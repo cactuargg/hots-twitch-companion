@@ -138,19 +138,21 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 			return
 		}
 		var body struct {
-			ClientID            string `json:"clientId"`
-			PlayerName          string `json:"playerName"`
-			PlayerToonHandle    string `json:"playerToonHandle"`
-			ReplayRoot          string `json:"replayRoot"`
-			RealMode            bool   `json:"realMode"`
-			ConfirmedRealMode   bool   `json:"confirmedRealMode"`
-			Lang                string `json:"lang"`
-			PredictionWindowMin int    `json:"predictionWindowMin"`
-			WizardDone          bool   `json:"wizardDone"`
-			PredictionTitle     string `json:"predictionTitle"`
-			PredictionWin       string `json:"predictionWin"`
-			PredictionLoss      string `json:"predictionLoss"`
-			DisableUpdateChecks bool   `json:"disableUpdateChecks"`
+			GameProfiles        []config.GameProfile `json:"gameProfiles"`
+			ActiveGameProfile   string               `json:"activeGameProfile"`
+			ClientID            string               `json:"clientId"`
+			PlayerName          string               `json:"playerName"`
+			PlayerToonHandle    string               `json:"playerToonHandle"`
+			ReplayRoot          string               `json:"replayRoot"`
+			RealMode            bool                 `json:"realMode"`
+			ConfirmedRealMode   bool                 `json:"confirmedRealMode"`
+			Lang                string               `json:"lang"`
+			PredictionWindowMin int                  `json:"predictionWindowMin"`
+			WizardDone          bool                 `json:"wizardDone"`
+			PredictionTitle     string               `json:"predictionTitle"`
+			PredictionWin       string               `json:"predictionWin"`
+			PredictionLoss      string               `json:"predictionLoss"`
+			DisableUpdateChecks bool                 `json:"disableUpdateChecks"`
 		}
 		if err := ReadJSONRequest(r, &body, i18n.Text(i18n.En, "http.request_too_large")); err != nil {
 			RequestError(w, err)
@@ -185,13 +187,15 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 		// The independent preference endpoint is authoritative. Old tabs and
 		// wizard/language snapshots must not silently re-enable network checks.
 		cfg.DisableUpdateChecks = d.Config().DisableUpdateChecks
+		cfg.GameProfiles = body.GameProfiles
+		cfg.ActiveGameProfile = body.ActiveGameProfile
 		if err := d.engine.UpdateConfig(cfg); err != nil {
 			RequestError(w, err)
 			return
 		}
 		d.invalidateReplays()
 		d.log(d.Text("log.config_saved"))
-		JSONOutput(w, 200, map[string]any{"config": cfg})
+		JSONOutput(w, 200, map[string]any{"config": d.Config()})
 		return
 	case "auth":
 		v, err := d.doAuth()

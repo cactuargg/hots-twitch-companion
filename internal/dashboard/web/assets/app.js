@@ -75,6 +75,7 @@ function render(s){
   if(s)state.status=s;
   const st=state.status||{connected:false,running:false,active:false,realMode:false,logs:[]};
   if(typeof renderUpdates==='function')renderUpdates(st);
+ if(typeof renderGameProfiles==='function')renderGameProfiles();
   // The footer links to release notes; the Updates section manages installation.
   const upd=$('update-badge');
   if(upd){
@@ -189,9 +190,10 @@ async function save(over={}){
   const x=await api('config','POST',{...data,confirmedRealMode:data.realMode});
   const changed=JSON.stringify(getInputs())!==draft;
   state.config=x.config;state.hasUnsaved=changed;lang=x.config.lang||lang;
+ if(!changed&&typeof loadGameProfiles==='function')loadGameProfiles(x.config);
   applyI18n();renderSettingsDraft();toast(t(changed?'settings.draftRemaining':'toast.saved'));
   await loadStatus();return x;
- }finally{state.saving=false}
+ }finally{state.saving=false;if(typeof renderGameProfiles==='function')renderGameProfiles()}
 }
 async function startAutomation(){
  if(state.connectionLost){toast(t('connection.lost'),true);return false}
