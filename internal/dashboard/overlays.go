@@ -222,7 +222,7 @@ func (d *Dashboard) overlayHandler() http.Handler {
 			}
 			p.MaskImage = ""
 			p.ScoreThemes = nil
-			JSONOutput(w, 200, map[string]any{"preferences": p, "maskImageURL": imageURL, "wins": v["wins"], "losses": v["losses"], "maskVisible": v["maskVisible"]})
+			JSONOutput(w, 200, map[string]any{"preferences": p, "chance": d.scoreChance(p), "maskImageURL": imageURL, "wins": v["wins"], "losses": v["losses"], "maskVisible": v["maskVisible"]})
 		case "image":
 			parts := strings.SplitN(prefs.MaskImage, ",", 2)
 			if len(parts) != 2 {
@@ -286,6 +286,10 @@ func validPreferences(p sessions.Preferences) error {
 	}
 	if p.MaskMode != "auto" && p.MaskMode != "show" && p.MaskMode != "hide" {
 		return errors.New("invalid mask mode")
+	}
+	a, b, c := chanceTiming(p)
+	if a < 1 || a > 60 || b < 30 || b > 1800 || c < 1 || c > 60 || a >= b || c >= b {
+		return errors.New("invalid chance timing: initial/duration 1–60 seconds; interval 30–1800 seconds, longer than each display")
 	}
 	if p.MaskImage != "" {
 		prefix := "data:image/png;base64,"

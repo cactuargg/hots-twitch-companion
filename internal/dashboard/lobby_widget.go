@@ -22,15 +22,18 @@ type widgetPerson struct {
 	Overall  widgetCounts  `json:"overall"`
 	OnHero   *widgetCounts `json:"onHero"`
 	Meetings int           `json:"meetings"`
+	Team     string        `json:"team,omitempty"`
 }
 type lobbyWidgetState struct {
-	Enabled     bool           `json:"enabled"`
-	Phase       string         `json:"phase"`
-	Language    string         `json:"language"`
-	Mode        uint32         `json:"mode"`
-	HeroPending bool           `json:"heroPending"`
-	Streamer    widgetPerson   `json:"streamer"`
-	Familiar    []widgetPerson `json:"familiar"`
+	Estimate    *replaystats.Estimate `json:"estimate"`
+	StartedAt   int64                 `json:"-"`
+	Enabled     bool                  `json:"enabled"`
+	Phase       string                `json:"phase"`
+	Language    string                `json:"language"`
+	Mode        uint32                `json:"mode"`
+	HeroPending bool                  `json:"heroPending"`
+	Streamer    widgetPerson          `json:"streamer"`
+	Familiar    []widgetPerson        `json:"familiar"`
 }
 
 func counts(row replaystats.Row) widgetCounts {
@@ -65,6 +68,9 @@ func personWidget(p replaystats.Person, code, language string, heroAllowed bool)
 	return v
 }
 func (d *Dashboard) lobbyWidget() lobbyWidgetState {
+	return d.currentLobby(false)
+}
+func (d *Dashboard) currentLobby(inApp bool) lobbyWidgetState {
 	cfg := d.Config()
 	result := lobbyWidgetState{Phase: "waiting", Language: cfg.Language(), Familiar: []widgetPerson{}}
 	_, prefs, err := d.overlays.store.DisplaySettings()
@@ -73,7 +79,7 @@ func (d *Dashboard) lobbyWidget() lobbyWidgetState {
 		return result
 	}
 	result.Enabled = prefs.LobbyWidgetEnabled
-	if !result.Enabled {
+	if !result.Enabled && !inApp {
 		result.Phase = "disabled"
 		return result
 	}
@@ -111,7 +117,7 @@ func (d *Dashboard) lobbyWidget() lobbyWidgetState {
 	if found != 1 {
 		return result
 	}
-	key := fmt.Sprintf("%s|%s|%s|%s|%d", selected, snap.SHA256, cfg.PlayerName, cfg.Language(), d.statistics.Revision())
+	key := fmt.Sprintf("%s|%s|%s|%s|%d|%t|%d", selected, snap.SHA256, cfg.PlayerName, cfg.Language(), d.statistics.Revision(), result.Enabled, observed)
 	o.mu.Lock()
 	if o.widgetCacheKey == key {
 		cached := o.widgetCache
@@ -126,6 +132,8 @@ func (d *Dashboard) lobbyWidget() lobbyWidgetState {
 	}
 	result.Phase = "live"
 	result.Mode = snap.Data.AMMID
+	result.StartedAt = observed
+	result.Estimate = d.statistics.EstimateLobby(snap.Data, selected, observed)
 	result.HeroPending = result.Mode == 50101
 	for _, p := range roster {
 		id := strings.ToLower(p.ToonHandle)
@@ -137,6 +145,7 @@ func (d *Dashboard) lobbyWidget() lobbyWidgetState {
 			continue
 		}
 		v := personWidget(person, p.Hero, cfg.Language(), result.Mode != 50101)
+		v.Team = p.Team
 		if strings.EqualFold(v.Name, p.ToonHandle) {
 			v.Name = ""
 		}

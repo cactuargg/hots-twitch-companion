@@ -17,7 +17,7 @@ function localStatisticsFixture(query){
  return {mode,kind,player,matches:mode==='50101'?0:2,observations:20,skipped:0,page:1,pages:1,total:rows.length,rows};
 }
 let lobbyWidgetPhase='live',lobbyWidgetOffline=false;
-function lobbyWidgetFixture(){return {enabled:!!journal.preferences.lobbyWidgetEnabled,phase:lobbyWidgetPhase,language:config.lang||'ru',mode:50091,heroPending:false,streamer:{name:config.playerName,hero:'Джайна',overall:{games:70,wins:39,losses:31,winRate:55.7},onHero:{games:40,wins:24,losses:16,winRate:60}},familiar:[{name:'Known <img src=x onerror=alert(1)>',hero:'Валла',meetings:7,overall:{games:20,wins:11,losses:9,winRate:55},onHero:{games:8,wins:5,losses:3,winRate:62.5}}]}}
+function lobbyWidgetFixture(){return {enabled:!!journal.preferences.lobbyWidgetEnabled,phase:lobbyWidgetPhase,language:config.lang||'ru',mode:50091,heroPending:false,estimate:{percent:62,matches:40,coverage:8},streamer:{name:config.playerName,hero:'Джайна',overall:{games:70,wins:39,losses:31,winRate:55.7},onHero:{games:40,wins:24,losses:16,winRate:60}},familiar:[{name:'Known <img src=x onerror=alert(1)>',hero:'Валла',meetings:7,overall:{games:20,wins:11,losses:9,winRate:55},onHero:{games:8,wins:5,losses:3,winRate:62.5}}]}}
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
  const name=new URL(req.url,'http://local').pathname.replace(/^\/demo\//,'');
@@ -142,15 +142,16 @@ const server=http.createServer(async(req,res)=>{
  await page.setViewportSize({width:1100,height:900});await page.locator('#local-statistics').screenshot({path:'.research/local-replay-statistics.png'});
 
  await page.locator('[data-view=settings]').click();
- await page.locator('#obs-lobby-enabled').check();await page.locator('[data-wide-save]').click();await page.waitForFunction(()=>!document.querySelector('[data-wide-save]').disabled);
- assert.equal(journal.preferences.lobbyWidgetEnabled,true);
- assert.ok((await page.locator('#obs-lobby-url').textContent()).endsWith('/lobby'));
- assert.equal(await page.locator('#obs-copy-lobby').isDisabled(),false);
- await page.locator('#obs-lobby-preview>summary').click();
- const preview=page.frameLocator('#obs-lobby-frame');await preview.locator('#widget-hero').waitFor();
- await page.waitForFunction(()=>document.querySelector('#obs-lobby-frame').contentDocument?.querySelector('#widget-rate')?.textContent==='60.0%');
+ await page.locator('#obs-chance-enabled').check();await page.locator('[data-wide-save]').click();await page.waitForFunction(()=>!document.querySelector('[data-wide-save]').disabled);
+ assert.equal(journal.preferences.chanceEnabled,true);assert.equal(journal.preferences.chanceInitialSeconds,15);assert.equal(journal.preferences.chanceIntervalSeconds,120);assert.equal(journal.preferences.chanceDurationSeconds,10);
+ assert.equal(await page.locator('#view-settings #current-match-frame').count(),0);
+ await page.locator('#tab-dashboard').click();
+ const preview=page.frameLocator('#current-match-frame');await preview.locator('#widget-hero').waitFor();
+ await page.waitForFunction(()=>document.querySelector('#current-match-frame').contentDocument?.querySelector('#widget-rate')?.textContent==='60.0%');
  assert.equal(await preview.locator('#widget-hero').textContent(),'Джайна');
- await page.locator('#obs-lobby-preview>summary').click();await page.waitForFunction(()=>!document.querySelector('#obs-lobby-frame').hasAttribute('src'));
+ assert.ok((await preview.locator('#widget-estimate').textContent()).includes('62%'));
+ await page.locator('.current-match-panel').screenshot({path:'.research/current-match-panel.png'});
+ journal.preferences.lobbyWidgetEnabled=true;
  const widget=await browser.newPage({viewport:{width:560,height:820}});widget.on('pageerror',e=>errors.push(e.message));
  await widget.goto('http://127.0.0.1:18766/demo/lobby');await widget.waitForFunction(()=>document.querySelector('#widget-rate').textContent==='60.0%');
  assert.equal(await widget.locator('#widget-familiar img').count(),0,'untrusted names must be text');

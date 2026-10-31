@@ -202,6 +202,13 @@ func TestLobbyHeroNamesAgreeWithCompletedNonARAMFixtures(t *testing.T) {
 			}
 			for _, actual := range details.Players {
 				if actual.ToonHandle == p.ToonHandle && actual.Hero != "" {
+					wantTeam := "T1"
+					if actual.Team == 1 {
+						wantTeam = "T2"
+					}
+					if p.Team != wantTeam {
+						t.Fatalf("team mismatch: slot %d has %q, replay team %d", p.Slot, p.Team, actual.Team)
+					}
 					if !lobby.HeroMatches(p.Hero, actual.Hero) {
 						t.Fatalf("hero mismatch in %s: code %q vs actual %q", filepath.Base(file), p.Hero, actual.Hero)
 					}

@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const script=fs.readFileSync(path.join(__dirname,'../internal/dashboard/web/assets/overlay.js'),'utf8');
 function environment(kind){
  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:true,style:{},textContent:'',removeAttribute(name){delete this[name]}});return nodes.get(id)};
- const context={location:{pathname:'/secret/'+kind},document:{getElementById:node},fetch:()=>Promise.reject(Error('offline')),AbortSignal:{timeout:()=>({})},setInterval:()=>{}};
+ const context={location:{pathname:'/secret/'+kind},document:{getElementById:node},fetch:()=>Promise.reject(Error('offline')),AbortSignal:{timeout:()=>({})},setInterval:()=>{},setTimeout:()=>1,clearTimeout:()=>{}};
  vm.createContext(context);vm.runInContext(script,context);return{context,node};
 }
 test('OBS mask starts opaque and returns to opaque if its state server disconnects',async()=>{
@@ -28,4 +28,13 @@ test('custom CSS refreshes only the score stylesheet and clears without a page r
  node('custom-css').href='unchanged';vm.runInContext('draw(value)',context);assert.equal(node('custom-css').href,'unchanged');
  context.value.preferences.customCSS='';vm.runInContext('draw(value)',context);assert.match(node('custom-css').href,/^custom\.css\?rev=/);
  const mask=environment('mask');mask.context.value=context.value;vm.runInContext('draw(value)',mask.context);assert.equal(mask.node('custom-css').href,undefined);
+});
+
+test('score chance is compact, stops with match state and clears on disconnect',async()=>{
+ const {context,node}=environment('score');context.value={preferences:{enabled:true,style:'nexus',scale:100},wins:1,losses:2,chance:{percent:63,label:'Win estimate',visibleForMS:5000}};
+ vm.runInContext('draw(value)',context);assert.equal(node('win-chance').hidden,false);assert.equal(node('win-chance').textContent,'Win estimate 63%');
+ context.value.chance=null;vm.runInContext('draw(value)',context);assert.equal(node('win-chance').hidden,true);assert.equal(node('win-chance').textContent,'');
+ context.value.chance={percent:63,label:'Win estimate',visibleForMS:5000};vm.runInContext('draw(value)',context);
+ await vm.runInContext('poll()',context);assert.equal(node('win-chance').hidden,true);assert.equal(node('wins').textContent,1);
+ const mask=environment('mask');mask.context.value=context.value;vm.runInContext('draw(value)',mask.context);assert.equal(mask.node('win-chance').hidden,true);
 });
