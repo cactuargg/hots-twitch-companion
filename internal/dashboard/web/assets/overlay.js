@@ -1,9 +1,11 @@
 'use strict';
 const maskSource=location.pathname.endsWith('/mask');
-let inFlight=false,lastImage='',lastCSS=null;
+let inFlight=false,lastImage='',lastCSS=null,chanceTimer;
+function clearChance(){clearTimeout(chanceTimer);const el=document.getElementById('win-chance');el.hidden=true;el.textContent=''}
 function draw(s){
  const css=s.preferences.customCSS||'';
  if(!maskSource&&css!==lastCSS){lastCSS=css;document.getElementById('custom-css').href='custom.css?rev='+Date.now()}
+ clearChance();const chance=s.chance;if(!maskSource&&s.preferences.enabled&&chance&&Number.isFinite(chance.percent)&&chance.visibleForMS>0){const el=document.getElementById('win-chance');el.textContent=chance.label+' '+Math.round(chance.percent)+'%';el.hidden=false;chanceTimer=setTimeout(clearChance,Math.min(5000,chance.visibleForMS))}
  const p=s.preferences,score=document.getElementById('score'),mask=document.getElementById('mask');
  score.hidden=maskSource||!p.enabled;mask.hidden=!maskSource||!s.maskVisible;
  score.className=p.style+(p.backdrop?' backdrop':'');score.style.transform=`scale(${p.scale/100})`;
@@ -13,7 +15,7 @@ function draw(s){
  const img=document.getElementById('mask-image'),image=s.maskImageURL||'';img.hidden=!image;document.getElementById('mask-panel').hidden=!!image;
  if(lastImage!==image){lastImage=image;if(lastImage)img.src=lastImage;else img.removeAttribute('src')}
 }
-async function poll(){if(inFlight)return;inFlight=true;try{const r=await fetch('state',{cache:'no-store',signal:AbortSignal.timeout(4000)});if(!r.ok)throw Error();draw(await r.json())}catch(e){if(maskSource)document.getElementById('mask').hidden=false}finally{inFlight=false}}
+async function poll(){if(inFlight)return;inFlight=true;try{const r=await fetch('state',{cache:'no-store',signal:AbortSignal.timeout(4000)});if(!r.ok)throw Error();draw(await r.json())}catch(e){clearChance();if(maskSource)document.getElementById('mask').hidden=false}finally{inFlight=false}}
 // The mask starts opaque before the first request and returns to opaque on disconnect.
 if(maskSource)document.getElementById('mask').hidden=false;
 poll();setInterval(poll,1500);

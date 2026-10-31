@@ -14,21 +14,25 @@ import (
 )
 
 type Preferences struct {
-	LobbyWidgetEnabled bool         `json:"lobbyWidgetEnabled"`
-	ScoreThemes        []ScoreTheme `json:"scoreThemes,omitempty"`
-	CustomCSS          string       `json:"customCSS,omitempty"`
-	Enabled            bool         `json:"enabled"`
-	RankedOnly         bool         `json:"rankedOnly"`
-	Style              string       `json:"style"`
-	Scale              int          `json:"scale"`
-	Backdrop           bool         `json:"backdrop"`
-	WinColor           string       `json:"winColor"`
-	LossColor          string       `json:"lossColor"`
-	Labels             bool         `json:"labels"`
-	MaskEnabled        bool         `json:"maskEnabled"`
-	MaskMode           string       `json:"maskMode"`
-	MaskRankedOnly     bool         `json:"maskRankedOnly"`
-	MaskImage          string       `json:"maskImage,omitempty"`
+	ChanceEnabled         bool         `json:"chanceEnabled"`
+	ChanceInitialSeconds  int          `json:"chanceInitialSeconds"`
+	ChanceIntervalSeconds int          `json:"chanceIntervalSeconds"`
+	ChanceDurationSeconds int          `json:"chanceDurationSeconds"`
+	LobbyWidgetEnabled    bool         `json:"lobbyWidgetEnabled"`
+	ScoreThemes           []ScoreTheme `json:"scoreThemes,omitempty"`
+	CustomCSS             string       `json:"customCSS,omitempty"`
+	Enabled               bool         `json:"enabled"`
+	RankedOnly            bool         `json:"rankedOnly"`
+	Style                 string       `json:"style"`
+	Scale                 int          `json:"scale"`
+	Backdrop              bool         `json:"backdrop"`
+	WinColor              string       `json:"winColor"`
+	LossColor             string       `json:"lossColor"`
+	Labels                bool         `json:"labels"`
+	MaskEnabled           bool         `json:"maskEnabled"`
+	MaskMode              string       `json:"maskMode"`
+	MaskRankedOnly        bool         `json:"maskRankedOnly"`
+	MaskImage             string       `json:"maskImage,omitempty"`
 }
 
 type ScoreTheme struct {

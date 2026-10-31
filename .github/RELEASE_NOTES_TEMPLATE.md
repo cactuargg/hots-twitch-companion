@@ -4,23 +4,27 @@ Portable Windows x64 companion for Heroes of the Storm and Twitch.
 
 ## Новое в __TAG__
 
-- Отдельный OBS-виджет статистики текущего лобби: герой стримера, его локальный винрейт на герое и число игр.
-- Знакомые участники: общий винрейт в этом режиме, статистика на герое и число встреч со стримером.
-- Настройки → Оверлеи OBS → Виджет статистики лобби: включение, отдельный URL и живой предпросмотр. Рекомендуемый размер источника «Браузер»: 560 × 820.
-- Автоматическое обновление и очистка данных при смене профиля, завершении/исчезновении лобби или отключении Companion. История не копируется целиком при опросе OBS.
-- Для ARAM препик не выдаётся за фактического героя: до подтверждения показывается общий винрейт игрока в этом режиме. Статистика локальная, вероятность победы не рассчитывается.
+- Подробности текущего матча перенесены на главный экран: герой, локальный винрейт, число игр и знакомые участники с отметкой союзников и соперников.
+- Экспериментальная оценка победы по игрокам и героям добавлена в существующий OBS-счётчик W/L. Включается отдельно в настройках OBS, новый источник не нужен.
+- По умолчанию процент виден первые 15 секунд, затем 10 секунд каждые 2 минуты от начала лобби. Все три интервала настраиваются; перезагрузка OBS не перезапускает таймер.
+- При нехватке истории или недостоверном лобби процент скрыт. После обработки соответствующего итогового реплея показ прекращается до следующего матча; при потере связи оценка исчезает не позднее чем через 5 секунд.
+- Команды читаются из явного атрибута BattleLobby. В ARAM неподтверждённые препики не участвуют в оценке. Старый отдельный источник лобби сохранён для совместимости.
 
 ## What's new
 
-- Dedicated OBS lobby statistics widget with the streamer’s current hero, observed hero win rate and sample count.
-- Known lobby participants with mode-specific overall/hero results and counts of matches observed alongside the streamer.
-- Enable it under OBS overlays, copy its separate Browser Source URL (560 × 820), and use the live preview.
-- Cached, lightweight polling clears old data on profile/lobby changes, completed matches and disconnects. No full history copies for widget polling.
-- ARAM preselection is not treated as a confirmed hero; overall mode results are shown instead. No current-team inference or win-probability claim.
+- Current-match details now appear on the home screen, including hero results, sample counts and known allies/opponents.
+- An optional experimental win estimate appears inside the existing OBS W/L counter; no additional source is required.
+- Default schedule: 15 seconds at lobby start, then 10 seconds every 2 minutes. All intervals are configurable and OBS reloads do not restart the clock.
+- Insufficient history, stale lobbies and completed matches hide the percentage. Completion follows the matching replay; disconnects clear the estimate within 5 seconds.
+- Explicit BattleLobby teams replace slot-order assumptions. ARAM preselection is excluded from hero estimates. The legacy standalone lobby source remains compatible.
+
+## Experimental estimate
+
+This is an uncalibrated local-history heuristic, not an official rating or a validated probability model. It does not identify streamsnipers. Local streamer recordings are a biased sample. Only earlier, consistent human 5v5 replays in the same mode contribute. At least 20 matches and coverage for 6 of 10 participants (at least 2 per side) are required. Small samples shrink toward 50%; manually chosen player/hero coefficients produce a conservative 20–80% display. See the included lobby-widget.ru.md for the formula and limitations. No external statistics service is contacted.
 
 ## Statistics notes
 
-These are observed results in the available local replays, not global win rates, official ratings or predictions. Valid human player IDs and known wins/losses are required. Unknown results and AI entries are skipped. Two appearances of a hero in one match are two player results. Different client recordings of the same match are not guaranteed to deduplicate; identical bytes are.
+These are observed results in the available local replays, not global win rates or official ratings. The separate experimental estimate has the limitations described above. Valid human player IDs and known wins/losses are required. Unknown results and AI entries are skipped. Two appearances of a hero in one match are two player results. Different client recordings of the same match are not guaranteed to deduplicate; identical bytes are.
 
 Session edits and exclusions do not rewrite the separate raw replay statistics database. Game profile deletion preserves it; full application reset deletes it. Very large archives still need separate performance validation. The initial import is user initiated and does not change the current session score. Data stays local; no external statistics service is contacted.
 

@@ -1,14 +1,42 @@
 package lobby
 
 import (
-  "os"
-  "path/filepath"
-  "strings"
-  "testing"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
 )
 
 // White-box tests live next to the binary decoder rather than leaking reader
 // internals into the application package.
+func TestCustomLobbyTeamAttributeDoesNotFollowSlotOrder(t *testing.T) {
+	raw, err := os.ReadFile("../../../testdata/battlelobby/replay.server.Custom1_90670.battlelobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, p := range b.Players {
+		if p.Role != "Part" {
+			continue
+		}
+		want := "T2"
+		if p.Slot >= 1 && p.Slot <= 4 || p.Slot == 10 {
+			want = "T1"
+		}
+		if p.Team != want {
+			t.Fatalf("slot %d: %q != %q", p.Slot, p.Team, want)
+		}
+		checked++
+	}
+	if checked != 10 {
+		t.Fatal(checked)
+	}
+}
+
 func TestLobbyReaderWireOrder(t *testing.T) {
 	r := lobbyReader{b: []byte{0x08, 0x73, 'a', 'b'}}
 	if r.bits(6) != 8 || r.blob(10, 0) != "" || r.err == nil {
@@ -25,7 +53,7 @@ func TestLobbyReaderWireOrder(t *testing.T) {
 }
 
 func TestBattleLobbyRejectsUnverifiedBuild(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..","..","..","testdata","battlelobby","replay.server.ARAM1_89754.battlelobby"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "battlelobby", "replay.server.ARAM1_89754.battlelobby"))
 	if err != nil {
 		t.Fatal(err)
 	}

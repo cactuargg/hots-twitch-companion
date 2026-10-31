@@ -19,7 +19,7 @@ func (d *Dashboard) handleAPIRoute(w http.ResponseWriter, r *http.Request, route
 	if r.Method == "GET" {
 		switch route {
 		case "lobby-widget":
-			JSONOutput(w, 200, d.lobbyWidget())
+			JSONOutput(w, 200, d.currentLobby(true))
 			return
 		case "statistics":
 			d.statisticsAPI(w, r)

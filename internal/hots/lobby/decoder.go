@@ -17,6 +17,7 @@ type LobbyPlayer struct {
 	SlotType   string `json:"slotType"`
 	Role       string `json:"role"`
 	Hero       string `json:"hero"`
+	Team       string `json:"team,omitempty"` // Explicit T1/T2 attribute; never inferred from slot order.
 	ToonHandle string `json:"toonHandle,omitempty"`
 }
 
@@ -204,6 +205,8 @@ func decodeBattleLobby(raw []byte) (BattleLobby, error) {
 					slots[j].Role = v
 				case 4002:
 					slots[j].Hero = v
+				case 2007:
+					slots[j].Team = v
 				}
 			}
 		}

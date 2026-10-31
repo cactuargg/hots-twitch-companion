@@ -12,4 +12,4 @@
 
 .local-stats-controls input,.local-stats-controls select{background:var(--bg);color:var(--ink);border:1px solid var(--border);border-radius:6px;padding:10px;min-height:40px}
 
-.lobby-settings-card{grid-column:1/-1;min-width:0}.lobby-settings-card .obs-url{margin:10px 0}.lobby-preview{display:block;width:100%;max-width:560px;height:420px;border:1px solid var(--border);border-radius:10px;margin:14px 0;background:#121827}
+.chance-settings-card{grid-column:1/-1;min-width:0}

@@ -50,6 +50,7 @@ function initWide(){
  scoreBox.append(strip.firstElementChild,$('session-new'),$('session-history-link'));
  const maskTitle=wideEl('h2');wideLabel(maskTitle,'overlays');const maskSelect=$('session-mask-mode');maskBox.append(maskTitle,maskSelect.closest('label'),$('session-mask-enabled').closest('label'),$('session-phase'));
  live.append(scoreBox,document.querySelector('.overview-command'),maskBox);home.querySelector('.view-heading').after(live);live.after($('session-feedback'));strip.remove();
+ const matchPanel=wideEl('section','current-match-panel'),matchTitle=wideEl('h2');matchTitle.dataset.i18n='obs.lobbyTitle';matchTitle.textContent=ot('lobbyTitle');const matchFrame=wideEl('iframe','current-match-frame');matchFrame.id='current-match-frame';matchFrame.title=ot('lobbyTitle');matchFrame.setAttribute('sandbox','allow-scripts allow-same-origin');matchFrame.src=new URL('./assets/lobby-widget.html?preview=1',location.href).href;matchPanel.append(matchTitle,matchFrame);live.after(matchPanel);
  home.querySelector('.section-heading').hidden=true;document.querySelector('.overview-summary').hidden=true;document.querySelector('.overview-detail').hidden=true;
  const filters=wideEl('div','wide-filters');
  for(const [key,title,opts]of [['period','period',[['session','session'],['week','week'],['month','month'],['all','all']]],['mode','mode',[['all','allModes'],['50091','ranked'],['50001','quick'],['50101','aram'],['50051','unranked']]]])filters.append(wideChoice(key,title,opts,wideState[key],value=>{wideState[key]=value;wideState.page=1;renderWideHistory()}));
